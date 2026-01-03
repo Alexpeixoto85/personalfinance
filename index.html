@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -22,6 +23,7 @@
             --income: #10b981;
             --expense: #ef4444;
             --investment: #3b82f6;
+            --pending: #f59e0b;
             --dark: #0f172a;
             --light: #f8fafc;
             --surface: #ffffff;
@@ -122,6 +124,7 @@
         .balance-item .value { font-size: 1.1rem; font-weight: 700; margin-top: 4px; }
         .income-value { color: #d1fae5; }
         .expense-value { color: #fee2e2; }
+        .pending-value { color: #fef3c7; }
 
         /* --- Stats Cards --- */
         .stats-grid {
@@ -168,6 +171,7 @@
         .bg-green { background: #d1fae5; color: var(--income); }
         .bg-red { background: #fee2e2; color: var(--expense); }
         .bg-blue { background: #dbeafe; color: var(--investment); }
+        .bg-yellow { background: #fef3c7; color: var(--pending); }
         .bg-purple { background: #f3e8ff; color: #8b5cf6; }
         .bg-orange { background: #ffedd5; color: #f59e0b; }
         .bg-cyan { background: #cffafe; color: #06b6d4; }
@@ -227,6 +231,7 @@
         .transaction-card.income { border-left-color: var(--income); }
         .transaction-card.expense { border-left-color: var(--expense); }
         .transaction-card.investment { border-left-color: var(--investment); }
+        .transaction-card.pending { border-left-color: var(--pending); }
 
         .transaction-icon {
             width: 40px; height: 40px;
@@ -237,6 +242,7 @@
         .icon-income { background: #d1fae5; color: var(--income); }
         .icon-expense { background: #fee2e2; color: var(--expense); }
         .icon-investment { background: #dbeafe; color: var(--investment); }
+        .icon-pending { background: #fef3c7; color: var(--pending); }
 
         .transaction-info { flex: 1; }
         .transaction-title { 
@@ -259,6 +265,7 @@
         .amount-income { color: var(--income); }
         .amount-expense { color: var(--expense); }
         .amount-investment { color: var(--investment); }
+        .amount-pending { color: var(--pending); }
 
         /* --- Category Card --- */
         .category-card {
@@ -466,6 +473,7 @@
         .badge-income { background: var(--income); color: white; }
         .badge-expense { background: var(--expense); color: white; }
         .badge-investment { background: var(--investment); color: white; }
+        .badge-pending { background: var(--pending); color: var(--dark); }
 
         @keyframes pulse { 
             0% { opacity: 1; } 
@@ -515,11 +523,138 @@
             color: var(--secondary); font-weight: 500;
         }
 
-        /* --- Recurring Badge --- */
+        /* --- Badges --- */
         .recurring-badge {
             background: #fef3c7; color: #b45309;
             font-size: 0.7rem; padding: 2px 6px;
             border-radius: 10px; margin-left: 8px;
+        }
+        
+        .pending-badge {
+            background: #fef3c7; color: #b45309;
+            font-size: 0.7rem; padding: 2px 6px;
+            border-radius: 10px; margin-left: 8px;
+        }
+        
+        .future-badge {
+            background: #dbeafe; color: #1e40af;
+            font-size: 0.7rem; padding: 2px 6px;
+            border-radius: 10px; margin-left: 8px;
+        }
+
+        /* --- Transaction Status --- */
+        .status-indicator {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+        .status-pending { background: var(--pending); }
+        .status-cleared { background: var(--primary); }
+        .status-future { background: var(--investment); }
+
+        /* --- Switch Button --- */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        /* --- Projection Card --- */
+        .projection-card {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .projection-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 8px;
+        }
+        
+        .projection-title {
+            font-weight: 600; color: var(--dark);
+            font-size: 0.9rem;
+        }
+        
+        .projection-value {
+            font-weight: 700; font-size: 1.1rem;
+        }
+        
+        .projection-positive {
+            color: var(--income);
+        }
+        
+        .projection-negative {
+            color: var(--expense);
+        }
+        
+        .projection-details {
+            font-size: 0.8rem; color: var(--secondary);
+            margin-top: 8px;
+        }
+
+        /* --- Toggle Buttons --- */
+        .toggle-buttons {
+            display: flex; gap: 4px; margin-bottom: 16px;
+        }
+        
+        .toggle-btn {
+            flex: 1; padding: 8px 12px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .toggle-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
         }
     </style>
 </head>
@@ -568,6 +703,32 @@
                         <div class="label">Despesas</div>
                         <div class="value expense-value" id="month-expense">R$ 0,00</div>
                     </div>
+                    <div class="balance-item">
+                        <div class="label">Pendentes</div>
+                        <div class="value pending-value" id="month-pending">R$ 0,00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Projeção Futura -->
+            <div class="section-title">
+                Projeção Futura (30 dias)
+                <span class="badge badge-pending" id="projection-badge" style="display:none">!</span>
+            </div>
+            <div class="projection-card">
+                <div class="projection-header">
+                    <div class="projection-title">Saldo Projetado</div>
+                    <div class="projection-value" id="projected-balance">R$ 0,00</div>
+                </div>
+                <div class="projection-details">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>Receitas futuras:</span>
+                        <span class="projection-positive" id="projected-income">R$ 0,00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Despesas futuras:</span>
+                        <span class="projection-negative" id="projected-expense">R$ 0,00</span>
+                    </div>
                 </div>
             </div>
 
@@ -584,9 +745,9 @@
                     <i class="fas fa-chart-line"></i>
                     <span>Investir</span>
                 </div>
-                <div class="quick-action" onclick="UI.openNewGoal()">
-                    <i class="fas fa-bullseye"></i>
-                    <span>Meta</span>
+                <div class="quick-action" onclick="UI.openScheduledTransaction()">
+                    <i class="fas fa-calendar-plus"></i>
+                    <span>Agendar</span>
                 </div>
             </div>
 
@@ -596,6 +757,14 @@
             </div>
             <div id="recent-transactions">
                 <!-- Lista de transações será preenchida aqui -->
+            </div>
+            
+            <div class="section-title">
+                Próximas Transações Pendentes
+                <span class="badge badge-pending" id="pending-badge" style="display:none">!</span>
+            </div>
+            <div id="pending-transactions">
+                <!-- Lista de transações pendentes será preenchida aqui -->
             </div>
             
             <div class="section-title">
@@ -614,12 +783,19 @@
                 <input type="text" class="search-input" placeholder="Buscar transações..." oninput="UI.filterTransactions()">
             </div>
             
+            <div class="toggle-buttons">
+                <button class="toggle-btn active" onclick="UI.setTransactionViewMode('all')">Todas</button>
+                <button class="toggle-btn" onclick="UI.setTransactionViewMode('pending')">Pendentes</button>
+                <button class="toggle-btn" onclick="UI.setTransactionViewMode('cleared')">Efetivadas</button>
+            </div>
+            
             <div class="filter-buttons">
                 <button class="filter-btn active" onclick="UI.setTransactionFilter('all')">Todas</button>
                 <button class="filter-btn" onclick="UI.setTransactionFilter('income')">Receitas</button>
                 <button class="filter-btn" onclick="UI.setTransactionFilter('expense')">Despesas</button>
                 <button class="filter-btn" onclick="UI.setTransactionFilter('investment')">Investimentos</button>
                 <button class="filter-btn" onclick="UI.setTransactionFilter('recurring')">Recorrentes</button>
+                <button class="filter-btn" onclick="UI.setTransactionFilter('scheduled')">Agendadas</button>
             </div>
             
             <div class="month-selector" style="margin-bottom: 16px;">
@@ -675,6 +851,11 @@
                 <canvas id="incomeExpenseChart"></canvas>
             </div>
 
+            <div class="section-title">Projeção de Fluxo (30 dias)</div>
+            <div class="chart-container">
+                <canvas id="cashFlowChart"></canvas>
+            </div>
+
             <div class="section-title">Resumo Financeiro</div>
             <div class="stats-grid">
                 <div class="stat-card">
@@ -688,9 +869,9 @@
                     <div class="stat-label">Despesas Mês</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon bg-blue"><i class="fas fa-chart-line"></i></div>
-                    <div class="stat-value" id="report-investment">R$ 0</div>
-                    <div class="stat-label">Investimentos</div>
+                    <div class="stat-icon bg-yellow"><i class="fas fa-clock"></i></div>
+                    <div class="stat-value" id="report-pending">R$ 0</div>
+                    <div class="stat-label">Pendentes</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon bg-purple"><i class="fas fa-percentage"></i></div>
@@ -731,6 +912,7 @@
         <form id="form-transaction" onsubmit="FinanceApp.transaction.save(event)">
             <input type="hidden" id="t-id">
             <input type="hidden" id="t-type" value="expense">
+            <input type="hidden" id="t-status" value="cleared">
             
             <div class="type-selector">
                 <div class="type-option type-income" onclick="UI.setTransactionType('income')">
@@ -780,6 +962,15 @@
             </div>
 
             <div class="form-group">
+                <label class="form-label">Status</label>
+                <select id="t-status-select" class="form-control">
+                    <option value="cleared">Efetivada</option>
+                    <option value="pending">Pendente</option>
+                    <option value="scheduled">Agendada</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label class="form-label">Observações</label>
                 <textarea id="t-notes" class="form-control" placeholder="Detalhes adicionais..."></textarea>
             </div>
@@ -803,6 +994,7 @@
 
             <button type="submit" class="btn-block">Salvar Transação</button>
             <button type="button" class="btn-block" style="background: var(--light); color: var(--secondary); margin-top: 8px;" onclick="UI.closeModals()">Cancelar</button>
+            <button type="button" id="toggle-status-btn" class="btn-block" style="background: var(--pending); color: var(--dark); margin-top: 8px; display: none;" onclick="FinanceApp.transaction.toggleStatus()">Marcar como Pendente</button>
             <button type="button" id="delete-transaction-btn" class="btn-block" style="background: var(--expense); color: white; margin-top: 8px; display: none;" onclick="FinanceApp.transaction.deleteTransaction()">Excluir Transação</button>
         </form>
     </div>
@@ -1003,9 +1195,21 @@
                 return `${d}/${m}/${y}`;
             },
             
+            formatDateShort: (dateStr) => {
+                if(!dateStr) return '-';
+                const [y, m, d] = dateStr.split('-');
+                return `${d}/${m}`;
+            },
+            
             getToday: () => {
                 const today = new Date();
                 return today.toISOString().split('T')[0];
+            },
+            
+            getFutureDate: (days = 30) => {
+                const future = new Date();
+                future.setDate(future.getDate() + days);
+                return future.toISOString().split('T')[0];
             },
             
             getMonthYear: (date = new Date()) => {
@@ -1027,6 +1231,21 @@
                     start: startDate.toISOString().split('T')[0],
                     end: endDate.toISOString().split('T')[0]
                 };
+            },
+            
+            getFutureRange: (days = 30) => {
+                const startDate = new Date();
+                const endDate = new Date();
+                endDate.setDate(endDate.getDate() + days);
+                return {
+                    start: startDate.toISOString().split('T')[0],
+                    end: endDate.toISOString().split('T')[0]
+                };
+            },
+            
+            isFutureDate: (dateStr) => {
+                const today = new Date().toISOString().split('T')[0];
+                return dateStr > today;
             },
             
             maskMoney: (input) => {
@@ -1054,6 +1273,15 @@
                 return icons[type] || 'fas fa-exchange-alt';
             },
             
+            getStatusIcon: (status) => {
+                const icons = {
+                    'cleared': 'fas fa-check-circle',
+                    'pending': 'fas fa-clock',
+                    'scheduled': 'fas fa-calendar-alt'
+                };
+                return icons[status] || 'fas fa-question-circle';
+            },
+            
             getCategoryIcon: (iconName) => {
                 const icons = {
                     'shopping-cart': 'fas fa-shopping-cart',
@@ -1078,7 +1306,7 @@
         // --- INDEXEDDB MANAGER ---
         const DB = {
             name: 'FinancaProDB',
-            version: 2,
+            version: 3, // Incrementado para nova estrutura
             db: null,
             
             init: async () => {
@@ -1100,6 +1328,7 @@
                             transactionStore.createIndex('date', 'date', { unique: false });
                             transactionStore.createIndex('type', 'type', { unique: false });
                             transactionStore.createIndex('category', 'category', { unique: false });
+                            transactionStore.createIndex('status', 'status', { unique: false });
                         }
                         
                         if (!db.objectStoreNames.contains('categories')) {
@@ -1305,6 +1534,7 @@
             transactionFilter: 'all',
             transactionMonth: new Date().getMonth(),
             transactionYear: new Date().getFullYear(),
+            transactionViewMode: 'all',
             chartInstances: {},
             
             init: async () => {
@@ -1325,6 +1555,9 @@
                     if (categories.length === 0) {
                         await UI.createDefaultCategories();
                     }
+                    
+                    // Verificar transações pendentes futuras
+                    UI.checkFuturePendingTransactions();
                     
                 } catch (error) {
                     console.error('Erro ao inicializar:', error);
@@ -1367,6 +1600,18 @@
                 Utils.toast('Categorias padrão criadas');
             },
             
+            checkFuturePendingTransactions: () => {
+                const today = Utils.getToday();
+                const transactions = FinanceApp.data.transactions;
+                
+                transactions.forEach(transaction => {
+                    if (transaction.status === 'pending' && transaction.date <= today) {
+                        // Transação pendente com data vencida
+                        console.log(`Transação vencida: ${transaction.description}`);
+                    }
+                });
+            },
+            
             switchTab: (el) => {
                 document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
                 document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -1380,6 +1625,7 @@
                 if(target === 'dashboard-view') {
                     fab.style.display = 'flex';
                     fab.onclick = () => UI.openNewTransaction('expense');
+                    UI.renderDashboard();
                 } else if (target === 'transactions-view') {
                     fab.style.display = 'flex';
                     fab.onclick = () => UI.openNewTransaction('expense');
@@ -1412,17 +1658,29 @@
                 document.getElementById('transaction-month-year').textContent = `${monthYear.year}`;
             },
             
+            setTransactionViewMode: (mode) => {
+                UI.transactionViewMode = mode;
+                document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                UI.renderTransactions();
+            },
+            
             // --- RENDER FUNCTIONS ---
             renderDashboard: async () => {
                 const { transactions, categories, goals, settings } = FinanceApp.data;
                 const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
                 
-                // Filtrar transações do mês atual
+                // Filtrar transações do mês atual (efetivadas)
                 const monthTransactions = transactions.filter(t => 
-                    t.date >= monthRange.start && t.date <= monthRange.end
+                    t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'cleared'
                 );
                 
-                // Calcular totais
+                // Filtrar transações pendentes do mês atual
+                const monthPendingTransactions = transactions.filter(t => 
+                    t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'pending'
+                );
+                
+                // Calcular totais efetivados
                 const income = monthTransactions
                     .filter(t => t.type === 'income')
                     .reduce((sum, t) => sum + t.amount, 0);
@@ -1435,26 +1693,64 @@
                     .filter(t => t.type === 'investment')
                     .reduce((sum, t) => sum + t.amount, 0);
                 
-                // Calcular saldo
+                // Calcular totais pendentes
+                const pendingIncome = monthPendingTransactions
+                    .filter(t => t.type === 'income')
+                    .reduce((sum, t) => sum + t.amount, 0);
+                
+                const pendingExpense = monthPendingTransactions
+                    .filter(t => t.type === 'expense')
+                    .reduce((sum, t) => sum + t.amount, 0);
+                
+                const pendingTotal = pendingIncome + pendingExpense;
+                
+                // Calcular saldo (somente efetivadas)
                 const initialBalance = settings.initialBalance || 0;
                 const balance = initialBalance + income - expense;
+                
+                // Calcular projeção futura (30 dias)
+                const futureRange = Utils.getFutureRange(30);
+                const futureTransactions = transactions.filter(t => 
+                    t.date >= futureRange.start && t.date <= futureRange.end
+                );
+                
+                const futureIncome = futureTransactions
+                    .filter(t => t.type === 'income')
+                    .reduce((sum, t) => sum + t.amount, 0);
+                
+                const futureExpense = futureTransactions
+                    .filter(t => t.type === 'expense')
+                    .reduce((sum, t) => sum + t.amount, 0);
+                
+                const projectedBalance = balance + futureIncome - futureExpense;
                 
                 // Atualizar UI
                 document.getElementById('current-balance').textContent = Utils.formatCurrency(balance);
                 document.getElementById('month-income').textContent = Utils.formatCurrency(income);
                 document.getElementById('month-expense').textContent = Utils.formatCurrency(expense);
+                document.getElementById('month-pending').textContent = Utils.formatCurrency(pendingTotal);
                 
-                // Renderizar transações recentes
+                // Atualizar projeção
+                document.getElementById('projected-balance').textContent = Utils.formatCurrency(projectedBalance);
+                document.getElementById('projected-income').textContent = Utils.formatCurrency(futureIncome);
+                document.getElementById('projected-expense').textContent = Utils.formatCurrency(futureExpense);
+                
+                // Renderizar transações recentes (somente efetivadas)
                 UI.renderRecentTransactions(transactions);
+                
+                // Renderizar transações pendentes próximas
+                UI.renderPendingTransactions(transactions);
                 
                 // Renderizar metas ativas
                 UI.renderActiveGoals(goals);
                 
                 // Atualizar badges
-                const overdueTransactions = transactions.filter(t => 
-                    t.date < Utils.getToday() && 
-                    !t.paid && 
-                    t.type === 'expense'
+                const pendingCount = transactions.filter(t => 
+                    t.status === 'pending' && t.date <= Utils.getToday()
+                ).length;
+                
+                const futureCount = transactions.filter(t => 
+                    t.status === 'pending' && Utils.isFutureDate(t.date)
                 ).length;
                 
                 const activeGoalsCount = goals.filter(g => 
@@ -1462,7 +1758,11 @@
                 ).length;
                 
                 document.getElementById('transactions-badge').style.display = 
-                    overdueTransactions > 0 ? 'inline-block' : 'none';
+                    pendingCount > 0 ? 'inline-block' : 'none';
+                document.getElementById('pending-badge').style.display = 
+                    pendingCount > 0 ? 'inline-block' : 'none';
+                document.getElementById('projection-badge').style.display = 
+                    futureCount > 0 ? 'inline-block' : 'none';
                 document.getElementById('goals-badge').style.display = 
                     activeGoalsCount > 0 ? 'inline-block' : 'none';
             },
@@ -1470,6 +1770,7 @@
             renderRecentTransactions: (transactions) => {
                 const list = document.getElementById('recent-transactions');
                 const recent = transactions
+                    .filter(t => t.status === 'cleared')
                     .sort((a, b) => new Date(b.date) - new Date(a.date))
                     .slice(0, 5);
                 
@@ -1479,6 +1780,24 @@
                 }
                 
                 list.innerHTML = recent.map(t => UI.createTransactionCard(t)).join('');
+            },
+            
+            renderPendingTransactions: (transactions) => {
+                const list = document.getElementById('pending-transactions');
+                const today = Utils.getToday();
+                const futureDate = Utils.getFutureDate(7); // Próximos 7 dias
+                
+                const pending = transactions
+                    .filter(t => t.status === 'pending' && t.date >= today && t.date <= futureDate)
+                    .sort((a, b) => new Date(a.date) - new Date(b.date))
+                    .slice(0, 5);
+                
+                if (pending.length === 0) {
+                    list.innerHTML = `<div class="empty-state"><i class="fas fa-clock"></i><p>Nenhuma transação pendente!</p></div>`;
+                    return;
+                }
+                
+                list.innerHTML = pending.map(t => UI.createTransactionCard(t)).join('');
             },
             
             renderActiveGoals: (goals) => {
@@ -1495,12 +1814,25 @@
             
             createTransactionCard: (transaction) => {
                 const typeClass = transaction.type;
+                const statusClass = transaction.status || 'cleared';
                 const amountClass = `amount-${transaction.type}`;
                 const iconClass = `icon-${transaction.type}`;
                 const amountSign = transaction.type === 'income' ? '+' : '-';
                 
                 const category = FinanceApp.data.categories.find(c => c.id === transaction.category);
                 const categoryName = category ? category.name : 'Sem categoria';
+                
+                // Status badge
+                let statusBadge = '';
+                if (transaction.status === 'pending') {
+                    if (Utils.isFutureDate(transaction.date)) {
+                        statusBadge = '<span class="future-badge">Futura</span>';
+                    } else {
+                        statusBadge = '<span class="pending-badge">Pendente</span>';
+                    }
+                } else if (transaction.status === 'scheduled') {
+                    statusBadge = '<span class="future-badge">Agendada</span>';
+                }
                 
                 return `
                     <div class="transaction-card ${typeClass}" onclick="UI.editTransaction('${transaction.id}')">
@@ -1512,6 +1844,7 @@
                             <div class="transaction-category">
                                 <i class="fas fa-tag"></i> ${categoryName}
                                 ${transaction.recurring ? '<span class="recurring-badge">Recorrente</span>' : ''}
+                                ${statusBadge}
                             </div>
                             <div class="transaction-date">${Utils.formatDate(transaction.date)}</div>
                         </div>
@@ -1554,10 +1887,19 @@
                     t.date >= monthRange.start && t.date <= monthRange.end
                 );
                 
+                // Aplicar filtro de modo (pendentes/efetivadas/todas)
+                if (UI.transactionViewMode === 'pending') {
+                    filtered = filtered.filter(t => t.status === 'pending');
+                } else if (UI.transactionViewMode === 'cleared') {
+                    filtered = filtered.filter(t => t.status === 'cleared');
+                }
+                
                 // Aplicar filtro de tipo
                 if (UI.transactionFilter !== 'all') {
                     if (UI.transactionFilter === 'recurring') {
                         filtered = filtered.filter(t => t.recurring);
+                    } else if (UI.transactionFilter === 'scheduled') {
+                        filtered = filtered.filter(t => t.status === 'scheduled');
                     } else {
                         filtered = filtered.filter(t => t.type === UI.transactionFilter);
                     }
@@ -1589,13 +1931,38 @@
                 let html = '';
                 Object.keys(grouped).sort().reverse().forEach(date => {
                     const dateFormatted = Utils.formatDate(date);
-                    const dayTotal = grouped[date].reduce((sum, t) => {
-                        if (t.type === 'income') return sum + t.amount;
-                        if (t.type === 'expense') return sum - t.amount;
-                        return sum;
-                    }, 0);
                     
-                    html += `<div class="section-title" style="margin-top: 20px;">${dateFormatted} <span style="color: ${dayTotal >= 0 ? 'var(--income)' : 'var(--expense)'}">${Utils.formatCurrency(Math.abs(dayTotal))}</span></div>`;
+                    // Calcular totais para o dia
+                    const dayCleared = grouped[date]
+                        .filter(t => t.status === 'cleared')
+                        .reduce((sum, t) => {
+                            if (t.type === 'income') return sum + t.amount;
+                            if (t.type === 'expense') return sum - t.amount;
+                            return sum;
+                        }, 0);
+                    
+                    const dayPending = grouped[date]
+                        .filter(t => t.status === 'pending')
+                        .reduce((sum, t) => {
+                            if (t.type === 'income') return sum + t.amount;
+                            if (t.type === 'expense') return sum - t.amount;
+                            return sum;
+                        }, 0);
+                    
+                    const dayTotal = dayCleared + dayPending;
+                    
+                    let statusInfo = '';
+                    if (dayPending !== 0) {
+                        statusInfo = `<span style="font-size: 0.8rem; color: var(--secondary); margin-left: 8px;">
+                            (${dayPending > 0 ? '+' : ''}${Utils.formatCurrency(dayPending)} pendente)
+                        </span>`;
+                    }
+                    
+                    html += `<div class="section-title" style="margin-top: 20px;">${dateFormatted} 
+                        <span style="color: ${dayTotal >= 0 ? 'var(--income)' : 'var(--expense)'}">
+                            ${Utils.formatCurrency(Math.abs(dayCleared))}
+                        </span>${statusInfo}
+                    </div>`;
                     
                     grouped[date].forEach(t => {
                         html += UI.createTransactionCard(t);
@@ -1626,7 +1993,7 @@
                 // Calcular totais por categoria
                 const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
                 const monthTransactions = FinanceApp.data.transactions.filter(t => 
-                    t.date >= monthRange.start && t.date <= monthRange.end
+                    t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'cleared'
                 );
                 
                 // Despesas por categoria
@@ -1711,10 +2078,16 @@
             renderReports: () => {
                 const { transactions } = FinanceApp.data;
                 const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
+                const futureRange = Utils.getFutureRange(30);
                 
-                // Filtrar transações do mês
+                // Filtrar transações do mês (efetivadas)
                 const monthTransactions = transactions.filter(t => 
-                    t.date >= monthRange.start && t.date <= monthRange.end
+                    t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'cleared'
+                );
+                
+                // Filtrar transações futuras
+                const futureTransactions = transactions.filter(t => 
+                    t.date >= futureRange.start && t.date <= futureRange.end
                 );
                 
                 // Calcular totais
@@ -1730,17 +2103,26 @@
                     .filter(t => t.type === 'investment')
                     .reduce((sum, t) => sum + t.amount, 0);
                 
+                const pending = transactions
+                    .filter(t => t.status === 'pending' && t.date >= monthRange.start && t.date <= monthRange.end)
+                    .reduce((sum, t) => {
+                        if (t.type === 'income') return sum + t.amount;
+                        if (t.type === 'expense') return sum - t.amount;
+                        return sum;
+                    }, 0);
+                
                 const savingsRate = income > 0 ? ((income - expense) / income * 100) : 0;
                 
                 // Atualizar estatísticas
                 document.getElementById('report-income').textContent = Utils.formatCurrency(income);
                 document.getElementById('report-expense').textContent = Utils.formatCurrency(expense);
-                document.getElementById('report-investment').textContent = Utils.formatCurrency(investment);
+                document.getElementById('report-pending').textContent = Utils.formatCurrency(Math.abs(pending));
                 document.getElementById('report-savings-rate').textContent = `${savingsRate.toFixed(1)}%`;
                 
                 // Renderizar gráficos
                 UI.renderExpenseChart(monthTransactions);
                 UI.renderIncomeExpenseChart(monthTransactions);
+                UI.renderCashFlowChart(futureTransactions);
             },
             
             renderExpenseChart: (transactions) => {
@@ -1884,6 +2266,99 @@
                 });
             },
             
+            renderCashFlowChart: (transactions) => {
+                const ctx = document.getElementById('cashFlowChart').getContext('2d');
+                
+                // Agrupar por data (próximos 30 dias)
+                const futureIncome = {};
+                const futureExpense = {};
+                const today = new Date();
+                
+                for (let i = 0; i < 30; i++) {
+                    const date = new Date();
+                    date.setDate(today.getDate() + i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    futureIncome[dateStr] = 0;
+                    futureExpense[dateStr] = 0;
+                }
+                
+                // Calcular transações futuras
+                transactions.forEach(t => {
+                    if (futureIncome.hasOwnProperty(t.date)) {
+                        if (t.type === 'income') {
+                            futureIncome[t.date] += t.amount;
+                        } else if (t.type === 'expense') {
+                            futureExpense[t.date] += t.amount;
+                        }
+                    }
+                });
+                
+                const labels = Object.keys(futureIncome).map(d => Utils.formatDateShort(d));
+                const incomeData = Object.values(futureIncome);
+                const expenseData = Object.values(futureExpense);
+                
+                // Calcular saldo acumulado
+                let cumulativeBalance = 0;
+                const balanceData = incomeData.map((income, i) => {
+                    cumulativeBalance += income - expenseData[i];
+                    return cumulativeBalance;
+                });
+                
+                if (UI.chartInstances.cashFlowChart) {
+                    UI.chartInstances.cashFlowChart.destroy();
+                }
+                
+                UI.chartInstances.cashFlowChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Saldo Projetado',
+                                data: balanceData,
+                                borderColor: 'rgba(16, 185, 129, 1)',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                fill: true,
+                                tension: 0.4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { 
+                                display: true,
+                                position: 'bottom',
+                                labels: { boxWidth: 12, font: { size: 10 } }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Saldo: ${Utils.formatCurrency(context.raw)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                grid: { borderDash: [2, 4], color: '#e2e8f0' },
+                                ticks: {
+                                    callback: function(value) {
+                                        return Utils.formatCurrency(value);
+                                    },
+                                    font: { size: 10 }
+                                }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            },
+            
             // --- MODAL FUNCTIONS ---
             openModal: (type) => {
                 document.getElementById(`overlay-${type}`).classList.add('active');
@@ -1922,14 +2397,19 @@
             openNewTransaction: (type = 'expense') => {
                 document.getElementById('form-transaction').reset();
                 document.getElementById('t-id').value = '';
+                document.getElementById('t-status').value = 'cleared';
                 document.getElementById('title-transaction').textContent = 'Nova Transação';
                 document.getElementById('delete-transaction-btn').style.display = 'none';
+                document.getElementById('toggle-status-btn').style.display = 'none';
                 
                 // Configurar tipo
                 UI.setTransactionType(type);
                 
                 // Configurar data padrão
                 document.getElementById('t-date').value = Utils.getToday();
+                
+                // Configurar status padrão
+                document.getElementById('t-status-select').value = 'cleared';
                 
                 // Atualizar categorias
                 UI.updateCategorySelect(type);
@@ -1941,6 +2421,12 @@
                 });
                 
                 UI.openModal('transaction');
+            },
+            
+            openScheduledTransaction: () => {
+                UI.openNewTransaction('expense');
+                document.getElementById('t-status-select').value = 'scheduled';
+                document.getElementById('title-transaction').textContent = 'Agendar Transação';
             },
             
             editTransaction: async (id) => {
@@ -1956,6 +2442,7 @@
                 document.getElementById('t-payment-method').value = transaction.paymentMethod || 'dinheiro';
                 document.getElementById('t-recurring').checked = transaction.recurring || false;
                 document.getElementById('t-recurring-frequency').value = transaction.recurringFrequency || 'monthly';
+                document.getElementById('t-status-select').value = transaction.status || 'cleared';
                 
                 // Atualizar tipo
                 UI.setTransactionType(transaction.type);
@@ -1970,6 +2457,17 @@
                 
                 document.getElementById('title-transaction').textContent = 'Editar Transação';
                 document.getElementById('delete-transaction-btn').style.display = 'block';
+                document.getElementById('toggle-status-btn').style.display = 'block';
+                
+                // Atualizar botão de alternar status
+                const toggleBtn = document.getElementById('toggle-status-btn');
+                if (transaction.status === 'pending') {
+                    toggleBtn.textContent = 'Marcar como Efetivada';
+                    toggleBtn.style.background = 'var(--primary)';
+                } else {
+                    toggleBtn.textContent = 'Marcar como Pendente';
+                    toggleBtn.style.background = 'var(--pending)';
+                }
                 
                 UI.openModal('transaction');
             },
@@ -2112,6 +2610,7 @@
                     const category = document.getElementById('t-category').value;
                     const paymentMethod = document.getElementById('t-payment-method').value;
                     const notes = document.getElementById('t-notes').value;
+                    const status = document.getElementById('t-status-select').value;
                     const recurring = document.getElementById('t-recurring').checked;
                     const recurringFrequency = recurring ? document.getElementById('t-recurring-frequency').value : null;
                     
@@ -2129,6 +2628,7 @@
                         category,
                         paymentMethod,
                         notes,
+                        status,
                         recurring,
                         recurringFrequency,
                         createdAt: new Date().toISOString()
@@ -2154,6 +2654,32 @@
                     } catch (error) {
                         console.error('Erro ao salvar transação:', error);
                         Utils.toast('Erro ao salvar transação', 'error');
+                    }
+                },
+                
+                toggleStatus: async () => {
+                    const id = document.getElementById('t-id').value;
+                    if (!id) return;
+                    
+                    const transaction = FinanceApp.data.transactions.find(t => t.id === id);
+                    if (!transaction) return;
+                    
+                    // Alternar status entre pendente e efetivada
+                    const newStatus = transaction.status === 'pending' ? 'cleared' : 'pending';
+                    transaction.status = newStatus;
+                    
+                    try {
+                        await DB.saveTransaction(transaction);
+                        
+                        Utils.toast(`Transação ${newStatus === 'cleared' ? 'efetivada' : 'marcada como pendente'}!`);
+                        UI.closeModals();
+                        UI.renderDashboard();
+                        UI.renderTransactions();
+                        UI.renderReports();
+                        
+                    } catch (error) {
+                        console.error('Erro ao alterar status:', error);
+                        Utils.toast('Erro ao alterar status', 'error');
                     }
                 },
                 
