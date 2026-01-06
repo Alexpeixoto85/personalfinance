@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -7,7 +6,7 @@
     <meta name="theme-color" content="#10b981">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>FinançaPro - Controle Financeiro</title>
+    <title>FinançaPro - Controle Financeiro Completo</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -24,6 +23,7 @@
             --expense: #ef4444;
             --investment: #3b82f6;
             --pending: #f59e0b;
+            --transfer: #8b5cf6;
             --dark: #0f172a;
             --light: #f8fafc;
             --surface: #ffffff;
@@ -125,6 +125,67 @@
         .income-value { color: #d1fae5; }
         .expense-value { color: #fee2e2; }
         .pending-value { color: #fef3c7; }
+
+        /* --- Accounts Overview --- */
+        .accounts-overview {
+            margin-bottom: 20px;
+        }
+        
+        .account-card {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .account-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .account-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .account-name {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 4px;
+        }
+        
+        .account-type {
+            font-size: 0.8rem;
+            color: var(--secondary);
+        }
+        
+        .account-balance {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--dark);
+        }
+        
+        .account-balance.positive {
+            color: var(--income);
+        }
+        
+        .account-balance.negative {
+            color: var(--expense);
+        }
 
         /* --- Stats Cards --- */
         .stats-grid {
@@ -232,6 +293,7 @@
         .transaction-card.expense { border-left-color: var(--expense); }
         .transaction-card.investment { border-left-color: var(--investment); }
         .transaction-card.pending { border-left-color: var(--pending); }
+        .transaction-card.transfer { border-left-color: var(--transfer); }
 
         .transaction-icon {
             width: 40px; height: 40px;
@@ -243,6 +305,7 @@
         .icon-expense { background: #fee2e2; color: var(--expense); }
         .icon-investment { background: #dbeafe; color: var(--investment); }
         .icon-pending { background: #fef3c7; color: var(--pending); }
+        .icon-transfer { background: #f3e8ff; color: var(--transfer); }
 
         .transaction-info { flex: 1; }
         .transaction-title { 
@@ -266,6 +329,7 @@
         .amount-expense { color: var(--expense); }
         .amount-investment { color: var(--investment); }
         .amount-pending { color: var(--pending); }
+        .amount-transfer { color: var(--transfer); }
 
         /* --- Category Card --- */
         .category-card {
@@ -431,11 +495,12 @@
         /* Radio Buttons */
         .type-selector {
             display: flex; gap: 8px; margin-bottom: 16px;
+            flex-wrap: wrap;
         }
         .type-option {
             flex: 1; padding: 12px; border: 2px solid var(--border);
             border-radius: 10px; text-align: center; cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s; min-width: 100px;
         }
         .type-option.active { 
             border-color: var(--primary); background: #f0fdf4;
@@ -444,6 +509,7 @@
         .type-income.active { background: #f0fdf4; }
         .type-expense.active { background: #fef2f2; }
         .type-investment.active { background: #eff6ff; }
+        .type-transfer.active { background: #f3e8ff; }
 
         /* --- Utility --- */
         .empty-state { 
@@ -474,6 +540,7 @@
         .badge-expense { background: var(--expense); color: white; }
         .badge-investment { background: var(--investment); color: white; }
         .badge-pending { background: var(--pending); color: var(--dark); }
+        .badge-transfer { background: var(--transfer); color: white; }
 
         @keyframes pulse { 
             0% { opacity: 1; } 
@@ -487,12 +554,14 @@
         /* --- Quick Actions --- */
         .quick-actions {
             display: flex; gap: 12px; margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         .quick-action {
             flex: 1; background: var(--surface);
             border-radius: var(--radius-md); padding: 12px;
             text-align: center; box-shadow: var(--shadow-sm);
             cursor: pointer; transition: transform 0.2s;
+            min-width: 70px;
         }
         .quick-action:active { transform: scale(0.95); }
         .quick-action i { 
@@ -656,6 +725,30 @@
             color: white;
             border-color: var(--primary);
         }
+        
+        /* --- Tab Navigation --- */
+        .tab-nav {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border: none;
+            background: none;
+            font-weight: 600;
+            color: var(--secondary);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom: 3px solid var(--primary);
+        }
     </style>
 </head>
 <body>
@@ -692,7 +785,7 @@
             </div>
 
             <div class="balance-card">
-                <div class="balance-label">Saldo Atual</div>
+                <div class="balance-label">Saldo Total</div>
                 <div class="balance-value" id="current-balance">R$ 0,00</div>
                 <div class="balance-details">
                     <div class="balance-item">
@@ -708,6 +801,17 @@
                         <div class="value pending-value" id="month-pending">R$ 0,00</div>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Contas -->
+            <div class="section-title">
+                Minhas Contas
+                <button class="icon-btn" style="background: var(--primary); color: white; border-radius: 8px;" onclick="UI.openNewAccount()">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="accounts-overview" id="accounts-list">
+                <!-- Lista de contas será preenchida aqui -->
             </div>
 
             <!-- Projeção Futura -->
@@ -741,13 +845,21 @@
                     <i class="fas fa-minus-circle"></i>
                     <span>Despesa</span>
                 </div>
-                <div class="quick-action" onclick="UI.openNewTransaction('investment')">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Investir</span>
+                <div class="quick-action" onclick="UI.openNewTransaction('transfer')">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>Transferir</span>
                 </div>
                 <div class="quick-action" onclick="UI.openScheduledTransaction()">
                     <i class="fas fa-calendar-plus"></i>
                     <span>Agendar</span>
+                </div>
+                <div class="quick-action" onclick="UI.openNewAccount()">
+                    <i class="fas fa-wallet"></i>
+                    <span>Conta</span>
+                </div>
+                <div class="quick-action" onclick="UI.openNewTransaction('investment')">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Investir</span>
                 </div>
             </div>
 
@@ -794,6 +906,7 @@
                 <button class="filter-btn" onclick="UI.setTransactionFilter('income')">Receitas</button>
                 <button class="filter-btn" onclick="UI.setTransactionFilter('expense')">Despesas</button>
                 <button class="filter-btn" onclick="UI.setTransactionFilter('investment')">Investimentos</button>
+                <button class="filter-btn" onclick="UI.setTransactionFilter('transfer')">Transferências</button>
                 <button class="filter-btn" onclick="UI.setTransactionFilter('recurring')">Recorrentes</button>
                 <button class="filter-btn" onclick="UI.setTransactionFilter('scheduled')">Agendadas</button>
             </div>
@@ -812,6 +925,24 @@
             </div>
             
             <div id="transactions-list"></div>
+        </div>
+
+        <!-- Contas View -->
+        <div id="accounts-view" class="view">
+            <div class="section-title">
+                Minhas Contas
+                <button class="icon-btn" style="background: var(--primary); color: white; border-radius: 8px;" onclick="UI.openNewAccount()">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div id="accounts-full-list">
+                <!-- Lista completa de contas será preenchida aqui -->
+            </div>
+            
+            <div class="section-title">Transferências</div>
+            <div id="transfer-history">
+                <!-- Histórico de transferências será preenchido aqui -->
+            </div>
         </div>
 
         <!-- Categorias View -->
@@ -841,42 +972,69 @@
 
         <!-- Relatórios View -->
         <div id="reports-view" class="view">
-            <div class="section-title">Despesas por Categoria</div>
-            <div class="chart-container">
-                <canvas id="expenseChart"></canvas>
+            <div class="tab-nav">
+                <button class="tab-btn active" onclick="UI.setReportTab('overview')">Visão Geral</button>
+                <button class="tab-btn" onclick="UI.setReportTab('accounts')">Contas</button>
+                <button class="tab-btn" onclick="UI.setReportTab('categories')">Categorias</button>
             </div>
+            
+            <div id="report-overview" class="report-tab active">
+                <div class="section-title">Despesas por Categoria</div>
+                <div class="chart-container">
+                    <canvas id="expenseChart"></canvas>
+                </div>
 
-            <div class="section-title">Receitas vs Despesas</div>
-            <div class="chart-container">
-                <canvas id="incomeExpenseChart"></canvas>
+                <div class="section-title">Receitas vs Despesas</div>
+                <div class="chart-container">
+                    <canvas id="incomeExpenseChart"></canvas>
+                </div>
+
+                <div class="section-title">Projeção de Fluxo (30 dias)</div>
+                <div class="chart-container">
+                    <canvas id="cashFlowChart"></canvas>
+                </div>
+
+                <div class="section-title">Resumo Financeiro</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-green"><i class="fas fa-money-bill-wave"></i></div>
+                        <div class="stat-value" id="report-income">R$ 0</div>
+                        <div class="stat-label">Receitas Mês</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-red"><i class="fas fa-shopping-cart"></i></div>
+                        <div class="stat-value" id="report-expense">R$ 0</div>
+                        <div class="stat-label">Despesas Mês</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-yellow"><i class="fas fa-clock"></i></div>
+                        <div class="stat-value" id="report-pending">R$ 0</div>
+                        <div class="stat-label">Pendentes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-purple"><i class="fas fa-percentage"></i></div>
+                        <div class="stat-value" id="report-savings-rate">0%</div>
+                        <div class="stat-label">Taxa de Poupança</div>
+                    </div>
+                </div>
             </div>
-
-            <div class="section-title">Projeção de Fluxo (30 dias)</div>
-            <div class="chart-container">
-                <canvas id="cashFlowChart"></canvas>
+            
+            <div id="report-accounts" class="report-tab" style="display: none;">
+                <div class="section-title">Distribuição por Conta</div>
+                <div class="chart-container">
+                    <canvas id="accountsChart"></canvas>
+                </div>
+                
+                <div class="section-title">Histórico de Saldos</div>
+                <div class="chart-container">
+                    <canvas id="balanceHistoryChart"></canvas>
+                </div>
             </div>
-
-            <div class="section-title">Resumo Financeiro</div>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon bg-green"><i class="fas fa-money-bill-wave"></i></div>
-                    <div class="stat-value" id="report-income">R$ 0</div>
-                    <div class="stat-label">Receitas Mês</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon bg-red"><i class="fas fa-shopping-cart"></i></div>
-                    <div class="stat-value" id="report-expense">R$ 0</div>
-                    <div class="stat-label">Despesas Mês</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon bg-yellow"><i class="fas fa-clock"></i></div>
-                    <div class="stat-value" id="report-pending">R$ 0</div>
-                    <div class="stat-label">Pendentes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon bg-purple"><i class="fas fa-percentage"></i></div>
-                    <div class="stat-value" id="report-savings-rate">0%</div>
-                    <div class="stat-label">Taxa de Poupança</div>
+            
+            <div id="report-categories" class="report-tab" style="display: none;">
+                <div class="section-title">Evolução por Categoria</div>
+                <div class="chart-container">
+                    <canvas id="categoryTrendChart"></canvas>
                 </div>
             </div>
         </div>
@@ -892,6 +1050,9 @@
         </a>
         <a href="#" class="nav-item" data-target="transactions-view" onclick="UI.switchTab(this)">
             <i class="fas fa-exchange-alt"></i> <span>Transações</span>
+        </a>
+        <a href="#" class="nav-item" data-target="accounts-view" onclick="UI.switchTab(this)">
+            <i class="fas fa-wallet"></i> <span>Contas</span>
         </a>
         <a href="#" class="nav-item" data-target="categories-view" onclick="UI.switchTab(this)">
             <i class="fas fa-tags"></i> <span>Categorias</span>
@@ -921,6 +1082,9 @@
                 <div class="type-option type-expense active" onclick="UI.setTransactionType('expense')">
                     <i class="fas fa-minus-circle"></i> Despesa
                 </div>
+                <div class="type-option type-transfer" onclick="UI.setTransactionType('transfer')">
+                    <i class="fas fa-exchange-alt"></i> Transferência
+                </div>
                 <div class="type-option type-investment" onclick="UI.setTransactionType('investment')">
                     <i class="fas fa-chart-line"></i> Investimento
                 </div>
@@ -941,8 +1105,22 @@
                     <input type="date" id="t-date" class="form-control" required>
                 </div>
             </div>
+            
+            <div class="form-group" id="t-account-group">
+                <label class="form-label">Conta</label>
+                <select id="t-account" class="form-control" required>
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="t-transfer-to-group" style="display: none;">
+                <label class="form-label">Transferir para</label>
+                <select id="t-transfer-to" class="form-control">
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
 
-            <div class="form-group">
+            <div class="form-group" id="t-category-group">
                 <label class="form-label">Categoria</label>
                 <select id="t-category" class="form-control" required>
                     <option value="">Selecione...</option>
@@ -975,20 +1153,39 @@
                 <textarea id="t-notes" class="form-control" placeholder="Detalhes adicionais..."></textarea>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="t-recurring">
-                        Recorrente
-                    </label>
+            <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="t-recurring">
+                    Transação Recorrente
+                </label>
+            </div>
+            
+            <div id="t-recurring-group" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Repetir a cada</label>
+                        <select id="t-recurring-frequency" class="form-control">
+                            <option value="daily">Dia</option>
+                            <option value="weekly">Semana</option>
+                            <option value="monthly">Mês</option>
+                            <option value="yearly">Ano</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Número de Repetições</label>
+                        <select id="t-recurring-count" class="form-control">
+                            <option value="0">Indeterminado</option>
+                            <option value="3">3 vezes</option>
+                            <option value="6">6 vezes</option>
+                            <option value="12">12 vezes</option>
+                            <option value="24">24 vezes</option>
+                            <option value="60">60 vezes</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group" id="t-recurring-group" style="display: none;">
-                    <label class="form-label">Repetir a cada</label>
-                    <select id="t-recurring-frequency" class="form-control">
-                        <option value="weekly">Semana</option>
-                        <option value="monthly">Mês</option>
-                        <option value="yearly">Ano</option>
-                    </select>
+                <div class="form-group">
+                    <label class="form-label">Data Final (opcional)</label>
+                    <input type="date" id="t-recurring-end-date" class="form-control">
                 </div>
             </div>
 
@@ -996,6 +1193,63 @@
             <button type="button" class="btn-block" style="background: var(--light); color: var(--secondary); margin-top: 8px;" onclick="UI.closeModals()">Cancelar</button>
             <button type="button" id="toggle-status-btn" class="btn-block" style="background: var(--pending); color: var(--dark); margin-top: 8px; display: none;" onclick="FinanceApp.transaction.toggleStatus()">Marcar como Pendente</button>
             <button type="button" id="delete-transaction-btn" class="btn-block" style="background: var(--expense); color: white; margin-top: 8px; display: none;" onclick="FinanceApp.transaction.deleteTransaction()">Excluir Transação</button>
+        </form>
+    </div>
+
+    <!-- Modal de Conta -->
+    <div class="modal-overlay" id="overlay-account"></div>
+    <div class="modal-sheet" id="sheet-account">
+        <div class="sheet-handle"></div>
+        <h3 class="section-title" id="title-account">Nova Conta</h3>
+        <form id="form-account" onsubmit="FinanceApp.account.save(event)">
+            <input type="hidden" id="a-id">
+            
+            <div class="form-group">
+                <label class="form-label">Nome da Conta</label>
+                <input type="text" id="a-name" class="form-control" placeholder="Ex: Carteira, Banco X, Poupança..." required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Tipo de Conta</label>
+                    <select id="a-type" class="form-control" required>
+                        <option value="carteira">Carteira</option>
+                        <option value="conta_corrente">Conta Corrente</option>
+                        <option value="poupanca">Poupança</option>
+                        <option value="investimento">Investimento</option>
+                        <option value="cartao_credito">Cartão de Crédito</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Cor da Conta</label>
+                    <input type="color" id="a-color" class="form-control" style="height: 50px;" value="#10b981">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Saldo Inicial (R$)</label>
+                <input type="text" id="a-balance" class="form-control" placeholder="0,00" required oninput="Utils.maskMoney(this)">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Número da Conta (opcional)</label>
+                <input type="text" id="a-number" class="form-control" placeholder="1234-5">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Instituição (opcional)</label>
+                <input type="text" id="a-institution" class="form-control" placeholder="Ex: Banco X, Corretora Y">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Observações</label>
+                <textarea id="a-notes" class="form-control" placeholder="Detalhes sobre esta conta..."></textarea>
+            </div>
+
+            <button type="submit" class="btn-block">Salvar Conta</button>
+            <button type="button" class="btn-block" style="background: var(--light); color: var(--secondary); margin-top: 8px;" onclick="UI.closeModals()">Cancelar</button>
+            <button type="button" id="delete-account-btn" class="btn-block" style="background: var(--expense); color: white; margin-top: 8px; display: none;" onclick="FinanceApp.account.deleteAccount()">Excluir Conta</button>
         </form>
     </div>
 
@@ -1122,6 +1376,52 @@
         </form>
     </div>
 
+    <!-- Modal de Transferência -->
+    <div class="modal-overlay" id="overlay-transfer"></div>
+    <div class="modal-sheet" id="sheet-transfer">
+        <div class="sheet-handle"></div>
+        <h3 class="section-title">Transferência entre Contas</h3>
+        <form id="form-transfer" onsubmit="FinanceApp.transfer.execute(event)">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Conta de Origem</label>
+                    <select id="tf-from" class="form-control" required>
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Conta de Destino</label>
+                    <select id="tf-to" class="form-control" required>
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Valor (R$)</label>
+                <input type="text" id="tf-amount" class="form-control" placeholder="0,00" required oninput="Utils.maskMoney(this)">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Data</label>
+                <input type="date" id="tf-date" class="form-control" required value="">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Taxa (opcional)</label>
+                <input type="text" id="tf-fee" class="form-control" placeholder="0,00" oninput="Utils.maskMoney(this)">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Descrição</label>
+                <input type="text" id="tf-description" class="form-control" placeholder="Ex: Transferência mensal...">
+            </div>
+
+            <button type="submit" class="btn-block" style="background: var(--transfer);">Executar Transferência</button>
+            <button type="button" class="btn-block" style="background: var(--light); color: var(--secondary); margin-top: 8px;" onclick="UI.closeModals()">Cancelar</button>
+        </form>
+    </div>
+
     <!-- Modal de Configurações -->
     <div class="modal-overlay" id="overlay-settings"></div>
     <div class="modal-sheet" id="sheet-settings">
@@ -1140,10 +1440,6 @@
                     <option value="USD">Dólar ($)</option>
                     <option value="EUR">Euro (€)</option>
                 </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Saldo Inicial (R$)</label>
-                <input type="text" id="s-initial-balance" class="form-control" placeholder="0,00" oninput="Utils.maskMoney(this)">
             </div>
             <div class="form-group">
                 <label class="form-label">Dia de fechamento do mês</label>
@@ -1268,9 +1564,22 @@
                 const icons = {
                     'income': 'fas fa-plus-circle',
                     'expense': 'fas fa-minus-circle',
-                    'investment': 'fas fa-chart-line'
+                    'investment': 'fas fa-chart-line',
+                    'transfer': 'fas fa-exchange-alt'
                 };
                 return icons[type] || 'fas fa-exchange-alt';
+            },
+            
+            getAccountTypeIcon: (type) => {
+                const icons = {
+                    'carteira': 'fas fa-wallet',
+                    'conta_corrente': 'fas fa-university',
+                    'poupanca': 'fas fa-piggy-bank',
+                    'investimento': 'fas fa-chart-line',
+                    'cartao_credito': 'fas fa-credit-card',
+                    'outro': 'fas fa-money-bill'
+                };
+                return icons[type] || 'fas fa-wallet';
             },
             
             getStatusIcon: (status) => {
@@ -1300,13 +1609,45 @@
                     'gift': 'fas fa-gift'
                 };
                 return icons[iconName] || 'fas fa-tag';
+            },
+            
+            generateRecurringDates: (startDate, frequency, count, endDate) => {
+                const dates = [];
+                let currentDate = new Date(startDate);
+                
+                for (let i = 0; i < (count === 0 ? 365 : count); i++) { // Máximo de 365 repetições se for indeterminado
+                    dates.push(currentDate.toISOString().split('T')[0]);
+                    
+                    // Parar se atingiu a data final
+                    if (endDate && currentDate >= new Date(endDate)) {
+                        break;
+                    }
+                    
+                    // Avançar para próxima data baseado na frequência
+                    switch(frequency) {
+                        case 'daily':
+                            currentDate.setDate(currentDate.getDate() + 1);
+                            break;
+                        case 'weekly':
+                            currentDate.setDate(currentDate.getDate() + 7);
+                            break;
+                        case 'monthly':
+                            currentDate.setMonth(currentDate.getMonth() + 1);
+                            break;
+                        case 'yearly':
+                            currentDate.setFullYear(currentDate.getFullYear() + 1);
+                            break;
+                    }
+                }
+                
+                return dates;
             }
         };
 
         // --- INDEXEDDB MANAGER ---
         const DB = {
             name: 'FinancaProDB',
-            version: 3, // Incrementado para nova estrutura
+            version: 4, // Incrementado para incluir contas
             db: null,
             
             init: async () => {
@@ -1329,6 +1670,13 @@
                             transactionStore.createIndex('type', 'type', { unique: false });
                             transactionStore.createIndex('category', 'category', { unique: false });
                             transactionStore.createIndex('status', 'status', { unique: false });
+                            transactionStore.createIndex('account', 'account', { unique: false });
+                            transactionStore.createIndex('recurringParent', 'recurringParent', { unique: false });
+                        }
+                        
+                        if (!db.objectStoreNames.contains('accounts')) {
+                            const accountStore = db.createObjectStore('accounts', { keyPath: 'id' });
+                            accountStore.createIndex('type', 'type', { unique: false });
                         }
                         
                         if (!db.objectStoreNames.contains('categories')) {
@@ -1375,6 +1723,40 @@
                 return new Promise((resolve, reject) => {
                     const tx = DB.db.transaction(['transactions'], 'readwrite');
                     const store = tx.objectStore('transactions');
+                    const request = store.delete(id);
+                    
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            
+            // Métodos para contas
+            getAllAccounts: async () => {
+                return new Promise((resolve, reject) => {
+                    const transaction = DB.db.transaction(['accounts'], 'readonly');
+                    const store = transaction.objectStore('accounts');
+                    const request = store.getAll();
+                    
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            
+            saveAccount: async (account) => {
+                return new Promise((resolve, reject) => {
+                    const tx = DB.db.transaction(['accounts'], 'readwrite');
+                    const store = tx.objectStore('accounts');
+                    const request = store.put(account);
+                    
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            
+            deleteAccount: async (id) => {
+                return new Promise((resolve, reject) => {
+                    const tx = DB.db.transaction(['accounts'], 'readwrite');
+                    const store = tx.objectStore('accounts');
                     const request = store.delete(id);
                     
                     request.onsuccess = () => resolve();
@@ -1450,7 +1832,6 @@
                         id: 'user_settings',
                         name: 'Usuário',
                         currency: 'BRL',
-                        initialBalance: 0,
                         closingDay: 1
                     });
                     request.onerror = () => reject(request.error);
@@ -1471,12 +1852,14 @@
             // Backup e restauração
             exportAllData: async () => {
                 const transactions = await DB.getAllTransactions();
+                const accounts = await DB.getAllAccounts();
                 const categories = await DB.getAllCategories();
                 const goals = await DB.getAllGoals();
                 const settings = await DB.getSettings();
                 
                 return {
                     transactions,
+                    accounts,
                     categories,
                     goals,
                     settings,
@@ -1487,6 +1870,11 @@
             importAllData: async (data) => {
                 // Limpar dados existentes
                 await DB.clearAllData();
+                
+                // Importar contas
+                for (const account of data.accounts || []) {
+                    await DB.saveAccount(account);
+                }
                 
                 // Importar transações
                 for (const transaction of data.transactions || []) {
@@ -1512,11 +1900,12 @@
             clearAllData: async () => {
                 return new Promise((resolve, reject) => {
                     const tx = DB.db.transaction(
-                        ['transactions', 'categories', 'goals', 'settings'], 
+                        ['transactions', 'accounts', 'categories', 'goals', 'settings'], 
                         'readwrite'
                     );
                     
                     tx.objectStore('transactions').clear();
+                    tx.objectStore('accounts').clear();
                     tx.objectStore('categories').clear();
                     tx.objectStore('goals').clear();
                     tx.objectStore('settings').clear();
@@ -1536,6 +1925,7 @@
             transactionYear: new Date().getFullYear(),
             transactionViewMode: 'all',
             chartInstances: {},
+            reportTab: 'overview',
             
             init: async () => {
                 try {
@@ -1550,14 +1940,22 @@
                         el.addEventListener('click', (e) => e.preventDefault());
                     });
                     
-                    // Inicializar categorias padrão se não existirem
+                    // Inicializar categorias e contas padrão se não existirem
                     const categories = await DB.getAllCategories();
                     if (categories.length === 0) {
                         await UI.createDefaultCategories();
                     }
                     
+                    const accounts = await DB.getAllAccounts();
+                    if (accounts.length === 0) {
+                        await UI.createDefaultAccounts();
+                    }
+                    
                     // Verificar transações pendentes futuras
                     UI.checkFuturePendingTransactions();
+                    
+                    // Processar transações recorrentes
+                    UI.processRecurringTransactions();
                     
                 } catch (error) {
                     console.error('Erro ao inicializar:', error);
@@ -1568,9 +1966,25 @@
             loadInitialData: async () => {
                 // Carregar dados iniciais
                 FinanceApp.data.transactions = await DB.getAllTransactions();
+                FinanceApp.data.accounts = await DB.getAllAccounts();
                 FinanceApp.data.categories = await DB.getAllCategories();
                 FinanceApp.data.goals = await DB.getAllGoals();
                 FinanceApp.data.settings = await DB.getSettings();
+            },
+            
+            createDefaultAccounts: async () => {
+                const defaultAccounts = [
+                    { id: 'acc1', name: 'Carteira', type: 'carteira', color: '#10b981', balance: 500, institution: '', number: '', notes: 'Dinheiro em espécie' },
+                    { id: 'acc2', name: 'Conta Corrente', type: 'conta_corrente', color: '#3b82f6', balance: 1500, institution: 'Banco X', number: '1234-5', notes: 'Conta principal' },
+                    { id: 'acc3', name: 'Poupança', type: 'poupanca', color: '#8b5cf6', balance: 3000, institution: 'Banco X', number: '6789-0', notes: 'Reserva de emergência' }
+                ];
+                
+                for (const account of defaultAccounts) {
+                    await DB.saveAccount(account);
+                }
+                
+                FinanceApp.data.accounts = await DB.getAllAccounts();
+                Utils.toast('Contas padrão criadas');
             },
             
             createDefaultCategories: async () => {
@@ -1589,7 +2003,10 @@
                     { id: 'cat9', name: 'Salário', type: 'income', icon: 'money-bill', color: '#10b981', budget: 0 },
                     { id: 'cat10', name: 'Freelance', type: 'income', icon: 'briefcase', color: '#3b82f6', budget: 0 },
                     { id: 'cat11', name: 'Investimentos', type: 'income', icon: 'chart-line', color: '#8b5cf6', budget: 0 },
-                    { id: 'cat12', name: 'Presentes', type: 'income', icon: 'gift', color: '#ec4899', budget: 0 }
+                    { id: 'cat12', name: 'Presentes', type: 'income', icon: 'gift', color: '#ec4899', budget: 0 },
+                    
+                    // Categoria para transferências
+                    { id: 'cat13', name: 'Transferência', type: 'transfer', icon: 'exchange-alt', color: '#8b5cf6', budget: 0 }
                 ];
                 
                 for (const category of defaultCategories) {
@@ -1598,6 +2015,81 @@
                 
                 FinanceApp.data.categories = await DB.getAllCategories();
                 Utils.toast('Categorias padrão criadas');
+            },
+            
+            processRecurringTransactions: async () => {
+                const today = Utils.getToday();
+                const transactions = FinanceApp.data.transactions;
+                
+                // Encontrar transações recorrentes que precisam ser geradas
+                const recurringTransactions = transactions.filter(t => 
+                    t.recurring && t.recurringParent === undefined
+                );
+                
+                for (const parentTransaction of recurringTransactions) {
+                    // Verificar se já gerou todas as ocorrências
+                    const childCount = transactions.filter(t => 
+                        t.recurringParent === parentTransaction.id
+                    ).length;
+                    
+                    const maxCount = parentTransaction.recurringCount || 0;
+                    if (maxCount > 0 && childCount >= maxCount) {
+                        continue; // Já gerou todas as ocorrências
+                    }
+                    
+                    // Verificar data final
+                    if (parentTransaction.recurringEndDate && parentTransaction.recurringEndDate < today) {
+                        continue; // Data final já passou
+                    }
+                    
+                    // Gerar próximas datas
+                    const startDate = new Date(parentTransaction.date);
+                    const frequency = parentTransaction.recurringFrequency || 'monthly';
+                    
+                    // Verificar se precisa gerar nova ocorrência
+                    let nextDate = new Date(startDate);
+                    for (let i = 0; i <= childCount; i++) {
+                        switch(frequency) {
+                            case 'daily':
+                                nextDate.setDate(nextDate.getDate() + 1);
+                                break;
+                            case 'weekly':
+                                nextDate.setDate(nextDate.getDate() + 7);
+                                break;
+                            case 'monthly':
+                                nextDate.setMonth(nextDate.getMonth() + 1);
+                                break;
+                            case 'yearly':
+                                nextDate.setFullYear(nextDate.getFullYear() + 1);
+                                break;
+                        }
+                    }
+                    
+                    const nextDateStr = nextDate.toISOString().split('T')[0];
+                    
+                    // Se a próxima data já passou ou é hoje, criar a transação
+                    if (nextDateStr <= today) {
+                        const newTransaction = {
+                            ...parentTransaction,
+                            id: Utils.id(),
+                            date: nextDateStr,
+                            status: 'pending', // Nova transação recorrente começa como pendente
+                            recurringParent: parentTransaction.id,
+                            createdAt: new Date().toISOString()
+                        };
+                        
+                        // Remover campos específicos do pai
+                        delete newTransaction.recurring;
+                        delete newTransaction.recurringFrequency;
+                        delete newTransaction.recurringCount;
+                        delete newTransaction.recurringEndDate;
+                        
+                        await DB.saveTransaction(newTransaction);
+                        FinanceApp.data.transactions.push(newTransaction);
+                        
+                        Utils.toast(`Transação recorrente "${parentTransaction.description}" gerada para ${Utils.formatDate(nextDateStr)}`);
+                    }
+                }
             },
             
             checkFuturePendingTransactions: () => {
@@ -1630,6 +2122,10 @@
                     fab.style.display = 'flex';
                     fab.onclick = () => UI.openNewTransaction('expense');
                     UI.renderTransactions();
+                } else if (target === 'accounts-view') {
+                    fab.style.display = 'flex';
+                    fab.onclick = UI.openNewAccount;
+                    UI.renderAccounts();
                 } else if (target === 'categories-view') {
                     fab.style.display = 'flex';
                     fab.onclick = UI.openNewCategory;
@@ -1643,6 +2139,26 @@
                     UI.renderReports();
                 } else {
                     fab.style.display = 'none';
+                }
+            },
+            
+            setReportTab: (tab) => {
+                UI.reportTab = tab;
+                
+                // Atualizar botões da tab
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                
+                // Mostrar apenas a tab selecionada
+                document.querySelectorAll('.report-tab').forEach(t => t.style.display = 'none');
+                document.getElementById(`report-${tab}`).style.display = 'block';
+                
+                // Renderizar gráficos específicos da tab
+                if (tab === 'accounts') {
+                    UI.renderAccountsChart();
+                    UI.renderBalanceHistoryChart();
+                } else if (tab === 'categories') {
+                    UI.renderCategoryTrendChart();
                 }
             },
             
@@ -1667,8 +2183,11 @@
             
             // --- RENDER FUNCTIONS ---
             renderDashboard: async () => {
-                const { transactions, categories, goals, settings } = FinanceApp.data;
+                const { transactions, accounts, categories, goals, settings } = FinanceApp.data;
                 const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
+                
+                // Calcular saldo total das contas
+                const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
                 
                 // Filtrar transações do mês atual (efetivadas)
                 const monthTransactions = transactions.filter(t => 
@@ -1704,10 +2223,6 @@
                 
                 const pendingTotal = pendingIncome + pendingExpense;
                 
-                // Calcular saldo (somente efetivadas)
-                const initialBalance = settings.initialBalance || 0;
-                const balance = initialBalance + income - expense;
-                
                 // Calcular projeção futura (30 dias)
                 const futureRange = Utils.getFutureRange(30);
                 const futureTransactions = transactions.filter(t => 
@@ -1722,10 +2237,10 @@
                     .filter(t => t.type === 'expense')
                     .reduce((sum, t) => sum + t.amount, 0);
                 
-                const projectedBalance = balance + futureIncome - futureExpense;
+                const projectedBalance = totalBalance + futureIncome - futureExpense;
                 
                 // Atualizar UI
-                document.getElementById('current-balance').textContent = Utils.formatCurrency(balance);
+                document.getElementById('current-balance').textContent = Utils.formatCurrency(totalBalance);
                 document.getElementById('month-income').textContent = Utils.formatCurrency(income);
                 document.getElementById('month-expense').textContent = Utils.formatCurrency(expense);
                 document.getElementById('month-pending').textContent = Utils.formatCurrency(pendingTotal);
@@ -1734,6 +2249,9 @@
                 document.getElementById('projected-balance').textContent = Utils.formatCurrency(projectedBalance);
                 document.getElementById('projected-income').textContent = Utils.formatCurrency(futureIncome);
                 document.getElementById('projected-expense').textContent = Utils.formatCurrency(futureExpense);
+                
+                // Renderizar contas
+                UI.renderAccountsOverview(accounts);
                 
                 // Renderizar transações recentes (somente efetivadas)
                 UI.renderRecentTransactions(transactions);
@@ -1767,10 +2285,49 @@
                     activeGoalsCount > 0 ? 'inline-block' : 'none';
             },
             
+            renderAccountsOverview: (accounts) => {
+                const list = document.getElementById('accounts-list');
+                
+                if (accounts.length === 0) {
+                    list.innerHTML = `<div class="empty-state"><i class="fas fa-wallet"></i><p>Nenhuma conta cadastrada!</p></div>`;
+                    return;
+                }
+                
+                // Ordenar por saldo (maior primeiro)
+                const sortedAccounts = [...accounts].sort((a, b) => b.balance - a.balance);
+                
+                list.innerHTML = sortedAccounts.slice(0, 3).map(account => UI.createAccountCard(account)).join('');
+            },
+            
+            createAccountCard: (account) => {
+                const balanceClass = account.balance >= 0 ? 'positive' : 'negative';
+                
+                return `
+                    <div class="account-card" onclick="UI.editAccount('${account.id}')">
+                        <div class="account-info">
+                            <div class="account-icon" style="background: ${account.color}">
+                                <i class="${Utils.getAccountTypeIcon(account.type)}"></i>
+                            </div>
+                            <div>
+                                <div class="account-name">${account.name}</div>
+                                <div class="account-type">${account.type === 'carteira' ? 'Carteira' : 
+                                    account.type === 'conta_corrente' ? 'Conta Corrente' : 
+                                    account.type === 'poupanca' ? 'Poupança' :
+                                    account.type === 'investimento' ? 'Investimento' :
+                                    account.type === 'cartao_credito' ? 'Cartão de Crédito' : 'Outro'}</div>
+                            </div>
+                        </div>
+                        <div class="account-balance ${balanceClass}">
+                            ${Utils.formatCurrency(account.balance)}
+                        </div>
+                    </div>
+                `;
+            },
+            
             renderRecentTransactions: (transactions) => {
                 const list = document.getElementById('recent-transactions');
                 const recent = transactions
-                    .filter(t => t.status === 'cleared')
+                    .filter(t => t.status === 'cleared' && t.type !== 'transfer')
                     .sort((a, b) => new Date(b.date) - new Date(a.date))
                     .slice(0, 5);
                 
@@ -1788,7 +2345,7 @@
                 const futureDate = Utils.getFutureDate(7); // Próximos 7 dias
                 
                 const pending = transactions
-                    .filter(t => t.status === 'pending' && t.date >= today && t.date <= futureDate)
+                    .filter(t => t.status === 'pending' && t.date >= today && t.date <= futureDate && t.type !== 'transfer')
                     .sort((a, b) => new Date(a.date) - new Date(b.date))
                     .slice(0, 5);
                 
@@ -1817,10 +2374,15 @@
                 const statusClass = transaction.status || 'cleared';
                 const amountClass = `amount-${transaction.type}`;
                 const iconClass = `icon-${transaction.type}`;
-                const amountSign = transaction.type === 'income' ? '+' : '-';
+                const amountSign = transaction.type === 'income' ? '+' : 
+                                  transaction.type === 'expense' || transaction.type === 'investment' ? '-' : 
+                                  transaction.type === 'transfer' ? '↔' : '';
                 
                 const category = FinanceApp.data.categories.find(c => c.id === transaction.category);
                 const categoryName = category ? category.name : 'Sem categoria';
+                
+                const account = FinanceApp.data.accounts.find(a => a.id === transaction.account);
+                const accountName = account ? account.name : 'Sem conta';
                 
                 // Status badge
                 let statusBadge = '';
@@ -1834,16 +2396,25 @@
                     statusBadge = '<span class="future-badge">Agendada</span>';
                 }
                 
+                // Para transferências, mostrar contas envolvidas
+                let description = transaction.description;
+                if (transaction.type === 'transfer' && transaction.transferTo) {
+                    const toAccount = FinanceApp.data.accounts.find(a => a.id === transaction.transferTo);
+                    const toAccountName = toAccount ? toAccount.name : 'Conta desconhecida';
+                    description = `${accountName} → ${toAccountName}`;
+                }
+                
                 return `
                     <div class="transaction-card ${typeClass}" onclick="UI.editTransaction('${transaction.id}')">
                         <div class="transaction-icon ${iconClass}">
                             <i class="${Utils.getTransactionTypeIcon(transaction.type)}"></i>
                         </div>
                         <div class="transaction-info">
-                            <div class="transaction-title">${transaction.description}</div>
+                            <div class="transaction-title">${description}</div>
                             <div class="transaction-category">
                                 <i class="fas fa-tag"></i> ${categoryName}
-                                ${transaction.recurring ? '<span class="recurring-badge">Recorrente</span>' : ''}
+                                ${transaction.recurringParent ? '<span class="recurring-badge">Recorrente</span>' : ''}
+                                ${transaction.recurring ? '<span class="recurring-badge">Mestre</span>' : ''}
                                 ${statusBadge}
                             </div>
                             <div class="transaction-date">${Utils.formatDate(transaction.date)}</div>
@@ -1897,7 +2468,7 @@
                 // Aplicar filtro de tipo
                 if (UI.transactionFilter !== 'all') {
                     if (UI.transactionFilter === 'recurring') {
-                        filtered = filtered.filter(t => t.recurring);
+                        filtered = filtered.filter(t => t.recurring || t.recurringParent);
                     } else if (UI.transactionFilter === 'scheduled') {
                         filtered = filtered.filter(t => t.status === 'scheduled');
                     } else {
@@ -1937,7 +2508,7 @@
                         .filter(t => t.status === 'cleared')
                         .reduce((sum, t) => {
                             if (t.type === 'income') return sum + t.amount;
-                            if (t.type === 'expense') return sum - t.amount;
+                            if (t.type === 'expense' || t.type === 'investment') return sum - t.amount;
                             return sum;
                         }, 0);
                     
@@ -1945,7 +2516,7 @@
                         .filter(t => t.status === 'pending')
                         .reduce((sum, t) => {
                             if (t.type === 'income') return sum + t.amount;
-                            if (t.type === 'expense') return sum - t.amount;
+                            if (t.type === 'expense' || t.type === 'investment') return sum - t.amount;
                             return sum;
                         }, 0);
                     
@@ -1981,6 +2552,113 @@
                 document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
                 event.target.classList.add('active');
                 UI.renderTransactions();
+            },
+            
+            renderAccounts: () => {
+                const list = document.getElementById('accounts-full-list');
+                const accounts = FinanceApp.data.accounts;
+                
+                if (accounts.length === 0) {
+                    list.innerHTML = `<div class="empty-state"><i class="fas fa-wallet"></i><p>Nenhuma conta cadastrada!</p></div>`;
+                    return;
+                }
+                
+                // Calcular totais por conta
+                const today = Utils.getToday();
+                const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
+                const monthTransactions = FinanceApp.data.transactions.filter(t => 
+                    t.date >= monthRange.start && t.date <= monthRange.end
+                );
+                
+                let accountsHtml = '';
+                accounts.forEach(account => {
+                    // Calcular movimento do mês
+                    const accountIncome = monthTransactions
+                        .filter(t => t.account === account.id && t.type === 'income' && t.status === 'cleared')
+                        .reduce((sum, t) => sum + t.amount, 0);
+                    
+                    const accountExpense = monthTransactions
+                        .filter(t => t.account === account.id && (t.type === 'expense' || t.type === 'investment') && t.status === 'cleared')
+                        .reduce((sum, t) => sum + t.amount, 0);
+                    
+                    const accountTransferOut = monthTransactions
+                        .filter(t => t.account === account.id && t.type === 'transfer' && t.status === 'cleared')
+                        .reduce((sum, t) => sum + t.amount, 0);
+                    
+                    const accountTransferIn = monthTransactions
+                        .filter(t => t.transferTo === account.id && t.type === 'transfer' && t.status === 'cleared')
+                        .reduce((sum, t) => sum + t.amount, 0);
+                    
+                    const monthMovement = accountIncome - accountExpense - accountTransferOut + accountTransferIn;
+                    
+                    accountsHtml += `
+                        <div class="account-card" onclick="UI.editAccount('${account.id}')">
+                            <div class="account-info">
+                                <div class="account-icon" style="background: ${account.color}">
+                                    <i class="${Utils.getAccountTypeIcon(account.type)}"></i>
+                                </div>
+                                <div>
+                                    <div class="account-name">${account.name}</div>
+                                    <div class="account-type">${account.institution || ''} ${account.number || ''}</div>
+                                    <div class="transaction-date" style="margin-top: 4px;">
+                                        Movimento do mês: <span style="color: ${monthMovement >= 0 ? 'var(--income)' : 'var(--expense)'}">
+                                            ${monthMovement >= 0 ? '+' : ''}${Utils.formatCurrency(monthMovement)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="account-balance ${account.balance >= 0 ? 'positive' : 'negative'}">
+                                ${Utils.formatCurrency(account.balance)}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                list.innerHTML = accountsHtml;
+                
+                // Renderizar histórico de transferências
+                UI.renderTransferHistory();
+            },
+            
+            renderTransferHistory: () => {
+                const list = document.getElementById('transfer-history');
+                const transfers = FinanceApp.data.transactions
+                    .filter(t => t.type === 'transfer')
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .slice(0, 10);
+                
+                if (transfers.length === 0) {
+                    list.innerHTML = `<div class="empty-state"><i class="fas fa-exchange-alt"></i><p>Nenhuma transferência realizada!</p></div>`;
+                    return;
+                }
+                
+                let transfersHtml = '';
+                transfers.forEach(transfer => {
+                    const fromAccount = FinanceApp.data.accounts.find(a => a.id === transfer.account);
+                    const toAccount = FinanceApp.data.accounts.find(a => a.id === transfer.transferTo);
+                    
+                    if (!fromAccount || !toAccount) return;
+                    
+                    transfersHtml += `
+                        <div class="transaction-card transfer" onclick="UI.editTransaction('${transfer.id}')">
+                            <div class="transaction-icon icon-transfer">
+                                <i class="fas fa-exchange-alt"></i>
+                            </div>
+                            <div class="transaction-info">
+                                <div class="transaction-title">${fromAccount.name} → ${toAccount.name}</div>
+                                <div class="transaction-category">
+                                    <i class="fas fa-calendar"></i> ${Utils.formatDate(transfer.date)}
+                                </div>
+                                <div class="transaction-date">${transfer.description || 'Transferência'}</div>
+                            </div>
+                            <div class="transaction-amount amount-transfer">
+                                ${Utils.formatCurrency(transfer.amount)}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                list.innerHTML = transfersHtml;
             },
             
             renderCategories: () => {
@@ -2076,7 +2754,7 @@
             },
             
             renderReports: () => {
-                const { transactions } = FinanceApp.data;
+                const { transactions, accounts } = FinanceApp.data;
                 const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
                 const futureRange = Utils.getFutureRange(30);
                 
@@ -2107,7 +2785,7 @@
                     .filter(t => t.status === 'pending' && t.date >= monthRange.start && t.date <= monthRange.end)
                     .reduce((sum, t) => {
                         if (t.type === 'income') return sum + t.amount;
-                        if (t.type === 'expense') return sum - t.amount;
+                        if (t.type === 'expense' || t.type === 'investment') return sum - t.amount;
                         return sum;
                     }, 0);
                 
@@ -2123,6 +2801,14 @@
                 UI.renderExpenseChart(monthTransactions);
                 UI.renderIncomeExpenseChart(monthTransactions);
                 UI.renderCashFlowChart(futureTransactions);
+                
+                // Renderizar gráficos das outras tabs se necessário
+                if (UI.reportTab === 'accounts') {
+                    UI.renderAccountsChart();
+                    UI.renderBalanceHistoryChart();
+                } else if (UI.reportTab === 'categories') {
+                    UI.renderCategoryTrendChart();
+                }
             },
             
             renderExpenseChart: (transactions) => {
@@ -2298,7 +2984,7 @@
                 const expenseData = Object.values(futureExpense);
                 
                 // Calcular saldo acumulado
-                let cumulativeBalance = 0;
+                let cumulativeBalance = FinanceApp.data.accounts.reduce((sum, acc) => sum + acc.balance, 0);
                 const balanceData = incomeData.map((income, i) => {
                     cumulativeBalance += income - expenseData[i];
                     return cumulativeBalance;
@@ -2359,6 +3045,242 @@
                 });
             },
             
+            renderAccountsChart: () => {
+                const ctx = document.getElementById('accountsChart').getContext('2d');
+                const accounts = FinanceApp.data.accounts;
+                
+                const labels = accounts.map(a => a.name);
+                const data = accounts.map(a => a.balance);
+                const backgroundColors = accounts.map(a => a.color + '80');
+                const borderColors = accounts.map(a => a.color);
+                
+                if (UI.chartInstances.accountsChart) {
+                    UI.chartInstances.accountsChart.destroy();
+                }
+                
+                UI.chartInstances.accountsChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: backgroundColors,
+                            borderColor: borderColors,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                    font: { size: 10 }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.raw || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                        return `${label}: ${Utils.formatCurrency(value)} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            },
+            
+            renderBalanceHistoryChart: () => {
+                const ctx = document.getElementById('balanceHistoryChart').getContext('2d');
+                const accounts = FinanceApp.data.accounts;
+                const transactions = FinanceApp.data.transactions;
+                
+                // Últimos 30 dias
+                const labels = [];
+                const datasets = [];
+                
+                for (let i = 29; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    labels.push(Utils.formatDateShort(date.toISOString().split('T')[0]));
+                }
+                
+                accounts.forEach(account => {
+                    const balanceData = [];
+                    let currentBalance = account.balance;
+                    
+                    // Reverter transações para calcular saldo histórico
+                    for (let i = 0; i < 30; i++) {
+                        const date = new Date();
+                        date.setDate(date.getDate() - i);
+                        const dateStr = date.toISOString().split('T')[0];
+                        
+                        // Transações desse dia
+                        const dayTransactions = transactions.filter(t => t.date === dateStr);
+                        
+                        // Ajustar saldo
+                        dayTransactions.forEach(t => {
+                            if (t.status === 'cleared') {
+                                if (t.account === account.id) {
+                                    if (t.type === 'income') {
+                                        currentBalance -= t.amount;
+                                    } else if (t.type === 'expense' || t.type === 'investment') {
+                                        currentBalance += t.amount;
+                                    } else if (t.type === 'transfer') {
+                                        currentBalance += t.amount;
+                                    }
+                                }
+                                
+                                if (t.transferTo === account.id) {
+                                    currentBalance -= t.amount;
+                                }
+                            }
+                        });
+                        
+                        balanceData.unshift(currentBalance);
+                    }
+                    
+                    datasets.push({
+                        label: account.name,
+                        data: balanceData,
+                        borderColor: account.color,
+                        backgroundColor: account.color + '20',
+                        fill: false,
+                        tension: 0.4
+                    });
+                });
+                
+                if (UI.chartInstances.balanceHistoryChart) {
+                    UI.chartInstances.balanceHistoryChart.destroy();
+                }
+                
+                UI.chartInstances.balanceHistoryChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { 
+                                display: true,
+                                position: 'bottom',
+                                labels: { boxWidth: 12, font: { size: 10 } }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                grid: { borderDash: [2, 4], color: '#e2e8f0' },
+                                ticks: {
+                                    callback: function(value) {
+                                        return Utils.formatCurrency(value);
+                                    },
+                                    font: { size: 10 }
+                                }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            },
+            
+            renderCategoryTrendChart: () => {
+                const ctx = document.getElementById('categoryTrendChart').getContext('2d');
+                const transactions = FinanceApp.data.transactions;
+                const categories = FinanceApp.data.categories.filter(c => c.type === 'expense').slice(0, 5);
+                
+                // Últimos 6 meses
+                const labels = [];
+                const datasets = [];
+                
+                for (let i = 5; i >= 0; i--) {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() - i);
+                    const monthYear = Utils.getMonthYear(date);
+                    labels.push(monthYear.name.substring(0, 3));
+                }
+                
+                categories.forEach(category => {
+                    const categoryData = [];
+                    
+                    for (let i = 5; i >= 0; i--) {
+                        const date = new Date();
+                        date.setMonth(date.getMonth() - i);
+                        const monthRange = Utils.getMonthRange(date.getMonth(), date.getFullYear());
+                        
+                        const monthTotal = transactions
+                            .filter(t => 
+                                t.category === category.id && 
+                                t.date >= monthRange.start && 
+                                t.date <= monthRange.end &&
+                                t.status === 'cleared'
+                            )
+                            .reduce((sum, t) => sum + t.amount, 0);
+                        
+                        categoryData.push(monthTotal);
+                    }
+                    
+                    datasets.push({
+                        label: category.name,
+                        data: categoryData,
+                        borderColor: category.color,
+                        backgroundColor: category.color + '40',
+                        fill: true,
+                        tension: 0.4
+                    });
+                });
+                
+                if (UI.chartInstances.categoryTrendChart) {
+                    UI.chartInstances.categoryTrendChart.destroy();
+                }
+                
+                UI.chartInstances.categoryTrendChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { 
+                                display: true,
+                                position: 'bottom',
+                                labels: { boxWidth: 12, font: { size: 10 } }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { borderDash: [2, 4], color: '#e2e8f0' },
+                                ticks: {
+                                    callback: function(value) {
+                                        return Utils.formatCurrency(value);
+                                    },
+                                    font: { size: 10 }
+                                }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            },
+            
             // --- MODAL FUNCTIONS ---
             openModal: (type) => {
                 document.getElementById(`overlay-${type}`).classList.add('active');
@@ -2380,8 +3302,35 @@
                 });
                 event.target.classList.add('active');
                 
-                // Atualizar categoria baseada no tipo
-                UI.updateCategorySelect(type);
+                // Mostrar/ocultar campos baseado no tipo
+                const categoryGroup = document.getElementById('t-category-group');
+                const accountGroup = document.getElementById('t-account-group');
+                const transferToGroup = document.getElementById('t-transfer-to-group');
+                
+                if (type === 'transfer') {
+                    categoryGroup.style.display = 'none';
+                    accountGroup.style.display = 'block';
+                    transferToGroup.style.display = 'block';
+                    document.getElementById('t-category').removeAttribute('required');
+                    document.getElementById('t-account').setAttribute('required', 'true');
+                    document.getElementById('t-transfer-to').setAttribute('required', 'true');
+                    
+                    // Atualizar lista de contas para transferência
+                    UI.updateAccountSelects();
+                } else {
+                    categoryGroup.style.display = 'block';
+                    accountGroup.style.display = 'block';
+                    transferToGroup.style.display = 'none';
+                    document.getElementById('t-category').setAttribute('required', 'true');
+                    document.getElementById('t-account').setAttribute('required', 'true');
+                    document.getElementById('t-transfer-to').removeAttribute('required');
+                    
+                    // Atualizar categoria baseada no tipo
+                    UI.updateCategorySelect(type);
+                    
+                    // Atualizar lista de contas
+                    UI.updateAccountSelect();
+                }
             },
             
             updateCategorySelect: async (type) => {
@@ -2391,6 +3340,30 @@
                 select.innerHTML = '<option value="">Selecione...</option>';
                 categories.forEach(category => {
                     select.innerHTML += `<option value="${category.id}">${category.name}</option>`;
+                });
+            },
+            
+            updateAccountSelect: () => {
+                const select = document.getElementById('t-account');
+                const accounts = FinanceApp.data.accounts;
+                
+                select.innerHTML = '<option value="">Selecione...</option>';
+                accounts.forEach(account => {
+                    select.innerHTML += `<option value="${account.id}">${account.name} (${Utils.formatCurrency(account.balance)})</option>`;
+                });
+            },
+            
+            updateAccountSelects: () => {
+                const fromSelect = document.getElementById('t-account');
+                const toSelect = document.getElementById('t-transfer-to');
+                const accounts = FinanceApp.data.accounts;
+                
+                fromSelect.innerHTML = '<option value="">Selecione...</option>';
+                toSelect.innerHTML = '<option value="">Selecione...</option>';
+                
+                accounts.forEach(account => {
+                    fromSelect.innerHTML += `<option value="${account.id}">${account.name} (${Utils.formatCurrency(account.balance)})</option>`;
+                    toSelect.innerHTML += `<option value="${account.id}">${account.name} (${Utils.formatCurrency(account.balance)})</option>`;
                 });
             },
             
@@ -2411,8 +3384,9 @@
                 // Configurar status padrão
                 document.getElementById('t-status-select').value = 'cleared';
                 
-                // Atualizar categorias
+                // Atualizar categorias e contas
                 UI.updateCategorySelect(type);
+                UI.updateAccountSelect();
                 
                 // Configurar campo recorrente
                 document.getElementById('t-recurring').addEventListener('change', function() {
@@ -2442,7 +3416,10 @@
                 document.getElementById('t-payment-method').value = transaction.paymentMethod || 'dinheiro';
                 document.getElementById('t-recurring').checked = transaction.recurring || false;
                 document.getElementById('t-recurring-frequency').value = transaction.recurringFrequency || 'monthly';
+                document.getElementById('t-recurring-count').value = transaction.recurringCount || '0';
+                document.getElementById('t-recurring-end-date').value = transaction.recurringEndDate || '';
                 document.getElementById('t-status-select').value = transaction.status || 'cleared';
+                document.getElementById('t-transfer-to').value = transaction.transferTo || '';
                 
                 // Atualizar tipo
                 UI.setTransactionType(transaction.type);
@@ -2450,6 +3427,10 @@
                 // Atualizar categoria select
                 await UI.updateCategorySelect(transaction.type);
                 document.getElementById('t-category').value = transaction.category;
+                
+                // Atualizar conta select
+                UI.updateAccountSelect();
+                document.getElementById('t-account').value = transaction.account;
                 
                 // Mostrar/ocultar grupo recorrente
                 document.getElementById('t-recurring-group').style.display = 
@@ -2470,6 +3451,52 @@
                 }
                 
                 UI.openModal('transaction');
+            },
+            
+            openNewAccount: () => {
+                document.getElementById('form-account').reset();
+                document.getElementById('a-id').value = '';
+                document.getElementById('a-color').value = '#10b981';
+                document.getElementById('a-balance').value = '0';
+                Utils.maskMoney({ value: '0' });
+                document.getElementById('title-account').textContent = 'Nova Conta';
+                document.getElementById('delete-account-btn').style.display = 'none';
+                
+                // Configurar data atual
+                document.getElementById('a-date').value = Utils.getToday();
+                
+                UI.openModal('account');
+            },
+            
+            editAccount: (id) => {
+                const account = FinanceApp.data.accounts.find(a => a.id === id);
+                if (!account) return;
+                
+                document.getElementById('a-id').value = account.id;
+                document.getElementById('a-name').value = account.name;
+                document.getElementById('a-type').value = account.type;
+                document.getElementById('a-color').value = account.color;
+                document.getElementById('a-balance').value = (account.balance * 100).toFixed(0);
+                Utils.maskMoney({ value: (account.balance * 100).toFixed(0) });
+                document.getElementById('a-number').value = account.number || '';
+                document.getElementById('a-institution').value = account.institution || '';
+                document.getElementById('a-notes').value = account.notes || '';
+                
+                document.getElementById('title-account').textContent = 'Editar Conta';
+                document.getElementById('delete-account-btn').style.display = 'block';
+                
+                UI.openModal('account');
+            },
+            
+            openTransferModal: () => {
+                // Limpar formulário
+                document.getElementById('form-transfer').reset();
+                document.getElementById('tf-date').value = Utils.getToday();
+                
+                // Preencher selects de contas
+                UI.updateAccountSelects();
+                
+                UI.openModal('transfer');
             },
             
             setCategoryType: (type) => {
@@ -2551,8 +3578,6 @@
                 const s = FinanceApp.data.settings;
                 document.getElementById('s-name').value = s.name || '';
                 document.getElementById('s-currency').value = s.currency || 'BRL';
-                document.getElementById('s-initial-balance').value = s.initialBalance ? (s.initialBalance * 100).toFixed(0) : '0';
-                if (s.initialBalance) Utils.maskMoney({ value: (s.initialBalance * 100).toFixed(0) });
                 document.getElementById('s-closing-day').value = s.closingDay || 1;
                 
                 UI.openModal('settings');
@@ -2563,6 +3588,7 @@
         const FinanceApp = {
             data: {
                 transactions: [],
+                accounts: [],
                 categories: [],
                 goals: [],
                 settings: {}
@@ -2607,15 +3633,34 @@
                     const description = document.getElementById('t-description').value;
                     const amount = Utils.parseCurrency(document.getElementById('t-amount').value);
                     const date = document.getElementById('t-date').value;
-                    const category = document.getElementById('t-category').value;
+                    const account = document.getElementById('t-account').value;
+                    const category = type !== 'transfer' ? document.getElementById('t-category').value : null;
+                    const transferTo = type === 'transfer' ? document.getElementById('t-transfer-to').value : null;
                     const paymentMethod = document.getElementById('t-payment-method').value;
                     const notes = document.getElementById('t-notes').value;
                     const status = document.getElementById('t-status-select').value;
                     const recurring = document.getElementById('t-recurring').checked;
                     const recurringFrequency = recurring ? document.getElementById('t-recurring-frequency').value : null;
+                    const recurringCount = recurring ? parseInt(document.getElementById('t-recurring-count').value) : 0;
+                    const recurringEndDate = recurring ? document.getElementById('t-recurring-end-date').value || null : null;
                     
-                    if (!category) {
+                    if (!account) {
+                        Utils.toast('Selecione uma conta', 'error');
+                        return;
+                    }
+                    
+                    if (type !== 'transfer' && !category) {
                         Utils.toast('Selecione uma categoria', 'error');
+                        return;
+                    }
+                    
+                    if (type === 'transfer' && !transferTo) {
+                        Utils.toast('Selecione a conta de destino', 'error');
+                        return;
+                    }
+                    
+                    if (type === 'transfer' && account === transferTo) {
+                        Utils.toast('Não é possível transferir para a mesma conta', 'error');
                         return;
                     }
                     
@@ -2625,17 +3670,52 @@
                         description,
                         amount,
                         date,
-                        category,
+                        account,
+                        category: type !== 'transfer' ? category : 'cat13', // Categoria de transferência
+                        transferTo,
                         paymentMethod,
                         notes,
                         status,
                         recurring,
                         recurringFrequency,
+                        recurringCount,
+                        recurringEndDate,
                         createdAt: new Date().toISOString()
                     };
                     
                     try {
-                        await DB.saveTransaction(transaction);
+                        // Para transações recorrentes mestre, gerar ocorrências futuras
+                        if (recurring && recurringCount > 0) {
+                            const dates = Utils.generateRecurringDates(date, recurringFrequency, recurringCount, recurringEndDate);
+                            
+                            // Salvar transação mestre
+                            await DB.saveTransaction(transaction);
+                            
+                            // Gerar transações futuras
+                            for (let i = 1; i < dates.length; i++) {
+                                const childTransaction = {
+                                    ...transaction,
+                                    id: Utils.id(),
+                                    date: dates[i],
+                                    status: 'pending',
+                                    recurringParent: id,
+                                    recurring: false,
+                                    recurringFrequency: null,
+                                    recurringCount: 0,
+                                    recurringEndDate: null
+                                };
+                                
+                                delete childTransaction.recurring;
+                                delete childTransaction.recurringFrequency;
+                                delete childTransaction.recurringCount;
+                                delete childTransaction.recurringEndDate;
+                                
+                                await DB.saveTransaction(childTransaction);
+                                FinanceApp.data.transactions.push(childTransaction);
+                            }
+                        } else {
+                            await DB.saveTransaction(transaction);
+                        }
                         
                         // Atualizar dados locais
                         const index = FinanceApp.data.transactions.findIndex(t => t.id === id);
@@ -2645,10 +3725,16 @@
                             FinanceApp.data.transactions.push(transaction);
                         }
                         
+                        // Atualizar saldo da conta se a transação for efetivada
+                        if (status === 'cleared') {
+                            await FinanceApp.account.updateBalance(transaction);
+                        }
+                        
                         Utils.toast('Transação salva!');
                         UI.closeModals();
                         UI.renderDashboard();
                         UI.renderTransactions();
+                        UI.renderAccounts();
                         UI.renderReports();
                         
                     } catch (error) {
@@ -2671,10 +3757,19 @@
                     try {
                         await DB.saveTransaction(transaction);
                         
+                        // Atualizar saldo da conta se mudou para efetivada
+                        if (newStatus === 'cleared') {
+                            await FinanceApp.account.updateBalance(transaction);
+                        } else if (transaction.status === 'cleared') {
+                            // Reverter saldo se mudou para pendente
+                            await FinanceApp.account.reverseBalance(transaction);
+                        }
+                        
                         Utils.toast(`Transação ${newStatus === 'cleared' ? 'efetivada' : 'marcada como pendente'}!`);
                         UI.closeModals();
                         UI.renderDashboard();
                         UI.renderTransactions();
+                        UI.renderAccounts();
                         UI.renderReports();
                         
                     } catch (error) {
@@ -2689,6 +3784,13 @@
                     
                     if (confirm('Tem certeza que deseja excluir esta transação?')) {
                         try {
+                            const transaction = FinanceApp.data.transactions.find(t => t.id === id);
+                            
+                            // Reverter saldo da conta se a transação estiver efetivada
+                            if (transaction && transaction.status === 'cleared') {
+                                await FinanceApp.account.reverseBalance(transaction);
+                            }
+                            
                             await DB.deleteTransaction(id);
                             
                             // Remover dos dados locais
@@ -2698,12 +3800,261 @@
                             UI.closeModals();
                             UI.renderDashboard();
                             UI.renderTransactions();
+                            UI.renderAccounts();
                             UI.renderReports();
                             
                         } catch (error) {
                             console.error('Erro ao excluir transação:', error);
                             Utils.toast('Erro ao excluir transação', 'error');
                         }
+                    }
+                }
+            },
+            
+            account: {
+                save: async (e) => {
+                    e.preventDefault();
+                    
+                    const id = document.getElementById('a-id').value || Utils.id();
+                    const name = document.getElementById('a-name').value;
+                    const type = document.getElementById('a-type').value;
+                    const color = document.getElementById('a-color').value;
+                    const balance = Utils.parseCurrency(document.getElementById('a-balance').value);
+                    const number = document.getElementById('a-number').value;
+                    const institution = document.getElementById('a-institution').value;
+                    const notes = document.getElementById('a-notes').value;
+                    
+                    const account = {
+                        id,
+                        name,
+                        type,
+                        color,
+                        balance,
+                        number,
+                        institution,
+                        notes,
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    try {
+                        await DB.saveAccount(account);
+                        
+                        // Atualizar dados locais
+                        const index = FinanceApp.data.accounts.findIndex(a => a.id === id);
+                        if (index >= 0) {
+                            FinanceApp.data.accounts[index] = account;
+                        } else {
+                            FinanceApp.data.accounts.push(account);
+                        }
+                        
+                        Utils.toast('Conta salva!');
+                        UI.closeModals();
+                        UI.renderDashboard();
+                        UI.renderAccounts();
+                        UI.renderReports();
+                        
+                    } catch (error) {
+                        console.error('Erro ao salvar conta:', error);
+                        Utils.toast('Erro ao salvar conta', 'error');
+                    }
+                },
+                
+                updateBalance: async (transaction) => {
+                    const account = FinanceApp.data.accounts.find(a => a.id === transaction.account);
+                    if (!account) return;
+                    
+                    let newBalance = account.balance;
+                    
+                    switch(transaction.type) {
+                        case 'income':
+                            newBalance += transaction.amount;
+                            break;
+                        case 'expense':
+                        case 'investment':
+                            newBalance -= transaction.amount;
+                            break;
+                        case 'transfer':
+                            // Diminuir da conta de origem
+                            newBalance -= transaction.amount;
+                            account.balance = newBalance;
+                            await DB.saveAccount(account);
+                            
+                            // Aumentar na conta de destino
+                            const toAccount = FinanceApp.data.accounts.find(a => a.id === transaction.transferTo);
+                            if (toAccount) {
+                                toAccount.balance += transaction.amount;
+                                await DB.saveAccount(toAccount);
+                            }
+                            return;
+                    }
+                    
+                    account.balance = newBalance;
+                    await DB.saveAccount(account);
+                },
+                
+                reverseBalance: async (transaction) => {
+                    const account = FinanceApp.data.accounts.find(a => a.id === transaction.account);
+                    if (!account) return;
+                    
+                    let newBalance = account.balance;
+                    
+                    switch(transaction.type) {
+                        case 'income':
+                            newBalance -= transaction.amount;
+                            break;
+                        case 'expense':
+                        case 'investment':
+                            newBalance += transaction.amount;
+                            break;
+                        case 'transfer':
+                            // Reverter na conta de origem
+                            newBalance += transaction.amount;
+                            account.balance = newBalance;
+                            await DB.saveAccount(account);
+                            
+                            // Reverter na conta de destino
+                            const toAccount = FinanceApp.data.accounts.find(a => a.id === transaction.transferTo);
+                            if (toAccount) {
+                                toAccount.balance -= transaction.amount;
+                                await DB.saveAccount(toAccount);
+                            }
+                            return;
+                    }
+                    
+                    account.balance = newBalance;
+                    await DB.saveAccount(account);
+                },
+                
+                deleteAccount: async () => {
+                    const id = document.getElementById('a-id').value;
+                    if (!id) return;
+                    
+                    // Verificar se existem transações associadas a esta conta
+                    const accountTransactions = FinanceApp.data.transactions.filter(t => 
+                        t.account === id || t.transferTo === id
+                    );
+                    
+                    if (accountTransactions.length > 0) {
+                        if (!confirm(`Esta conta possui ${accountTransactions.length} transações associadas. Deseja excluí-la mesmo assim?`)) {
+                            return;
+                        }
+                    }
+                    
+                    if (confirm('Tem certeza que deseja excluir esta conta?')) {
+                        try {
+                            await DB.deleteAccount(id);
+                            
+                            // Remover dos dados locais
+                            FinanceApp.data.accounts = FinanceApp.data.accounts.filter(a => a.id !== id);
+                            
+                            Utils.toast('Conta excluída!');
+                            UI.closeModals();
+                            UI.renderDashboard();
+                            UI.renderAccounts();
+                            UI.renderReports();
+                            
+                        } catch (error) {
+                            console.error('Erro ao excluir conta:', error);
+                            Utils.toast('Erro ao excluir conta', 'error');
+                        }
+                    }
+                }
+            },
+            
+            transfer: {
+                execute: async (e) => {
+                    e.preventDefault();
+                    
+                    const fromAccount = document.getElementById('tf-from').value;
+                    const toAccount = document.getElementById('tf-to').value;
+                    const amount = Utils.parseCurrency(document.getElementById('tf-amount').value);
+                    const date = document.getElementById('tf-date').value;
+                    const fee = Utils.parseCurrency(document.getElementById('tf-fee').value);
+                    const description = document.getElementById('tf-description').value || 'Transferência entre contas';
+                    
+                    if (!fromAccount || !toAccount) {
+                        Utils.toast('Selecione as contas', 'error');
+                        return;
+                    }
+                    
+                    if (fromAccount === toAccount) {
+                        Utils.toast('Não é possível transferir para a mesma conta', 'error');
+                        return;
+                    }
+                    
+                    if (amount <= 0) {
+                        Utils.toast('Informe um valor válido', 'error');
+                        return;
+                    }
+                    
+                    // Verificar saldo suficiente
+                    const fromAcc = FinanceApp.data.accounts.find(a => a.id === fromAccount);
+                    if (fromAcc.balance < amount) {
+                        Utils.toast('Saldo insuficiente na conta de origem', 'error');
+                        return;
+                    }
+                    
+                    const transaction = {
+                        id: Utils.id(),
+                        type: 'transfer',
+                        description,
+                        amount,
+                        date,
+                        account: fromAccount,
+                        category: 'cat13',
+                        transferTo: toAccount,
+                        paymentMethod: 'transferencia',
+                        notes: fee > 0 ? `Taxa: ${Utils.formatCurrency(fee)}` : '',
+                        status: 'cleared',
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    try {
+                        await DB.saveTransaction(transaction);
+                        FinanceApp.data.transactions.push(transaction);
+                        
+                        // Atualizar saldos das contas
+                        fromAcc.balance -= amount;
+                        await DB.saveAccount(fromAcc);
+                        
+                        const toAcc = FinanceApp.data.accounts.find(a => a.id === toAccount);
+                        toAcc.balance += amount;
+                        await DB.saveAccount(toAcc);
+                        
+                        // Criar transação de taxa se houver
+                        if (fee > 0) {
+                            const feeTransaction = {
+                                id: Utils.id(),
+                                type: 'expense',
+                                description: 'Taxa de transferência',
+                                amount: fee,
+                                date,
+                                account: fromAccount,
+                                category: 'cat2', // Transporte como categoria padrão para taxas
+                                paymentMethod: 'transferencia',
+                                notes: `Taxa da transferência: ${description}`,
+                                status: 'cleared',
+                                createdAt: new Date().toISOString()
+                            };
+                            
+                            await DB.saveTransaction(feeTransaction);
+                            FinanceApp.data.transactions.push(feeTransaction);
+                            
+                            // Atualizar saldo da conta com a taxa
+                            fromAcc.balance -= fee;
+                            await DB.saveAccount(fromAcc);
+                        }
+                        
+                        Utils.toast('Transferência realizada!');
+                        UI.closeModals();
+                        UI.renderDashboard();
+                        UI.renderTransactions();
+                        UI.renderAccounts();
+                        UI.renderReports();
+                        
+                    } catch (error) {
+                        console.error('Erro ao realizar transferência:', error);
+                        Utils.toast('Erro ao realizar transferência', 'error');
                     }
                 }
             },
@@ -2827,7 +4178,6 @@
                         id: 'user_settings',
                         name: document.getElementById('s-name').value,
                         currency: document.getElementById('s-currency').value,
-                        initialBalance: Utils.parseCurrency(document.getElementById('s-initial-balance').value),
                         closingDay: parseInt(document.getElementById('s-closing-day').value)
                     };
                     
@@ -2881,6 +4231,7 @@
                             await UI.loadInitialData();
                             UI.renderDashboard();
                             UI.renderTransactions();
+                            UI.renderAccounts();
                             UI.renderCategories();
                             UI.renderGoals();
                             UI.renderReports();
@@ -2903,16 +4254,19 @@
                             
                             // Limpar dados locais
                             FinanceApp.data.transactions = [];
+                            FinanceApp.data.accounts = [];
                             FinanceApp.data.categories = [];
                             FinanceApp.data.goals = [];
                             
-                            // Recriar categorias padrão
+                            // Recriar categorias e contas padrão
                             await UI.createDefaultCategories();
+                            await UI.createDefaultAccounts();
                             
                             // Recarregar dados
                             await UI.loadInitialData();
                             UI.renderDashboard();
                             UI.renderTransactions();
+                            UI.renderAccounts();
                             UI.renderCategories();
                             UI.renderGoals();
                             UI.renderReports();
