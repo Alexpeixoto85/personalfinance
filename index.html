@@ -1482,7 +1482,25 @@
             
             parseCurrency: (str) => {
                 if (!str) return 0;
-                return parseFloat(str.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()) || 0;
+                // Converte string formatada "1.234,56" para número 1234.56
+                const cleanStr = str.toString().replace(/[^\d,-]/g, '').replace(',', '.');
+                const parts = cleanStr.split('.');
+                if (parts.length > 1) {
+                    // Se tiver ponto decimal, mantém a parte decimal
+                    const integerPart = parts.slice(0, -1).join('');
+                    const decimalPart = parts[parts.length - 1];
+                    return parseFloat(integerPart + '.' + decimalPart);
+                }
+                return parseFloat(cleanStr) || 0;
+            },
+            
+            formatNumberToCurrencyInput: (num) => {
+                // Converte número para string formatada para input
+                if (!num && num !== 0) return '';
+                // Usa 2 casas decimais
+                const fixed = num.toFixed(2);
+                // Formata como "1234.56"
+                return fixed.replace('.', ',');
             },
             
             formatDate: (dateStr) => {
@@ -1546,7 +1564,7 @@
             
             maskMoney: (input) => {
                 let v = input.value.replace(/\D/g, "");
-                v = (v / 100).toFixed(2) + "";
+                v = (Number(v) / 100).toFixed(2);
                 v = v.replace(".", ",");
                 v = v.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
                 input.value = v;
@@ -1614,9 +1632,43 @@
             generateRecurringDates: (startDate, frequency, count, endDate) => {
                 const dates = [];
                 let currentDate = new Date(startDate);
+                const today = new Date();
                 
-                for (let i = 0; i < (count === 0 ? 365 : count); i++) { // Máximo de 365 repetições se for indeterminado
-                    dates.push(currentDate.toISOString().split('T')[0]);
+                // Se for data futura, começa da data atual
+                if (currentDate > today) {
+                    // Ajusta a data inicial para a próxima ocorrência
+                    while (currentDate > today) {
+                        const prevDate = new Date(currentDate);
+                        switch(frequency) {
+                            case 'daily':
+                                currentDate.setDate(currentDate.getDate() - 1);
+                                break;
+                            case 'weekly':
+                                currentDate.setDate(currentDate.getDate() - 7);
+                                break;
+                            case 'monthly':
+                                currentDate.setMonth(currentDate.getMonth() - 1);
+                                break;
+                            case 'yearly':
+                                currentDate.setFullYear(currentDate.getFullYear() - 1);
+                                break;
+                        }
+                        if (currentDate <= new Date(startDate)) {
+                            currentDate = new Date(prevDate);
+                            break;
+                        }
+                    }
+                }
+                
+                const maxIterations = count === 0 ? 365 : count; // Máximo de 365 repetições se for indeterminado
+                
+                for (let i = 0; i < maxIterations; i++) {
+                    const dateStr = currentDate.toISOString().split('T')[0];
+                    
+                    // Só adiciona se for hoje ou futuro
+                    if (currentDate >= today) {
+                        dates.push(dateStr);
+                    }
                     
                     // Parar se atingiu a data final
                     if (endDate && currentDate >= new Date(endDate)) {
@@ -1624,30 +1676,116 @@
                     }
                     
                     // Avançar para próxima data baseado na frequência
+                    const nextDate = new Date(currentDate);
                     switch(frequency) {
                         case 'daily':
-                            currentDate.setDate(currentDate.getDate() + 1);
+                            nextDate.setDate(nextDate.getDate() + 1);
                             break;
                         case 'weekly':
-                            currentDate.setDate(currentDate.getDate() + 7);
+                            nextDate.setDate(nextDate.getDate() + 7);
                             break;
                         case 'monthly':
-                            currentDate.setMonth(currentDate.getMonth() + 1);
+                            nextDate.setMonth(nextDate.getMonth() + 1);
                             break;
                         case 'yearly':
-                            currentDate.setFullYear(currentDate.getFullYear() + 1);
+                            nextDate.setFullYear(nextDate.getFullYear() + 1);
                             break;
                     }
+                    currentDate = nextDate;
                 }
                 
                 return dates;
+            },
+            
+            // Nova função para processar transações recorrentes automaticamente
+            processRecurringTransactions: async (transactions) => {
+                const today = Utils.getToday();
+                const newTransactions = [];
+                
+                // Encontrar transações recorrentes mestre
+                const recurringMasters = transactions.filter(t => 
+                    t.recurring && !t.recurringParent
+                );
+                
+                for (const master of recurringMasters) {
+                    // Encontrar transações filhas já geradas
+                    const existingChildren = transactions.filter(t => 
+                        t.recurringParent === master.id
+                    );
+                    
+                    // Verificar se precisa gerar novas ocorrências
+                    const lastDate = existingChildren.length > 0 
+                        ? Math.max(...existingChildren.map(t => new Date(t.date).getTime()))
+                        : new Date(master.date).getTime();
+                    
+                    const lastChildDate = new Date(lastDate);
+                    const todayDate = new Date(today);
+                    
+                    // Se a última transação gerada já passou, gerar próxima
+                    if (lastChildDate < todayDate) {
+                        const nextDate = new Date(lastChildDate);
+                        
+                        // Avançar para próxima data baseado na frequência
+                        switch(master.recurringFrequency) {
+                            case 'daily':
+                                nextDate.setDate(nextDate.getDate() + 1);
+                                break;
+                            case 'weekly':
+                                nextDate.setDate(nextDate.getDate() + 7);
+                                break;
+                            case 'monthly':
+                                nextDate.setMonth(nextDate.getMonth() + 1);
+                                break;
+                            case 'yearly':
+                                nextDate.setFullYear(nextDate.getFullYear() + 1);
+                                break;
+                        }
+                        
+                        const nextDateStr = nextDate.toISOString().split('T')[0];
+                        
+                        // Verificar se não ultrapassou o limite
+                        const maxCount = master.recurringCount || 0;
+                        if (maxCount > 0 && existingChildren.length >= maxCount) {
+                            continue;
+                        }
+                        
+                        // Verificar data final
+                        if (master.recurringEndDate && nextDate > new Date(master.recurringEndDate)) {
+                            continue;
+                        }
+                        
+                        // Gerar nova transação
+                        const newTransaction = {
+                            ...master,
+                            id: Utils.id(),
+                            date: nextDateStr,
+                            status: 'pending',
+                            recurringParent: master.id,
+                            recurring: false,
+                            recurringFrequency: undefined,
+                            recurringCount: undefined,
+                            recurringEndDate: undefined,
+                            createdAt: new Date().toISOString()
+                        };
+                        
+                        // Remover campos do mestre
+                        delete newTransaction.recurring;
+                        delete newTransaction.recurringFrequency;
+                        delete newTransaction.recurringCount;
+                        delete newTransaction.recurringEndDate;
+                        
+                        newTransactions.push(newTransaction);
+                    }
+                }
+                
+                return newTransactions;
             }
         };
 
         // --- INDEXEDDB MANAGER ---
         const DB = {
             name: 'FinancaProDB',
-            version: 4, // Incrementado para incluir contas
+            version: 4,
             db: null,
             
             init: async () => {
@@ -1663,7 +1801,6 @@
                     request.onupgradeneeded = (event) => {
                         const db = event.target.result;
                         
-                        // Criar object stores
                         if (!db.objectStoreNames.contains('transactions')) {
                             const transactionStore = db.createObjectStore('transactions', { keyPath: 'id' });
                             transactionStore.createIndex('date', 'date', { unique: false });
@@ -1696,7 +1833,6 @@
                 });
             },
             
-            // Métodos para transações
             getAllTransactions: async () => {
                 return new Promise((resolve, reject) => {
                     const transaction = DB.db.transaction(['transactions'], 'readonly');
@@ -1730,7 +1866,6 @@
                 });
             },
             
-            // Métodos para contas
             getAllAccounts: async () => {
                 return new Promise((resolve, reject) => {
                     const transaction = DB.db.transaction(['accounts'], 'readonly');
@@ -1764,7 +1899,6 @@
                 });
             },
             
-            // Métodos para categorias
             getAllCategories: async () => {
                 return new Promise((resolve, reject) => {
                     const transaction = DB.db.transaction(['categories'], 'readonly');
@@ -1787,7 +1921,6 @@
                 });
             },
             
-            // Métodos para metas
             getAllGoals: async () => {
                 return new Promise((resolve, reject) => {
                     const transaction = DB.db.transaction(['goals'], 'readonly');
@@ -1821,7 +1954,6 @@
                 });
             },
             
-            // Métodos para configurações
             getSettings: async () => {
                 return new Promise((resolve, reject) => {
                     const transaction = DB.db.transaction(['settings'], 'readonly');
@@ -1849,7 +1981,6 @@
                 });
             },
             
-            // Backup e restauração
             exportAllData: async () => {
                 const transactions = await DB.getAllTransactions();
                 const accounts = await DB.getAllAccounts();
@@ -1868,30 +1999,24 @@
             },
             
             importAllData: async (data) => {
-                // Limpar dados existentes
                 await DB.clearAllData();
                 
-                // Importar contas
                 for (const account of data.accounts || []) {
                     await DB.saveAccount(account);
                 }
                 
-                // Importar transações
                 for (const transaction of data.transactions || []) {
                     await DB.saveTransaction(transaction);
                 }
                 
-                // Importar categorias
                 for (const category of data.categories || []) {
                     await DB.saveCategory(category);
                 }
                 
-                // Importar metas
                 for (const goal of data.goals || []) {
                     await DB.saveGoal(goal);
                 }
                 
-                // Importar configurações
                 if (data.settings) {
                     await DB.saveSettings(data.settings);
                 }
@@ -1931,16 +2056,18 @@
                 try {
                     await DB.init();
                     await UI.loadInitialData();
+                    
+                    // Processar transações recorrentes automaticamente
+                    await UI.processAutoRecurringTransactions();
+                    
                     UI.updateMonthDisplay();
                     UI.updateTransactionMonthDisplay();
                     UI.renderDashboard();
                     
-                    // Tabs listeners
                     document.querySelectorAll('.bottom-nav .nav-item').forEach(el => {
                         el.addEventListener('click', (e) => e.preventDefault());
                     });
                     
-                    // Inicializar categorias e contas padrão se não existirem
                     const categories = await DB.getAllCategories();
                     if (categories.length === 0) {
                         await UI.createDefaultCategories();
@@ -1951,11 +2078,7 @@
                         await UI.createDefaultAccounts();
                     }
                     
-                    // Verificar transações pendentes futuras
                     UI.checkFuturePendingTransactions();
-                    
-                    // Processar transações recorrentes
-                    UI.processRecurringTransactions();
                     
                 } catch (error) {
                     console.error('Erro ao inicializar:', error);
@@ -1964,7 +2087,6 @@
             },
             
             loadInitialData: async () => {
-                // Carregar dados iniciais
                 FinanceApp.data.transactions = await DB.getAllTransactions();
                 FinanceApp.data.accounts = await DB.getAllAccounts();
                 FinanceApp.data.categories = await DB.getAllCategories();
@@ -1989,7 +2111,6 @@
             
             createDefaultCategories: async () => {
                 const defaultCategories = [
-                    // Categorias de despesas
                     { id: 'cat1', name: 'Alimentação', type: 'expense', icon: 'utensils', color: '#10b981', budget: 0 },
                     { id: 'cat2', name: 'Transporte', type: 'expense', icon: 'car', color: '#3b82f6', budget: 0 },
                     { id: 'cat3', name: 'Moradia', type: 'expense', icon: 'home', color: '#8b5cf6', budget: 0 },
@@ -1998,14 +2119,10 @@
                     { id: 'cat6', name: 'Lazer', type: 'expense', icon: 'gamepad', color: '#06b6d4', budget: 0 },
                     { id: 'cat7', name: 'Vestuário', type: 'expense', icon: 'tshirt', color: '#ec4899', budget: 0 },
                     { id: 'cat8', name: 'Supermercado', type: 'expense', icon: 'shopping-cart', color: '#84cc16', budget: 0 },
-                    
-                    // Categorias de receitas
                     { id: 'cat9', name: 'Salário', type: 'income', icon: 'money-bill', color: '#10b981', budget: 0 },
                     { id: 'cat10', name: 'Freelance', type: 'income', icon: 'briefcase', color: '#3b82f6', budget: 0 },
                     { id: 'cat11', name: 'Investimentos', type: 'income', icon: 'chart-line', color: '#8b5cf6', budget: 0 },
                     { id: 'cat12', name: 'Presentes', type: 'income', icon: 'gift', color: '#ec4899', budget: 0 },
-                    
-                    // Categoria para transferências
                     { id: 'cat13', name: 'Transferência', type: 'transfer', icon: 'exchange-alt', color: '#8b5cf6', budget: 0 }
                 ];
                 
@@ -2017,78 +2134,17 @@
                 Utils.toast('Categorias padrão criadas');
             },
             
-            processRecurringTransactions: async () => {
-                const today = Utils.getToday();
+            // CORREÇÃO: Processar transações recorrentes automaticamente
+            processAutoRecurringTransactions: async () => {
                 const transactions = FinanceApp.data.transactions;
+                const newTransactions = await Utils.processRecurringTransactions(transactions);
                 
-                // Encontrar transações recorrentes que precisam ser geradas
-                const recurringTransactions = transactions.filter(t => 
-                    t.recurring && t.recurringParent === undefined
-                );
-                
-                for (const parentTransaction of recurringTransactions) {
-                    // Verificar se já gerou todas as ocorrências
-                    const childCount = transactions.filter(t => 
-                        t.recurringParent === parentTransaction.id
-                    ).length;
-                    
-                    const maxCount = parentTransaction.recurringCount || 0;
-                    if (maxCount > 0 && childCount >= maxCount) {
-                        continue; // Já gerou todas as ocorrências
+                if (newTransactions.length > 0) {
+                    for (const transaction of newTransactions) {
+                        await DB.saveTransaction(transaction);
+                        FinanceApp.data.transactions.push(transaction);
                     }
-                    
-                    // Verificar data final
-                    if (parentTransaction.recurringEndDate && parentTransaction.recurringEndDate < today) {
-                        continue; // Data final já passou
-                    }
-                    
-                    // Gerar próximas datas
-                    const startDate = new Date(parentTransaction.date);
-                    const frequency = parentTransaction.recurringFrequency || 'monthly';
-                    
-                    // Verificar se precisa gerar nova ocorrência
-                    let nextDate = new Date(startDate);
-                    for (let i = 0; i <= childCount; i++) {
-                        switch(frequency) {
-                            case 'daily':
-                                nextDate.setDate(nextDate.getDate() + 1);
-                                break;
-                            case 'weekly':
-                                nextDate.setDate(nextDate.getDate() + 7);
-                                break;
-                            case 'monthly':
-                                nextDate.setMonth(nextDate.getMonth() + 1);
-                                break;
-                            case 'yearly':
-                                nextDate.setFullYear(nextDate.getFullYear() + 1);
-                                break;
-                        }
-                    }
-                    
-                    const nextDateStr = nextDate.toISOString().split('T')[0];
-                    
-                    // Se a próxima data já passou ou é hoje, criar a transação
-                    if (nextDateStr <= today) {
-                        const newTransaction = {
-                            ...parentTransaction,
-                            id: Utils.id(),
-                            date: nextDateStr,
-                            status: 'pending', // Nova transação recorrente começa como pendente
-                            recurringParent: parentTransaction.id,
-                            createdAt: new Date().toISOString()
-                        };
-                        
-                        // Remover campos específicos do pai
-                        delete newTransaction.recurring;
-                        delete newTransaction.recurringFrequency;
-                        delete newTransaction.recurringCount;
-                        delete newTransaction.recurringEndDate;
-                        
-                        await DB.saveTransaction(newTransaction);
-                        FinanceApp.data.transactions.push(newTransaction);
-                        
-                        Utils.toast(`Transação recorrente "${parentTransaction.description}" gerada para ${Utils.formatDate(nextDateStr)}`);
-                    }
+                    Utils.toast(`${newTransactions.length} transação(ões) recorrente(s) gerada(s) automaticamente`);
                 }
             },
             
@@ -2098,7 +2154,6 @@
                 
                 transactions.forEach(transaction => {
                     if (transaction.status === 'pending' && transaction.date <= today) {
-                        // Transação pendente com data vencida
                         console.log(`Transação vencida: ${transaction.description}`);
                     }
                 });
@@ -2112,7 +2167,6 @@
                 const target = el.getAttribute('data-target');
                 document.getElementById(target).classList.add('active');
 
-                // Toggle FAB visibility
                 const fab = document.getElementById('main-fab');
                 if(target === 'dashboard-view') {
                     fab.style.display = 'flex';
@@ -2145,15 +2199,12 @@
             setReportTab: (tab) => {
                 UI.reportTab = tab;
                 
-                // Atualizar botões da tab
                 document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
                 event.target.classList.add('active');
                 
-                // Mostrar apenas a tab selecionada
                 document.querySelectorAll('.report-tab').forEach(t => t.style.display = 'none');
                 document.getElementById(`report-${tab}`).style.display = 'block';
                 
-                // Renderizar gráficos específicos da tab
                 if (tab === 'accounts') {
                     UI.renderAccountsChart();
                     UI.renderBalanceHistoryChart();
@@ -2181,25 +2232,20 @@
                 UI.renderTransactions();
             },
             
-            // --- RENDER FUNCTIONS ---
             renderDashboard: async () => {
                 const { transactions, accounts, categories, goals, settings } = FinanceApp.data;
                 const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
                 
-                // Calcular saldo total das contas
                 const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
                 
-                // Filtrar transações do mês atual (efetivadas)
                 const monthTransactions = transactions.filter(t => 
                     t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'cleared'
                 );
                 
-                // Filtrar transações pendentes do mês atual
                 const monthPendingTransactions = transactions.filter(t => 
                     t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'pending'
                 );
                 
-                // Calcular totais efetivados
                 const income = monthTransactions
                     .filter(t => t.type === 'income')
                     .reduce((sum, t) => sum + t.amount, 0);
@@ -2208,11 +2254,6 @@
                     .filter(t => t.type === 'expense')
                     .reduce((sum, t) => sum + t.amount, 0);
                 
-                const investment = monthTransactions
-                    .filter(t => t.type === 'investment')
-                    .reduce((sum, t) => sum + t.amount, 0);
-                
-                // Calcular totais pendentes
                 const pendingIncome = monthPendingTransactions
                     .filter(t => t.type === 'income')
                     .reduce((sum, t) => sum + t.amount, 0);
@@ -2223,7 +2264,6 @@
                 
                 const pendingTotal = pendingIncome + pendingExpense;
                 
-                // Calcular projeção futura (30 dias)
                 const futureRange = Utils.getFutureRange(30);
                 const futureTransactions = transactions.filter(t => 
                     t.date >= futureRange.start && t.date <= futureRange.end
@@ -2239,30 +2279,20 @@
                 
                 const projectedBalance = totalBalance + futureIncome - futureExpense;
                 
-                // Atualizar UI
                 document.getElementById('current-balance').textContent = Utils.formatCurrency(totalBalance);
                 document.getElementById('month-income').textContent = Utils.formatCurrency(income);
                 document.getElementById('month-expense').textContent = Utils.formatCurrency(expense);
                 document.getElementById('month-pending').textContent = Utils.formatCurrency(pendingTotal);
                 
-                // Atualizar projeção
                 document.getElementById('projected-balance').textContent = Utils.formatCurrency(projectedBalance);
                 document.getElementById('projected-income').textContent = Utils.formatCurrency(futureIncome);
                 document.getElementById('projected-expense').textContent = Utils.formatCurrency(futureExpense);
                 
-                // Renderizar contas
                 UI.renderAccountsOverview(accounts);
-                
-                // Renderizar transações recentes (somente efetivadas)
                 UI.renderRecentTransactions(transactions);
-                
-                // Renderizar transações pendentes próximas
                 UI.renderPendingTransactions(transactions);
-                
-                // Renderizar metas ativas
                 UI.renderActiveGoals(goals);
                 
-                // Atualizar badges
                 const pendingCount = transactions.filter(t => 
                     t.status === 'pending' && t.date <= Utils.getToday()
                 ).length;
@@ -2293,7 +2323,6 @@
                     return;
                 }
                 
-                // Ordenar por saldo (maior primeiro)
                 const sortedAccounts = [...accounts].sort((a, b) => b.balance - a.balance);
                 
                 list.innerHTML = sortedAccounts.slice(0, 3).map(account => UI.createAccountCard(account)).join('');
@@ -2342,7 +2371,7 @@
             renderPendingTransactions: (transactions) => {
                 const list = document.getElementById('pending-transactions');
                 const today = Utils.getToday();
-                const futureDate = Utils.getFutureDate(7); // Próximos 7 dias
+                const futureDate = Utils.getFutureDate(7);
                 
                 const pending = transactions
                     .filter(t => t.status === 'pending' && t.date >= today && t.date <= futureDate && t.type !== 'transfer')
@@ -2371,7 +2400,6 @@
             
             createTransactionCard: (transaction) => {
                 const typeClass = transaction.type;
-                const statusClass = transaction.status || 'cleared';
                 const amountClass = `amount-${transaction.type}`;
                 const iconClass = `icon-${transaction.type}`;
                 const amountSign = transaction.type === 'income' ? '+' : 
@@ -2384,7 +2412,6 @@
                 const account = FinanceApp.data.accounts.find(a => a.id === transaction.account);
                 const accountName = account ? account.name : 'Sem conta';
                 
-                // Status badge
                 let statusBadge = '';
                 if (transaction.status === 'pending') {
                     if (Utils.isFutureDate(transaction.date)) {
@@ -2396,7 +2423,6 @@
                     statusBadge = '<span class="future-badge">Agendada</span>';
                 }
                 
-                // Para transferências, mostrar contas envolvidas
                 let description = transaction.description;
                 if (transaction.type === 'transfer' && transaction.transferTo) {
                     const toAccount = FinanceApp.data.accounts.find(a => a.id === transaction.transferTo);
@@ -2458,14 +2484,12 @@
                     t.date >= monthRange.start && t.date <= monthRange.end
                 );
                 
-                // Aplicar filtro de modo (pendentes/efetivadas/todas)
                 if (UI.transactionViewMode === 'pending') {
                     filtered = filtered.filter(t => t.status === 'pending');
                 } else if (UI.transactionViewMode === 'cleared') {
                     filtered = filtered.filter(t => t.status === 'cleared');
                 }
                 
-                // Aplicar filtro de tipo
                 if (UI.transactionFilter !== 'all') {
                     if (UI.transactionFilter === 'recurring') {
                         filtered = filtered.filter(t => t.recurring || t.recurringParent);
@@ -2476,7 +2500,6 @@
                     }
                 }
                 
-                // Aplicar busca
                 if (searchTerm) {
                     filtered = filtered.filter(t => 
                         t.description.toLowerCase().includes(searchTerm) ||
@@ -2484,7 +2507,6 @@
                     );
                 }
                 
-                // Ordenar por data (mais recente primeiro)
                 filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
                 
                 if (filtered.length === 0) {
@@ -2492,7 +2514,6 @@
                     return;
                 }
                 
-                // Agrupar por data
                 const grouped = {};
                 filtered.forEach(t => {
                     if (!grouped[t.date]) grouped[t.date] = [];
@@ -2503,7 +2524,6 @@
                 Object.keys(grouped).sort().reverse().forEach(date => {
                     const dateFormatted = Utils.formatDate(date);
                     
-                    // Calcular totais para o dia
                     const dayCleared = grouped[date]
                         .filter(t => t.status === 'cleared')
                         .reduce((sum, t) => {
@@ -2563,7 +2583,6 @@
                     return;
                 }
                 
-                // Calcular totais por conta
                 const today = Utils.getToday();
                 const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
                 const monthTransactions = FinanceApp.data.transactions.filter(t => 
@@ -2572,7 +2591,6 @@
                 
                 let accountsHtml = '';
                 accounts.forEach(account => {
-                    // Calcular movimento do mês
                     const accountIncome = monthTransactions
                         .filter(t => t.account === account.id && t.type === 'income' && t.status === 'cleared')
                         .reduce((sum, t) => sum + t.amount, 0);
@@ -2616,7 +2634,6 @@
                 
                 list.innerHTML = accountsHtml;
                 
-                // Renderizar histórico de transferências
                 UI.renderTransferHistory();
             },
             
@@ -2668,13 +2685,11 @@
                 const expenseCategories = FinanceApp.data.categories.filter(c => c.type === 'expense');
                 const incomeCategories = FinanceApp.data.categories.filter(c => c.type === 'income');
                 
-                // Calcular totais por categoria
                 const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
                 const monthTransactions = FinanceApp.data.transactions.filter(t => 
                     t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'cleared'
                 );
                 
-                // Despesas por categoria
                 if (expenseCategories.length === 0) {
                     expenseList.innerHTML = `<div class="empty-state"><i class="fas fa-tags"></i><p>Nenhuma categoria de despesa!</p></div>`;
                 } else {
@@ -2708,7 +2723,6 @@
                     expenseList.innerHTML = expenseHtml;
                 }
                 
-                // Receitas por categoria
                 if (incomeCategories.length === 0) {
                     incomeList.innerHTML = `<div class="empty-state"><i class="fas fa-tags"></i><p>Nenhuma categoria de receita!</p></div>`;
                 } else {
@@ -2743,7 +2757,6 @@
                     return;
                 }
                 
-                // Ordenar por progresso
                 goals.sort((a, b) => {
                     const progressA = a.target > 0 ? (a.current / a.target) : 0;
                     const progressB = b.target > 0 ? (b.current / b.target) : 0;
@@ -2758,27 +2771,20 @@
                 const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
                 const futureRange = Utils.getFutureRange(30);
                 
-                // Filtrar transações do mês (efetivadas)
                 const monthTransactions = transactions.filter(t => 
                     t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'cleared'
                 );
                 
-                // Filtrar transações futuras
                 const futureTransactions = transactions.filter(t => 
                     t.date >= futureRange.start && t.date <= futureRange.end
                 );
                 
-                // Calcular totais
                 const income = monthTransactions
                     .filter(t => t.type === 'income')
                     .reduce((sum, t) => sum + t.amount, 0);
                 
                 const expense = monthTransactions
                     .filter(t => t.type === 'expense')
-                    .reduce((sum, t) => sum + t.amount, 0);
-                
-                const investment = monthTransactions
-                    .filter(t => t.type === 'investment')
                     .reduce((sum, t) => sum + t.amount, 0);
                 
                 const pending = transactions
@@ -2791,18 +2797,15 @@
                 
                 const savingsRate = income > 0 ? ((income - expense) / income * 100) : 0;
                 
-                // Atualizar estatísticas
                 document.getElementById('report-income').textContent = Utils.formatCurrency(income);
                 document.getElementById('report-expense').textContent = Utils.formatCurrency(expense);
                 document.getElementById('report-pending').textContent = Utils.formatCurrency(Math.abs(pending));
                 document.getElementById('report-savings-rate').textContent = `${savingsRate.toFixed(1)}%`;
                 
-                // Renderizar gráficos
                 UI.renderExpenseChart(monthTransactions);
                 UI.renderIncomeExpenseChart(monthTransactions);
                 UI.renderCashFlowChart(futureTransactions);
                 
-                // Renderizar gráficos das outras tabs se necessário
                 if (UI.reportTab === 'accounts') {
                     UI.renderAccountsChart();
                     UI.renderBalanceHistoryChart();
@@ -2815,7 +2818,6 @@
                 const ctx = document.getElementById('expenseChart').getContext('2d');
                 const expenseTransactions = transactions.filter(t => t.type === 'expense');
                 
-                // Agrupar despesas por categoria
                 const categories = {};
                 expenseTransactions.forEach(t => {
                     const category = FinanceApp.data.categories.find(c => c.id === t.category);
@@ -2830,9 +2832,8 @@
                 const labels = Object.keys(categories);
                 const data = Object.values(categories);
                 
-                // Cores para as categorias
                 const backgroundColors = labels.map((_, index) => {
-                    const hue = (index * 137.5) % 360; // Distribuição de cores
+                    const hue = (index * 137.5) % 360;
                     return `hsl(${hue}, 70%, 60%)`;
                 });
                 
@@ -2883,7 +2884,6 @@
             renderIncomeExpenseChart: (transactions) => {
                 const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
                 
-                // Agrupar por dia do mês
                 const daysInMonth = new Date(UI.currentYear, UI.currentMonth + 1, 0).getDate();
                 const incomeByDay = new Array(daysInMonth).fill(0);
                 const expenseByDay = new Array(daysInMonth).fill(0);
@@ -2955,7 +2955,6 @@
             renderCashFlowChart: (transactions) => {
                 const ctx = document.getElementById('cashFlowChart').getContext('2d');
                 
-                // Agrupar por data (próximos 30 dias)
                 const futureIncome = {};
                 const futureExpense = {};
                 const today = new Date();
@@ -2968,7 +2967,6 @@
                     futureExpense[dateStr] = 0;
                 }
                 
-                // Calcular transações futuras
                 transactions.forEach(t => {
                     if (futureIncome.hasOwnProperty(t.date)) {
                         if (t.type === 'income') {
@@ -2983,7 +2981,6 @@
                 const incomeData = Object.values(futureIncome);
                 const expenseData = Object.values(futureExpense);
                 
-                // Calcular saldo acumulado
                 let cumulativeBalance = FinanceApp.data.accounts.reduce((sum, acc) => sum + acc.balance, 0);
                 const balanceData = incomeData.map((income, i) => {
                     cumulativeBalance += income - expenseData[i];
@@ -3101,7 +3098,6 @@
                 const accounts = FinanceApp.data.accounts;
                 const transactions = FinanceApp.data.transactions;
                 
-                // Últimos 30 dias
                 const labels = [];
                 const datasets = [];
                 
@@ -3115,16 +3111,13 @@
                     const balanceData = [];
                     let currentBalance = account.balance;
                     
-                    // Reverter transações para calcular saldo histórico
                     for (let i = 0; i < 30; i++) {
                         const date = new Date();
                         date.setDate(date.getDate() - i);
                         const dateStr = date.toISOString().split('T')[0];
                         
-                        // Transações desse dia
                         const dayTransactions = transactions.filter(t => t.date === dateStr);
                         
-                        // Ajustar saldo
                         dayTransactions.forEach(t => {
                             if (t.status === 'cleared') {
                                 if (t.account === account.id) {
@@ -3200,7 +3193,6 @@
                 const transactions = FinanceApp.data.transactions;
                 const categories = FinanceApp.data.categories.filter(c => c.type === 'expense').slice(0, 5);
                 
-                // Últimos 6 meses
                 const labels = [];
                 const datasets = [];
                 
@@ -3281,7 +3273,6 @@
                 });
             },
             
-            // --- MODAL FUNCTIONS ---
             openModal: (type) => {
                 document.getElementById(`overlay-${type}`).classList.add('active');
                 requestAnimationFrame(() => {
@@ -3296,13 +3287,11 @@
             setTransactionType: (type) => {
                 document.getElementById('t-type').value = type;
                 
-                // Atualizar classes dos botões
                 document.querySelectorAll('.type-option').forEach(opt => {
                     opt.classList.remove('active');
                 });
                 event.target.classList.add('active');
                 
-                // Mostrar/ocultar campos baseado no tipo
                 const categoryGroup = document.getElementById('t-category-group');
                 const accountGroup = document.getElementById('t-account-group');
                 const transferToGroup = document.getElementById('t-transfer-to-group');
@@ -3315,7 +3304,6 @@
                     document.getElementById('t-account').setAttribute('required', 'true');
                     document.getElementById('t-transfer-to').setAttribute('required', 'true');
                     
-                    // Atualizar lista de contas para transferência
                     UI.updateAccountSelects();
                 } else {
                     categoryGroup.style.display = 'block';
@@ -3325,10 +3313,7 @@
                     document.getElementById('t-account').setAttribute('required', 'true');
                     document.getElementById('t-transfer-to').removeAttribute('required');
                     
-                    // Atualizar categoria baseada no tipo
                     UI.updateCategorySelect(type);
-                    
-                    // Atualizar lista de contas
                     UI.updateAccountSelect();
                 }
             },
@@ -3375,20 +3360,14 @@
                 document.getElementById('delete-transaction-btn').style.display = 'none';
                 document.getElementById('toggle-status-btn').style.display = 'none';
                 
-                // Configurar tipo
                 UI.setTransactionType(type);
                 
-                // Configurar data padrão
                 document.getElementById('t-date').value = Utils.getToday();
-                
-                // Configurar status padrão
                 document.getElementById('t-status-select').value = 'cleared';
                 
-                // Atualizar categorias e contas
                 UI.updateCategorySelect(type);
                 UI.updateAccountSelect();
                 
-                // Configurar campo recorrente
                 document.getElementById('t-recurring').addEventListener('change', function() {
                     document.getElementById('t-recurring-group').style.display = 
                         this.checked ? 'block' : 'none';
@@ -3403,14 +3382,19 @@
                 document.getElementById('title-transaction').textContent = 'Agendar Transação';
             },
             
+            // CORREÇÃO: Corrigido o problema das casas decimais ao editar transação
             editTransaction: async (id) => {
                 const transaction = FinanceApp.data.transactions.find(t => t.id === id);
                 if (!transaction) return;
                 
                 document.getElementById('t-id').value = transaction.id;
                 document.getElementById('t-description').value = transaction.description;
-                document.getElementById('t-amount').value = (transaction.amount * 100).toFixed(0);
-                Utils.maskMoney({ value: (transaction.amount * 100).toFixed(0) });
+                
+                // CORREÇÃO: Usar a nova função para formatar o valor corretamente
+                const amountInput = document.getElementById('t-amount');
+                amountInput.value = Utils.formatNumberToCurrencyInput(transaction.amount);
+                Utils.maskMoney(amountInput);
+                
                 document.getElementById('t-date').value = transaction.date;
                 document.getElementById('t-notes').value = transaction.notes || '';
                 document.getElementById('t-payment-method').value = transaction.paymentMethod || 'dinheiro';
@@ -3421,18 +3405,14 @@
                 document.getElementById('t-status-select').value = transaction.status || 'cleared';
                 document.getElementById('t-transfer-to').value = transaction.transferTo || '';
                 
-                // Atualizar tipo
                 UI.setTransactionType(transaction.type);
                 
-                // Atualizar categoria select
                 await UI.updateCategorySelect(transaction.type);
                 document.getElementById('t-category').value = transaction.category;
                 
-                // Atualizar conta select
                 UI.updateAccountSelect();
                 document.getElementById('t-account').value = transaction.account;
                 
-                // Mostrar/ocultar grupo recorrente
                 document.getElementById('t-recurring-group').style.display = 
                     transaction.recurring ? 'block' : 'none';
                 
@@ -3440,7 +3420,6 @@
                 document.getElementById('delete-transaction-btn').style.display = 'block';
                 document.getElementById('toggle-status-btn').style.display = 'block';
                 
-                // Atualizar botão de alternar status
                 const toggleBtn = document.getElementById('toggle-status-btn');
                 if (transaction.status === 'pending') {
                     toggleBtn.textContent = 'Marcar como Efetivada';
@@ -3457,13 +3436,14 @@
                 document.getElementById('form-account').reset();
                 document.getElementById('a-id').value = '';
                 document.getElementById('a-color').value = '#10b981';
-                document.getElementById('a-balance').value = '0';
-                Utils.maskMoney({ value: '0' });
+                
+                // CORREÇÃO: Formatar corretamente o saldo inicial
+                const balanceInput = document.getElementById('a-balance');
+                balanceInput.value = '0,00';
+                Utils.maskMoney(balanceInput);
+                
                 document.getElementById('title-account').textContent = 'Nova Conta';
                 document.getElementById('delete-account-btn').style.display = 'none';
-                
-                // Configurar data atual
-                document.getElementById('a-date').value = Utils.getToday();
                 
                 UI.openModal('account');
             },
@@ -3476,8 +3456,12 @@
                 document.getElementById('a-name').value = account.name;
                 document.getElementById('a-type').value = account.type;
                 document.getElementById('a-color').value = account.color;
-                document.getElementById('a-balance').value = (account.balance * 100).toFixed(0);
-                Utils.maskMoney({ value: (account.balance * 100).toFixed(0) });
+                
+                // CORREÇÃO: Formatar corretamente o saldo
+                const balanceInput = document.getElementById('a-balance');
+                balanceInput.value = Utils.formatNumberToCurrencyInput(account.balance);
+                Utils.maskMoney(balanceInput);
+                
                 document.getElementById('a-number').value = account.number || '';
                 document.getElementById('a-institution').value = account.institution || '';
                 document.getElementById('a-notes').value = account.notes || '';
@@ -3489,11 +3473,9 @@
             },
             
             openTransferModal: () => {
-                // Limpar formulário
                 document.getElementById('form-transfer').reset();
                 document.getElementById('tf-date').value = Utils.getToday();
                 
-                // Preencher selects de contas
                 UI.updateAccountSelects();
                 
                 UI.openModal('transfer');
@@ -3502,7 +3484,6 @@
             setCategoryType: (type) => {
                 document.getElementById('c-type').value = type;
                 
-                // Atualizar classes dos botões
                 document.querySelectorAll('.type-option').forEach(opt => {
                     opt.classList.remove('active');
                 });
@@ -3516,7 +3497,6 @@
                 document.getElementById('c-color').value = '#10b981';
                 document.getElementById('title-category').textContent = 'Nova Categoria';
                 
-                // Resetar botões de tipo
                 document.querySelectorAll('.type-option').forEach(opt => {
                     opt.classList.remove('active');
                 });
@@ -3531,12 +3511,19 @@
                 
                 document.getElementById('c-id').value = category.id;
                 document.getElementById('c-name').value = category.name;
-                document.getElementById('c-budget').value = category.budget ? (category.budget * 100).toFixed(0) : '';
-                if (category.budget) Utils.maskMoney({ value: (category.budget * 100).toFixed(0) });
+                
+                // CORREÇÃO: Formatar corretamente o orçamento
+                const budgetInput = document.getElementById('c-budget');
+                if (category.budget) {
+                    budgetInput.value = Utils.formatNumberToCurrencyInput(category.budget);
+                    Utils.maskMoney(budgetInput);
+                } else {
+                    budgetInput.value = '';
+                }
+                
                 document.getElementById('c-icon').value = category.icon;
                 document.getElementById('c-color').value = category.color;
                 
-                // Configurar tipo
                 UI.setCategoryType(category.type);
                 
                 document.getElementById('title-category').textContent = 'Editar Categoria';
@@ -3547,7 +3534,12 @@
             openNewGoal: () => {
                 document.getElementById('form-goal').reset();
                 document.getElementById('g-id').value = '';
-                document.getElementById('g-current').value = '0';
+                
+                // CORREÇÃO: Formatar valores corretamente
+                const currentInput = document.getElementById('g-current');
+                currentInput.value = '0,00';
+                Utils.maskMoney(currentInput);
+                
                 document.getElementById('g-deadline').value = '';
                 document.getElementById('title-goal').textContent = 'Nova Meta';
                 
@@ -3560,10 +3552,21 @@
                 
                 document.getElementById('g-id').value = goal.id;
                 document.getElementById('g-name').value = goal.name;
-                document.getElementById('g-target').value = (goal.target * 100).toFixed(0);
-                Utils.maskMoney({ value: (goal.target * 100).toFixed(0) });
-                document.getElementById('g-current').value = (goal.current * 100).toFixed(0);
-                if (goal.current) Utils.maskMoney({ value: (goal.current * 100).toFixed(0) });
+                
+                // CORREÇÃO: Formatar valores corretamente
+                const targetInput = document.getElementById('g-target');
+                targetInput.value = Utils.formatNumberToCurrencyInput(goal.target);
+                Utils.maskMoney(targetInput);
+                
+                const currentInput = document.getElementById('g-current');
+                if (goal.current) {
+                    currentInput.value = Utils.formatNumberToCurrencyInput(goal.current);
+                    Utils.maskMoney(currentInput);
+                } else {
+                    currentInput.value = '0,00';
+                    Utils.maskMoney(currentInput);
+                }
+                
                 document.getElementById('g-deadline').value = goal.deadline || '';
                 document.getElementById('g-category').value = goal.category || 'outro';
                 document.getElementById('g-description').value = goal.description || '';
@@ -3671,7 +3674,7 @@
                         amount,
                         date,
                         account,
-                        category: type !== 'transfer' ? category : 'cat13', // Categoria de transferência
+                        category: type !== 'transfer' ? category : 'cat13',
                         transferTo,
                         paymentMethod,
                         notes,
@@ -3684,14 +3687,11 @@
                     };
                     
                     try {
-                        // Para transações recorrentes mestre, gerar ocorrências futuras
                         if (recurring && recurringCount > 0) {
                             const dates = Utils.generateRecurringDates(date, recurringFrequency, recurringCount, recurringEndDate);
                             
-                            // Salvar transação mestre
                             await DB.saveTransaction(transaction);
                             
-                            // Gerar transações futuras
                             for (let i = 1; i < dates.length; i++) {
                                 const childTransaction = {
                                     ...transaction,
@@ -3717,7 +3717,6 @@
                             await DB.saveTransaction(transaction);
                         }
                         
-                        // Atualizar dados locais
                         const index = FinanceApp.data.transactions.findIndex(t => t.id === id);
                         if (index >= 0) {
                             FinanceApp.data.transactions[index] = transaction;
@@ -3725,7 +3724,6 @@
                             FinanceApp.data.transactions.push(transaction);
                         }
                         
-                        // Atualizar saldo da conta se a transação for efetivada
                         if (status === 'cleared') {
                             await FinanceApp.account.updateBalance(transaction);
                         }
@@ -3750,18 +3748,15 @@
                     const transaction = FinanceApp.data.transactions.find(t => t.id === id);
                     if (!transaction) return;
                     
-                    // Alternar status entre pendente e efetivada
                     const newStatus = transaction.status === 'pending' ? 'cleared' : 'pending';
                     transaction.status = newStatus;
                     
                     try {
                         await DB.saveTransaction(transaction);
                         
-                        // Atualizar saldo da conta se mudou para efetivada
                         if (newStatus === 'cleared') {
                             await FinanceApp.account.updateBalance(transaction);
                         } else if (transaction.status === 'cleared') {
-                            // Reverter saldo se mudou para pendente
                             await FinanceApp.account.reverseBalance(transaction);
                         }
                         
@@ -3786,14 +3781,12 @@
                         try {
                             const transaction = FinanceApp.data.transactions.find(t => t.id === id);
                             
-                            // Reverter saldo da conta se a transação estiver efetivada
                             if (transaction && transaction.status === 'cleared') {
                                 await FinanceApp.account.reverseBalance(transaction);
                             }
                             
                             await DB.deleteTransaction(id);
                             
-                            // Remover dos dados locais
                             FinanceApp.data.transactions = FinanceApp.data.transactions.filter(t => t.id !== id);
                             
                             Utils.toast('Transação excluída!');
@@ -3839,7 +3832,6 @@
                     try {
                         await DB.saveAccount(account);
                         
-                        // Atualizar dados locais
                         const index = FinanceApp.data.accounts.findIndex(a => a.id === id);
                         if (index >= 0) {
                             FinanceApp.data.accounts[index] = account;
@@ -3874,12 +3866,10 @@
                             newBalance -= transaction.amount;
                             break;
                         case 'transfer':
-                            // Diminuir da conta de origem
                             newBalance -= transaction.amount;
                             account.balance = newBalance;
                             await DB.saveAccount(account);
                             
-                            // Aumentar na conta de destino
                             const toAccount = FinanceApp.data.accounts.find(a => a.id === transaction.transferTo);
                             if (toAccount) {
                                 toAccount.balance += transaction.amount;
@@ -3907,12 +3897,10 @@
                             newBalance += transaction.amount;
                             break;
                         case 'transfer':
-                            // Reverter na conta de origem
                             newBalance += transaction.amount;
                             account.balance = newBalance;
                             await DB.saveAccount(account);
                             
-                            // Reverter na conta de destino
                             const toAccount = FinanceApp.data.accounts.find(a => a.id === transaction.transferTo);
                             if (toAccount) {
                                 toAccount.balance -= transaction.amount;
@@ -3929,7 +3917,6 @@
                     const id = document.getElementById('a-id').value;
                     if (!id) return;
                     
-                    // Verificar se existem transações associadas a esta conta
                     const accountTransactions = FinanceApp.data.transactions.filter(t => 
                         t.account === id || t.transferTo === id
                     );
@@ -3944,7 +3931,6 @@
                         try {
                             await DB.deleteAccount(id);
                             
-                            // Remover dos dados locais
                             FinanceApp.data.accounts = FinanceApp.data.accounts.filter(a => a.id !== id);
                             
                             Utils.toast('Conta excluída!');
@@ -3987,7 +3973,6 @@
                         return;
                     }
                     
-                    // Verificar saldo suficiente
                     const fromAcc = FinanceApp.data.accounts.find(a => a.id === fromAccount);
                     if (fromAcc.balance < amount) {
                         Utils.toast('Saldo insuficiente na conta de origem', 'error');
@@ -4013,7 +3998,6 @@
                         await DB.saveTransaction(transaction);
                         FinanceApp.data.transactions.push(transaction);
                         
-                        // Atualizar saldos das contas
                         fromAcc.balance -= amount;
                         await DB.saveAccount(fromAcc);
                         
@@ -4021,7 +4005,6 @@
                         toAcc.balance += amount;
                         await DB.saveAccount(toAcc);
                         
-                        // Criar transação de taxa se houver
                         if (fee > 0) {
                             const feeTransaction = {
                                 id: Utils.id(),
@@ -4030,7 +4013,7 @@
                                 amount: fee,
                                 date,
                                 account: fromAccount,
-                                category: 'cat2', // Transporte como categoria padrão para taxas
+                                category: 'cat2',
                                 paymentMethod: 'transferencia',
                                 notes: `Taxa da transferência: ${description}`,
                                 status: 'cleared',
@@ -4040,7 +4023,6 @@
                             await DB.saveTransaction(feeTransaction);
                             FinanceApp.data.transactions.push(feeTransaction);
                             
-                            // Atualizar saldo da conta com a taxa
                             fromAcc.balance -= fee;
                             await DB.saveAccount(fromAcc);
                         }
@@ -4083,7 +4065,6 @@
                     try {
                         await DB.saveCategory(category);
                         
-                        // Atualizar dados locais
                         const index = FinanceApp.data.categories.findIndex(c => c.id === id);
                         if (index >= 0) {
                             FinanceApp.data.categories[index] = category;
@@ -4131,7 +4112,6 @@
                     try {
                         await DB.saveGoal(goal);
                         
-                        // Atualizar dados locais
                         const index = FinanceApp.data.goals.findIndex(g => g.id === id);
                         if (index >= 0) {
                             FinanceApp.data.goals[index] = goal;
@@ -4155,7 +4135,6 @@
                         try {
                             await DB.deleteGoal(id);
                             
-                            // Remover dos dados locais
                             FinanceApp.data.goals = FinanceApp.data.goals.filter(g => g.id !== id);
                             
                             Utils.toast('Meta excluída!');
@@ -4227,7 +4206,6 @@
                             const data = JSON.parse(e.target.result);
                             await DB.importAllData(data);
                             
-                            // Recarregar dados
                             await UI.loadInitialData();
                             UI.renderDashboard();
                             UI.renderTransactions();
@@ -4252,17 +4230,14 @@
                         try {
                             await DB.clearAllData();
                             
-                            // Limpar dados locais
                             FinanceApp.data.transactions = [];
                             FinanceApp.data.accounts = [];
                             FinanceApp.data.categories = [];
                             FinanceApp.data.goals = [];
                             
-                            // Recriar categorias e contas padrão
                             await UI.createDefaultCategories();
                             await UI.createDefaultAccounts();
                             
-                            // Recarregar dados
                             await UI.loadInitialData();
                             UI.renderDashboard();
                             UI.renderTransactions();
