@@ -453,7 +453,7 @@
             overflow-y: auto;
             z-index: 101;
         }
-        .modal-overlay.active .modal-sheet { transform: translateY(0); }
+        .modal-overlay.active + .modal-sheet { transform: translateY(0); }
 
         .sheet-handle {
             width: 40px; height: 4px; background: #cbd5e1;
@@ -845,7 +845,7 @@
                     <i class="fas fa-minus-circle"></i>
                     <span>Despesa</span>
                 </div>
-                <div class="quick-action" onclick="UI.openTransferModal()">
+                <div class="quick-action" onclick="UI.openNewTransaction('transfer')">
                     <i class="fas fa-exchange-alt"></i>
                     <span>Transferir</span>
                 </div>
@@ -1098,7 +1098,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Valor (R$)</label>
-                    <input type="text" id="t-amount" class="form-control" placeholder="0,00" required oninput="UI.maskMoney(this)">
+                    <input type="text" id="t-amount" class="form-control" placeholder="0,00" required oninput="Utils.maskMoney(this)">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Data</label>
@@ -1229,7 +1229,7 @@
 
             <div class="form-group">
                 <label class="form-label">Saldo Inicial (R$)</label>
-                <input type="text" id="a-balance" class="form-control" placeholder="0,00" required oninput="UI.maskMoney(this)">
+                <input type="text" id="a-balance" class="form-control" placeholder="0,00" required oninput="Utils.maskMoney(this)">
             </div>
 
             <div class="form-group">
@@ -1278,7 +1278,7 @@
 
             <div class="form-group">
                 <label class="form-label">Orçamento Mensal (Opcional)</label>
-                <input type="text" id="c-budget" class="form-control" placeholder="0,00" oninput="UI.maskMoney(this)">
+                <input type="text" id="c-budget" class="form-control" placeholder="0,00" oninput="Utils.maskMoney(this)">
             </div>
 
             <div class="form-group">
@@ -1303,7 +1303,7 @@
 
             <div class="form-group">
                 <label class="form-label">Cor (em hexadecimal)</label>
-                    <input type="color" id="c-color" class="form-control" style="height: 50px;" value="#10b981">
+                <input type="color" id="c-color" class="form-control" style="height: 50px;" value="#10b981">
             </div>
 
             <button type="submit" class="btn-block">Salvar Categoria</button>
@@ -1326,13 +1326,13 @@
 
             <div class="form-group">
                 <label class="form-label">Valor da Meta (R$)</label>
-                <input type="text" id="g-target" class="form-control" placeholder="0,00" required oninput="UI.maskMoney(this)">
+                <input type="text" id="g-target" class="form-control" placeholder="0,00" required oninput="Utils.maskMoney(this)">
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Valor Atual (R$)</label>
-                    <input type="text" id="g-current" class="form-control" placeholder="0,00" oninput="UI.maskMoney(this)">
+                    <input type="text" id="g-current" class="form-control" placeholder="0,00" oninput="Utils.maskMoney(this)">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Data Limite</label>
@@ -1399,7 +1399,7 @@
 
             <div class="form-group">
                 <label class="form-label">Valor (R$)</label>
-                <input type="text" id="tf-amount" class="form-control" placeholder="0,00" required oninput="UI.maskMoney(this)">
+                <input type="text" id="tf-amount" class="form-control" placeholder="0,00" required oninput="Utils.maskMoney(this)">
             </div>
 
             <div class="form-group">
@@ -1409,7 +1409,7 @@
 
             <div class="form-group">
                 <label class="form-label">Taxa (opcional)</label>
-                <input type="text" id="tf-fee" class="form-control" placeholder="0,00" oninput="UI.maskMoney(this)">
+                <input type="text" id="tf-fee" class="form-control" placeholder="0,00" oninput="Utils.maskMoney(this)">
             </div>
 
             <div class="form-group">
@@ -1481,11 +1481,8 @@
             },
             
             parseCurrency: (str) => {
-                if (!str || str === '') return 0;
-                // Remove todos os caracteres não numéricos exceto vírgula e ponto
-                let cleanStr = str.toString().replace(/[^\d,-]/g, '').replace(/\./g, '').replace(',', '.');
-                const num = parseFloat(cleanStr);
-                return isNaN(num) ? 0 : Math.round(num * 100) / 100;
+                if (!str) return 0;
+                return parseFloat(str.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()) || 0;
             },
             
             formatDate: (dateStr) => {
@@ -1549,14 +1546,10 @@
             
             maskMoney: (input) => {
                 let v = input.value.replace(/\D/g, "");
-                v = (parseFloat(v) / 100).toFixed(2);
+                v = (v / 100).toFixed(2) + "";
                 v = v.replace(".", ",");
                 v = v.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
                 input.value = v;
-            },
-            
-            unmaskMoney: (str) => {
-                return str.toString().replace(/[^\d,-]/g, '').replace(/\./g, '').replace(',', '.');
             },
             
             toast: (msg, type = 'success') => {
@@ -1622,13 +1615,14 @@
                 const dates = [];
                 let currentDate = new Date(startDate);
                 
-                // Gerar data inicial
-                dates.push(currentDate.toISOString().split('T')[0]);
-                
-                // Calcular limite máximo de repetições
-                const maxCount = count === 0 ? 365 : count;
-                
-                for (let i = 1; i < maxCount; i++) {
+                for (let i = 0; i < (count === 0 ? 365 : count); i++) { // Máximo de 365 repetições se for indeterminado
+                    dates.push(currentDate.toISOString().split('T')[0]);
+                    
+                    // Parar se atingiu a data final
+                    if (endDate && currentDate >= new Date(endDate)) {
+                        break;
+                    }
+                    
                     // Avançar para próxima data baseado na frequência
                     switch(frequency) {
                         case 'daily':
@@ -1644,46 +1638,16 @@
                             currentDate.setFullYear(currentDate.getFullYear() + 1);
                             break;
                     }
-                    
-                    const nextDateStr = currentDate.toISOString().split('T')[0];
-                    
-                    // Parar se atingiu a data final
-                    if (endDate && nextDateStr > endDate) {
-                        break;
-                    }
-                    
-                    dates.push(nextDateStr);
                 }
                 
                 return dates;
-            },
-            
-            getNextRecurringDate: (lastDate, frequency) => {
-                const nextDate = new Date(lastDate);
-                
-                switch(frequency) {
-                    case 'daily':
-                        nextDate.setDate(nextDate.getDate() + 1);
-                        break;
-                    case 'weekly':
-                        nextDate.setDate(nextDate.getDate() + 7);
-                        break;
-                    case 'monthly':
-                        nextDate.setMonth(nextDate.getMonth() + 1);
-                        break;
-                    case 'yearly':
-                        nextDate.setFullYear(nextDate.getFullYear() + 1);
-                        break;
-                }
-                
-                return nextDate.toISOString().split('T')[0];
             }
         };
 
         // --- INDEXEDDB MANAGER ---
         const DB = {
             name: 'FinancaProDB',
-            version: 4,
+            version: 4, // Incrementado para incluir contas
             db: null,
             
             init: async () => {
@@ -1699,6 +1663,7 @@
                     request.onupgradeneeded = (event) => {
                         const db = event.target.result;
                         
+                        // Criar object stores
                         if (!db.objectStoreNames.contains('transactions')) {
                             const transactionStore = db.createObjectStore('transactions', { keyPath: 'id' });
                             transactionStore.createIndex('date', 'date', { unique: false });
@@ -1707,7 +1672,6 @@
                             transactionStore.createIndex('status', 'status', { unique: false });
                             transactionStore.createIndex('account', 'account', { unique: false });
                             transactionStore.createIndex('recurringParent', 'recurringParent', { unique: false });
-                            transactionStore.createIndex('recurring', 'recurring', { unique: false });
                         }
                         
                         if (!db.objectStoreNames.contains('accounts')) {
@@ -1728,15 +1692,11 @@
                         if (!db.objectStoreNames.contains('settings')) {
                             db.createObjectStore('settings', { keyPath: 'id' });
                         }
-                        
-                        // Adicionar store para tracking de processamento de recorrentes
-                        if (!db.objectStoreNames.contains('recurringProcess')) {
-                            const recurringStore = db.createObjectStore('recurringProcess', { keyPath: 'id' });
-                        }
                     };
                 });
             },
             
+            // Métodos para transações
             getAllTransactions: async () => {
                 return new Promise((resolve, reject) => {
                     const transaction = DB.db.transaction(['transactions'], 'readonly');
@@ -1770,6 +1730,7 @@
                 });
             },
             
+            // Métodos para contas
             getAllAccounts: async () => {
                 return new Promise((resolve, reject) => {
                     const transaction = DB.db.transaction(['accounts'], 'readonly');
@@ -1803,6 +1764,7 @@
                 });
             },
             
+            // Métodos para categorias
             getAllCategories: async () => {
                 return new Promise((resolve, reject) => {
                     const transaction = DB.db.transaction(['categories'], 'readonly');
@@ -1825,6 +1787,7 @@
                 });
             },
             
+            // Métodos para metas
             getAllGoals: async () => {
                 return new Promise((resolve, reject) => {
                     const transaction = DB.db.transaction(['goals'], 'readonly');
@@ -1858,6 +1821,7 @@
                 });
             },
             
+            // Métodos para configurações
             getSettings: async () => {
                 return new Promise((resolve, reject) => {
                     const transaction = DB.db.transaction(['settings'], 'readonly');
@@ -1885,32 +1849,7 @@
                 });
             },
             
-            getRecurringProcessDate: async () => {
-                return new Promise((resolve, reject) => {
-                    const transaction = DB.db.transaction(['recurringProcess'], 'readonly');
-                    const store = transaction.objectStore('recurringProcess');
-                    const request = store.get('lastProcessDate');
-                    
-                    request.onsuccess = () => resolve(request.result ? request.result.value : null);
-                    request.onerror = () => reject(request.error);
-                });
-            },
-            
-            setRecurringProcessDate: async (date) => {
-                return new Promise((resolve, reject) => {
-                    const tx = DB.db.transaction(['recurringProcess'], 'readwrite');
-                    const store = tx.objectStore('recurringProcess');
-                    const request = store.put({
-                        id: 'lastProcessDate',
-                        value: date,
-                        updatedAt: new Date().toISOString()
-                    });
-                    
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-            },
-            
+            // Backup e restauração
             exportAllData: async () => {
                 const transactions = await DB.getAllTransactions();
                 const accounts = await DB.getAllAccounts();
@@ -1929,24 +1868,30 @@
             },
             
             importAllData: async (data) => {
+                // Limpar dados existentes
                 await DB.clearAllData();
                 
+                // Importar contas
                 for (const account of data.accounts || []) {
                     await DB.saveAccount(account);
                 }
                 
+                // Importar transações
                 for (const transaction of data.transactions || []) {
                     await DB.saveTransaction(transaction);
                 }
                 
+                // Importar categorias
                 for (const category of data.categories || []) {
                     await DB.saveCategory(category);
                 }
                 
+                // Importar metas
                 for (const goal of data.goals || []) {
                     await DB.saveGoal(goal);
                 }
                 
+                // Importar configurações
                 if (data.settings) {
                     await DB.saveSettings(data.settings);
                 }
@@ -1955,7 +1900,7 @@
             clearAllData: async () => {
                 return new Promise((resolve, reject) => {
                     const tx = DB.db.transaction(
-                        ['transactions', 'accounts', 'categories', 'goals', 'settings', 'recurringProcess'], 
+                        ['transactions', 'accounts', 'categories', 'goals', 'settings'], 
                         'readwrite'
                     );
                     
@@ -1964,7 +1909,6 @@
                     tx.objectStore('categories').clear();
                     tx.objectStore('goals').clear();
                     tx.objectStore('settings').clear();
-                    tx.objectStore('recurringProcess').clear();
                     
                     tx.oncomplete = () => resolve();
                     tx.onerror = () => reject(tx.error);
@@ -2007,14 +1951,11 @@
                         await UI.createDefaultAccounts();
                     }
                     
-                    // Processar transações recorrentes automaticamente
-                    await FinanceApp.recurring.processRecurringTransactions();
-                    
                     // Verificar transações pendentes futuras
                     UI.checkFuturePendingTransactions();
                     
-                    // Inicializar mask money
-                    UI.initMoneyMask();
+                    // Processar transações recorrentes
+                    UI.processRecurringTransactions();
                     
                 } catch (error) {
                     console.error('Erro ao inicializar:', error);
@@ -2023,6 +1964,7 @@
             },
             
             loadInitialData: async () => {
+                // Carregar dados iniciais
                 FinanceApp.data.transactions = await DB.getAllTransactions();
                 FinanceApp.data.accounts = await DB.getAllAccounts();
                 FinanceApp.data.categories = await DB.getAllCategories();
@@ -2075,53 +2017,91 @@
                 Utils.toast('Categorias padrão criadas');
             },
             
+            processRecurringTransactions: async () => {
+                const today = Utils.getToday();
+                const transactions = FinanceApp.data.transactions;
+                
+                // Encontrar transações recorrentes que precisam ser geradas
+                const recurringTransactions = transactions.filter(t => 
+                    t.recurring && t.recurringParent === undefined
+                );
+                
+                for (const parentTransaction of recurringTransactions) {
+                    // Verificar se já gerou todas as ocorrências
+                    const childCount = transactions.filter(t => 
+                        t.recurringParent === parentTransaction.id
+                    ).length;
+                    
+                    const maxCount = parentTransaction.recurringCount || 0;
+                    if (maxCount > 0 && childCount >= maxCount) {
+                        continue; // Já gerou todas as ocorrências
+                    }
+                    
+                    // Verificar data final
+                    if (parentTransaction.recurringEndDate && parentTransaction.recurringEndDate < today) {
+                        continue; // Data final já passou
+                    }
+                    
+                    // Gerar próximas datas
+                    const startDate = new Date(parentTransaction.date);
+                    const frequency = parentTransaction.recurringFrequency || 'monthly';
+                    
+                    // Verificar se precisa gerar nova ocorrência
+                    let nextDate = new Date(startDate);
+                    for (let i = 0; i <= childCount; i++) {
+                        switch(frequency) {
+                            case 'daily':
+                                nextDate.setDate(nextDate.getDate() + 1);
+                                break;
+                            case 'weekly':
+                                nextDate.setDate(nextDate.getDate() + 7);
+                                break;
+                            case 'monthly':
+                                nextDate.setMonth(nextDate.getMonth() + 1);
+                                break;
+                            case 'yearly':
+                                nextDate.setFullYear(nextDate.getFullYear() + 1);
+                                break;
+                        }
+                    }
+                    
+                    const nextDateStr = nextDate.toISOString().split('T')[0];
+                    
+                    // Se a próxima data já passou ou é hoje, criar a transação
+                    if (nextDateStr <= today) {
+                        const newTransaction = {
+                            ...parentTransaction,
+                            id: Utils.id(),
+                            date: nextDateStr,
+                            status: 'pending', // Nova transação recorrente começa como pendente
+                            recurringParent: parentTransaction.id,
+                            createdAt: new Date().toISOString()
+                        };
+                        
+                        // Remover campos específicos do pai
+                        delete newTransaction.recurring;
+                        delete newTransaction.recurringFrequency;
+                        delete newTransaction.recurringCount;
+                        delete newTransaction.recurringEndDate;
+                        
+                        await DB.saveTransaction(newTransaction);
+                        FinanceApp.data.transactions.push(newTransaction);
+                        
+                        Utils.toast(`Transação recorrente "${parentTransaction.description}" gerada para ${Utils.formatDate(nextDateStr)}`);
+                    }
+                }
+            },
+            
             checkFuturePendingTransactions: () => {
                 const today = Utils.getToday();
                 const transactions = FinanceApp.data.transactions;
                 
                 transactions.forEach(transaction => {
                     if (transaction.status === 'pending' && transaction.date <= today) {
+                        // Transação pendente com data vencida
                         console.log(`Transação vencida: ${transaction.description}`);
                     }
                 });
-            },
-            
-            initMoneyMask: () => {
-                // Adicionar evento para todos os inputs de dinheiro
-                document.addEventListener('input', (e) => {
-                    if (e.target.matches('input[type="text"][oninput*="maskMoney"], input[id*="amount"], input[id*="balance"], input[id*="budget"], input[id*="target"], input[id*="current"]')) {
-                        UI.maskMoney(e.target);
-                    }
-                });
-            },
-            
-            maskMoney: (input) => {
-                let value = input.value.replace(/\D/g, '');
-                if (value === '') {
-                    input.value = '';
-                    return;
-                }
-                
-                // Remove zeros à esquerda
-                value = value.replace(/^0+/, '');
-                if (value === '') value = '0';
-                
-                // Adiciona zeros para centavos se necessário
-                while (value.length < 3) {
-                    value = '0' + value;
-                }
-                
-                const integerPart = value.slice(0, -2);
-                const decimalPart = value.slice(-2);
-                
-                let formatted = '';
-                if (integerPart) {
-                    formatted = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-                } else {
-                    formatted = '0';
-                }
-                
-                input.value = formatted + ',' + decimalPart;
             },
             
             switchTab: (el) => {
@@ -2165,12 +2145,15 @@
             setReportTab: (tab) => {
                 UI.reportTab = tab;
                 
+                // Atualizar botões da tab
                 document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
                 event.target.classList.add('active');
                 
+                // Mostrar apenas a tab selecionada
                 document.querySelectorAll('.report-tab').forEach(t => t.style.display = 'none');
                 document.getElementById(`report-${tab}`).style.display = 'block';
                 
+                // Renderizar gráficos específicos da tab
                 if (tab === 'accounts') {
                     UI.renderAccountsChart();
                     UI.renderBalanceHistoryChart();
@@ -2310,6 +2293,7 @@
                     return;
                 }
                 
+                // Ordenar por saldo (maior primeiro)
                 const sortedAccounts = [...accounts].sort((a, b) => b.balance - a.balance);
                 
                 list.innerHTML = sortedAccounts.slice(0, 3).map(account => UI.createAccountCard(account)).join('');
@@ -2848,7 +2832,7 @@
                 
                 // Cores para as categorias
                 const backgroundColors = labels.map((_, index) => {
-                    const hue = (index * 137.5) % 360;
+                    const hue = (index * 137.5) % 360; // Distribuição de cores
                     return `hsl(${hue}, 70%, 60%)`;
                 });
                 
@@ -3390,8 +3374,6 @@
                 document.getElementById('title-transaction').textContent = 'Nova Transação';
                 document.getElementById('delete-transaction-btn').style.display = 'none';
                 document.getElementById('toggle-status-btn').style.display = 'none';
-                document.getElementById('t-recurring-group').style.display = 'none';
-                document.getElementById('t-recurring').checked = false;
                 
                 // Configurar tipo
                 UI.setTransactionType(type);
@@ -3406,8 +3388,11 @@
                 UI.updateCategorySelect(type);
                 UI.updateAccountSelect();
                 
-                // Limpar campo de valor
-                document.getElementById('t-amount').value = '';
+                // Configurar campo recorrente
+                document.getElementById('t-recurring').addEventListener('change', function() {
+                    document.getElementById('t-recurring-group').style.display = 
+                        this.checked ? 'block' : 'none';
+                });
                 
                 UI.openModal('transaction');
             },
@@ -3424,14 +3409,8 @@
                 
                 document.getElementById('t-id').value = transaction.id;
                 document.getElementById('t-description').value = transaction.description;
-                
-                // Formatar o valor corretamente para exibição
-                const amountFormatted = (transaction.amount).toFixed(2).replace('.', ',');
-                const amountParts = amountFormatted.split(',');
-                const integerPart = amountParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-                const decimalPart = amountParts[1] || '00';
-                document.getElementById('t-amount').value = `${integerPart},${decimalPart}`;
-                
+                document.getElementById('t-amount').value = (transaction.amount * 100).toFixed(0);
+                Utils.maskMoney({ value: (transaction.amount * 100).toFixed(0) });
                 document.getElementById('t-date').value = transaction.date;
                 document.getElementById('t-notes').value = transaction.notes || '';
                 document.getElementById('t-payment-method').value = transaction.paymentMethod || 'dinheiro';
@@ -3478,9 +3457,13 @@
                 document.getElementById('form-account').reset();
                 document.getElementById('a-id').value = '';
                 document.getElementById('a-color').value = '#10b981';
-                document.getElementById('a-balance').value = '';
+                document.getElementById('a-balance').value = '0';
+                Utils.maskMoney({ value: '0' });
                 document.getElementById('title-account').textContent = 'Nova Conta';
                 document.getElementById('delete-account-btn').style.display = 'none';
+                
+                // Configurar data atual
+                document.getElementById('a-date').value = Utils.getToday();
                 
                 UI.openModal('account');
             },
@@ -3493,14 +3476,8 @@
                 document.getElementById('a-name').value = account.name;
                 document.getElementById('a-type').value = account.type;
                 document.getElementById('a-color').value = account.color;
-                
-                // Formatar o saldo corretamente para exibição
-                const balanceFormatted = (account.balance).toFixed(2).replace('.', ',');
-                const balanceParts = balanceFormatted.split(',');
-                const integerPart = balanceParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-                const decimalPart = balanceParts[1] || '00';
-                document.getElementById('a-balance').value = `${integerPart},${decimalPart}`;
-                
+                document.getElementById('a-balance').value = (account.balance * 100).toFixed(0);
+                Utils.maskMoney({ value: (account.balance * 100).toFixed(0) });
                 document.getElementById('a-number').value = account.number || '';
                 document.getElementById('a-institution').value = account.institution || '';
                 document.getElementById('a-notes').value = account.notes || '';
@@ -3515,8 +3492,6 @@
                 // Limpar formulário
                 document.getElementById('form-transfer').reset();
                 document.getElementById('tf-date').value = Utils.getToday();
-                document.getElementById('tf-amount').value = '';
-                document.getElementById('tf-fee').value = '';
                 
                 // Preencher selects de contas
                 UI.updateAccountSelects();
@@ -3539,7 +3514,6 @@
                 document.getElementById('c-id').value = '';
                 document.getElementById('c-type').value = 'expense';
                 document.getElementById('c-color').value = '#10b981';
-                document.getElementById('c-budget').value = '';
                 document.getElementById('title-category').textContent = 'Nova Categoria';
                 
                 // Resetar botões de tipo
@@ -3557,17 +3531,8 @@
                 
                 document.getElementById('c-id').value = category.id;
                 document.getElementById('c-name').value = category.name;
-                
-                if (category.budget > 0) {
-                    const budgetFormatted = (category.budget).toFixed(2).replace('.', ',');
-                    const budgetParts = budgetFormatted.split(',');
-                    const integerPart = budgetParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-                    const decimalPart = budgetParts[1] || '00';
-                    document.getElementById('c-budget').value = `${integerPart},${decimalPart}`;
-                } else {
-                    document.getElementById('c-budget').value = '';
-                }
-                
+                document.getElementById('c-budget').value = category.budget ? (category.budget * 100).toFixed(0) : '';
+                if (category.budget) Utils.maskMoney({ value: (category.budget * 100).toFixed(0) });
                 document.getElementById('c-icon').value = category.icon;
                 document.getElementById('c-color').value = category.color;
                 
@@ -3582,8 +3547,7 @@
             openNewGoal: () => {
                 document.getElementById('form-goal').reset();
                 document.getElementById('g-id').value = '';
-                document.getElementById('g-current').value = '';
-                document.getElementById('g-target').value = '';
+                document.getElementById('g-current').value = '0';
                 document.getElementById('g-deadline').value = '';
                 document.getElementById('title-goal').textContent = 'Nova Meta';
                 
@@ -3596,20 +3560,10 @@
                 
                 document.getElementById('g-id').value = goal.id;
                 document.getElementById('g-name').value = goal.name;
-                
-                // Formatar valores corretamente
-                const targetFormatted = (goal.target).toFixed(2).replace('.', ',');
-                const targetParts = targetFormatted.split(',');
-                const targetIntegerPart = targetParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-                const targetDecimalPart = targetParts[1] || '00';
-                document.getElementById('g-target').value = `${targetIntegerPart},${targetDecimalPart}`;
-                
-                const currentFormatted = (goal.current).toFixed(2).replace('.', ',');
-                const currentParts = currentFormatted.split(',');
-                const currentIntegerPart = currentParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-                const currentDecimalPart = currentParts[1] || '00';
-                document.getElementById('g-current').value = `${currentIntegerPart},${currentDecimalPart}`;
-                
+                document.getElementById('g-target').value = (goal.target * 100).toFixed(0);
+                Utils.maskMoney({ value: (goal.target * 100).toFixed(0) });
+                document.getElementById('g-current').value = (goal.current * 100).toFixed(0);
+                if (goal.current) Utils.maskMoney({ value: (goal.current * 100).toFixed(0) });
                 document.getElementById('g-deadline').value = goal.deadline || '';
                 document.getElementById('g-category').value = goal.category || 'outro';
                 document.getElementById('g-description').value = goal.description || '';
@@ -3670,126 +3624,6 @@
                 UI.renderTransactions();
             },
             
-            recurring: {
-                processRecurringTransactions: async () => {
-                    try {
-                        const today = Utils.getToday();
-                        const lastProcessDate = await DB.getRecurringProcessDate();
-                        
-                        // Se já processamos hoje, não processar novamente
-                        if (lastProcessDate === today) {
-                            return;
-                        }
-                        
-                        const transactions = FinanceApp.data.transactions;
-                        
-                        // Encontrar transações recorrentes mestre
-                        const recurringTransactions = transactions.filter(t => 
-                            t.recurring && !t.recurringParent
-                        );
-                        
-                        let createdCount = 0;
-                        
-                        for (const parentTransaction of recurringTransactions) {
-                            // Verificar se precisa gerar nova ocorrência
-                            const nextDate = await FinanceApp.recurring.getNextRecurringDate(parentTransaction);
-                            
-                            if (nextDate && nextDate <= today) {
-                                // Gerar nova transação recorrente
-                                const newTransaction = await FinanceApp.recurring.generateNextRecurring(parentTransaction, nextDate);
-                                
-                                if (newTransaction) {
-                                    await DB.saveTransaction(newTransaction);
-                                    FinanceApp.data.transactions.push(newTransaction);
-                                    createdCount++;
-                                    
-                                    console.log(`Transação recorrente gerada: ${parentTransaction.description} para ${nextDate}`);
-                                }
-                            }
-                        }
-                        
-                        // Atualizar data do último processamento
-                        if (createdCount > 0 || !lastProcessDate) {
-                            await DB.setRecurringProcessDate(today);
-                            
-                            if (createdCount > 0) {
-                                Utils.toast(`${createdCount} transação(ões) recorrente(s) gerada(s)`);
-                                UI.renderDashboard();
-                                UI.renderTransactions();
-                            }
-                        }
-                        
-                    } catch (error) {
-                        console.error('Erro ao processar transações recorrentes:', error);
-                    }
-                },
-                
-                getNextRecurringDate: async (parentTransaction) => {
-                    const transactions = FinanceApp.data.transactions;
-                    
-                    // Encontrar a última transação gerada desta recorrente
-                    const childTransactions = transactions.filter(t => 
-                        t.recurringParent === parentTransaction.id
-                    ).sort((a, b) => new Date(b.date) - new Date(a.date));
-                    
-                    let lastDate = parentTransaction.date;
-                    
-                    if (childTransactions.length > 0) {
-                        lastDate = childTransactions[0].date;
-                    }
-                    
-                    // Calcular próxima data baseado na frequência
-                    const frequency = parentTransaction.recurringFrequency || 'monthly';
-                    let nextDate = Utils.getNextRecurringDate(lastDate, frequency);
-                    
-                    // Verificar limite de repetições
-                    const maxCount = parentTransaction.recurringCount || 0;
-                    if (maxCount > 0) {
-                        const totalGenerated = childTransactions.length + 1; // +1 para a transação mestre
-                        if (totalGenerated >= maxCount) {
-                            return null; // Já gerou todas as repetições
-                        }
-                    }
-                    
-                    // Verificar data final
-                    if (parentTransaction.recurringEndDate && nextDate > parentTransaction.recurringEndDate) {
-                        return null;
-                    }
-                    
-                    return nextDate;
-                },
-                
-                generateNextRecurring: async (parentTransaction, nextDate) => {
-                    // Verificar se já existe transação nesta data
-                    const existing = FinanceApp.data.transactions.find(t => 
-                        t.recurringParent === parentTransaction.id && 
-                        t.date === nextDate
-                    );
-                    
-                    if (existing) {
-                        return null; // Já existe transação nesta data
-                    }
-                    
-                    // Criar nova transação
-                    const newTransaction = {
-                        ...parentTransaction,
-                        id: Utils.id(),
-                        date: nextDate,
-                        status: 'pending', // Nova transação recorrente começa como pendente
-                        recurringParent: parentTransaction.id,
-                        createdAt: new Date().toISOString()
-                    };
-                    
-                    // Remover campos específicos do pai
-                    delete newTransaction.recurring;
-                    delete newTransaction.recurringFrequency;
-                    delete newTransaction.recurringCount;
-                    delete newTransaction.recurringEndDate;
-                    
-                    return newTransaction;
-                }
-            },
-            
             transaction: {
                 save: async (e) => {
                     e.preventDefault();
@@ -3797,11 +3631,7 @@
                     const id = document.getElementById('t-id').value || Utils.id();
                     const type = document.getElementById('t-type').value;
                     const description = document.getElementById('t-description').value;
-                    
-                    // Parse do valor corretamente
-                    const amountInput = document.getElementById('t-amount').value;
-                    const amount = Utils.parseCurrency(amountInput);
-                    
+                    const amount = Utils.parseCurrency(document.getElementById('t-amount').value);
                     const date = document.getElementById('t-date').value;
                     const account = document.getElementById('t-account').value;
                     const category = type !== 'transfer' ? document.getElementById('t-category').value : null;
@@ -3813,11 +3643,6 @@
                     const recurringFrequency = recurring ? document.getElementById('t-recurring-frequency').value : null;
                     const recurringCount = recurring ? parseInt(document.getElementById('t-recurring-count').value) : 0;
                     const recurringEndDate = recurring ? document.getElementById('t-recurring-end-date').value || null : null;
-                    
-                    if (amount <= 0) {
-                        Utils.toast('Informe um valor válido maior que zero', 'error');
-                        return;
-                    }
                     
                     if (!account) {
                         Utils.toast('Selecione uma conta', 'error');
@@ -3846,7 +3671,7 @@
                         amount,
                         date,
                         account,
-                        category: type !== 'transfer' ? category : 'cat13',
+                        category: type !== 'transfer' ? category : 'cat13', // Categoria de transferência
                         transferTo,
                         paymentMethod,
                         notes,
@@ -3855,7 +3680,7 @@
                         recurringFrequency,
                         recurringCount,
                         recurringEndDate,
-                        updatedAt: new Date().toISOString()
+                        createdAt: new Date().toISOString()
                     };
                     
                     try {
@@ -3928,7 +3753,6 @@
                     // Alternar status entre pendente e efetivada
                     const newStatus = transaction.status === 'pending' ? 'cleared' : 'pending';
                     transaction.status = newStatus;
-                    transaction.updatedAt = new Date().toISOString();
                     
                     try {
                         await DB.saveTransaction(transaction);
@@ -3995,11 +3819,7 @@
                     const name = document.getElementById('a-name').value;
                     const type = document.getElementById('a-type').value;
                     const color = document.getElementById('a-color').value;
-                    
-                    // Parse do saldo corretamente
-                    const balanceInput = document.getElementById('a-balance').value;
-                    const balance = Utils.parseCurrency(balanceInput);
-                    
+                    const balance = Utils.parseCurrency(document.getElementById('a-balance').value);
                     const number = document.getElementById('a-number').value;
                     const institution = document.getElementById('a-institution').value;
                     const notes = document.getElementById('a-notes').value;
@@ -4013,7 +3833,7 @@
                         number,
                         institution,
                         notes,
-                        updatedAt: new Date().toISOString()
+                        createdAt: new Date().toISOString()
                     };
                     
                     try {
@@ -4147,16 +3967,9 @@
                     
                     const fromAccount = document.getElementById('tf-from').value;
                     const toAccount = document.getElementById('tf-to').value;
-                    
-                    // Parse dos valores corretamente
-                    const amountInput = document.getElementById('tf-amount').value;
-                    const amount = Utils.parseCurrency(amountInput);
-                    
+                    const amount = Utils.parseCurrency(document.getElementById('tf-amount').value);
                     const date = document.getElementById('tf-date').value;
-                    
-                    const feeInput = document.getElementById('tf-fee').value;
-                    const fee = Utils.parseCurrency(feeInput);
-                    
+                    const fee = Utils.parseCurrency(document.getElementById('tf-fee').value);
                     const description = document.getElementById('tf-description').value || 'Transferência entre contas';
                     
                     if (!fromAccount || !toAccount) {
@@ -4217,7 +4030,7 @@
                                 amount: fee,
                                 date,
                                 account: fromAccount,
-                                category: 'cat2',
+                                category: 'cat2', // Transporte como categoria padrão para taxas
                                 paymentMethod: 'transferencia',
                                 notes: `Taxa da transferência: ${description}`,
                                 status: 'cleared',
@@ -4253,11 +4066,7 @@
                     const id = document.getElementById('c-id').value || Utils.id();
                     const type = document.getElementById('c-type').value;
                     const name = document.getElementById('c-name').value;
-                    
-                    // Parse do orçamento corretamente
-                    const budgetInput = document.getElementById('c-budget').value;
-                    const budget = Utils.parseCurrency(budgetInput);
-                    
+                    const budget = Utils.parseCurrency(document.getElementById('c-budget').value);
                     const icon = document.getElementById('c-icon').value;
                     const color = document.getElementById('c-color').value;
                     
@@ -4268,7 +4077,7 @@
                         budget,
                         icon,
                         color,
-                        updatedAt: new Date().toISOString()
+                        createdAt: new Date().toISOString()
                     };
                     
                     try {
@@ -4300,14 +4109,8 @@
                     
                     const id = document.getElementById('g-id').value || Utils.id();
                     const name = document.getElementById('g-name').value;
-                    
-                    // Parse dos valores corretamente
-                    const targetInput = document.getElementById('g-target').value;
-                    const target = Utils.parseCurrency(targetInput);
-                    
-                    const currentInput = document.getElementById('g-current').value;
-                    const current = Utils.parseCurrency(currentInput);
-                    
+                    const target = Utils.parseCurrency(document.getElementById('g-target').value);
+                    const current = Utils.parseCurrency(document.getElementById('g-current').value);
                     const deadline = document.getElementById('g-deadline').value || null;
                     const category = document.getElementById('g-category').value;
                     const description = document.getElementById('g-description').value;
@@ -4322,7 +4125,7 @@
                         category,
                         description,
                         icon,
-                        updatedAt: new Date().toISOString()
+                        createdAt: new Date().toISOString()
                     };
                     
                     try {
@@ -4375,8 +4178,7 @@
                         id: 'user_settings',
                         name: document.getElementById('s-name').value,
                         currency: document.getElementById('s-currency').value,
-                        closingDay: parseInt(document.getElementById('s-closing-day').value),
-                        updatedAt: new Date().toISOString()
+                        closingDay: parseInt(document.getElementById('s-closing-day').value)
                     };
                     
                     try {
