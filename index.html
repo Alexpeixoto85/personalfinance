@@ -1482,11 +1482,9 @@
             
             parseCurrency: (str) => {
                 if (!str) return 0;
-                // Converte string formatada "1.234,56" para número 1234.56
                 const cleanStr = str.toString().replace(/[^\d,-]/g, '').replace(',', '.');
                 const parts = cleanStr.split('.');
                 if (parts.length > 1) {
-                    // Se tiver ponto decimal, mantém a parte decimal
                     const integerPart = parts.slice(0, -1).join('');
                     const decimalPart = parts[parts.length - 1];
                     return parseFloat(integerPart + '.' + decimalPart);
@@ -1495,11 +1493,8 @@
             },
             
             formatNumberToCurrencyInput: (num) => {
-                // Converte número para string formatada para input
                 if (!num && num !== 0) return '';
-                // Usa 2 casas decimais
                 const fixed = num.toFixed(2);
-                // Formata como "1234.56"
                 return fixed.replace('.', ',');
             },
             
@@ -1632,50 +1627,17 @@
             generateRecurringDates: (startDate, frequency, count, endDate) => {
                 const dates = [];
                 let currentDate = new Date(startDate);
-                const today = new Date();
                 
-                // Se for data futura, começa da data atual
-                if (currentDate > today) {
-                    // Ajusta a data inicial para a próxima ocorrência
-                    while (currentDate > today) {
-                        const prevDate = new Date(currentDate);
-                        switch(frequency) {
-                            case 'daily':
-                                currentDate.setDate(currentDate.getDate() - 1);
-                                break;
-                            case 'weekly':
-                                currentDate.setDate(currentDate.getDate() - 7);
-                                break;
-                            case 'monthly':
-                                currentDate.setMonth(currentDate.getMonth() - 1);
-                                break;
-                            case 'yearly':
-                                currentDate.setFullYear(currentDate.getFullYear() - 1);
-                                break;
-                        }
-                        if (currentDate <= new Date(startDate)) {
-                            currentDate = new Date(prevDate);
-                            break;
-                        }
-                    }
-                }
-                
-                const maxIterations = count === 0 ? 365 : count; // Máximo de 365 repetições se for indeterminado
+                const maxIterations = count === 0 ? 365 : count;
                 
                 for (let i = 0; i < maxIterations; i++) {
                     const dateStr = currentDate.toISOString().split('T')[0];
+                    dates.push(dateStr);
                     
-                    // Só adiciona se for hoje ou futuro
-                    if (currentDate >= today) {
-                        dates.push(dateStr);
-                    }
-                    
-                    // Parar se atingiu a data final
                     if (endDate && currentDate >= new Date(endDate)) {
                         break;
                     }
                     
-                    // Avançar para próxima data baseado na frequência
                     const nextDate = new Date(currentDate);
                     switch(frequency) {
                         case 'daily':
@@ -1697,79 +1659,83 @@
                 return dates;
             },
             
-            // Nova função para processar transações recorrentes automaticamente
-            processRecurringTransactions: async (transactions) => {
+            // NOVA FUNÇÃO: Processar transações recorrentes automaticamente
+            processRecurringTransactions: (transactions) => {
                 const today = Utils.getToday();
                 const newTransactions = [];
                 
-                // Encontrar transações recorrentes mestre
                 const recurringMasters = transactions.filter(t => 
                     t.recurring && !t.recurringParent
                 );
                 
                 for (const master of recurringMasters) {
-                    // Encontrar transações filhas já geradas
                     const existingChildren = transactions.filter(t => 
                         t.recurringParent === master.id
                     );
                     
-                    // Verificar se precisa gerar novas ocorrências
-                    const lastDate = existingChildren.length > 0 
-                        ? Math.max(...existingChildren.map(t => new Date(t.date).getTime()))
-                        : new Date(master.date).getTime();
+                    const lastChildDate = existingChildren.length > 0 
+                        ? existingChildren.reduce((latest, t) => {
+                            return new Date(t.date) > new Date(latest) ? t.date : latest;
+                        }, existingChildren[0].date)
+                        : master.date;
                     
-                    const lastChildDate = new Date(lastDate);
+                    const lastDate = new Date(lastChildDate);
                     const todayDate = new Date(today);
                     
-                    // Se a última transação gerada já passou, gerar próxima
-                    if (lastChildDate < todayDate) {
-                        const nextDate = new Date(lastChildDate);
+                    if (lastDate < todayDate) {
+                        let currentDate = new Date(lastDate);
                         
-                        // Avançar para próxima data baseado na frequência
-                        switch(master.recurringFrequency) {
-                            case 'daily':
-                                nextDate.setDate(nextDate.getDate() + 1);
-                                break;
-                            case 'weekly':
-                                nextDate.setDate(nextDate.getDate() + 7);
-                                break;
-                            case 'monthly':
-                                nextDate.setMonth(nextDate.getMonth() + 1);
-                                break;
-                            case 'yearly':
-                                nextDate.setFullYear(nextDate.getFullYear() + 1);
-                                break;
-                        }
-                        
-                        const nextDateStr = nextDate.toISOString().split('T')[0];
-                        
-                        // Verificar se não ultrapassou o limite
                         const maxCount = master.recurringCount || 0;
-                        if (maxCount > 0 && existingChildren.length >= maxCount) {
+                        const childCount = existingChildren.length;
+                        
+                        if (maxCount > 0 && childCount >= maxCount) {
                             continue;
                         }
                         
-                        // Verificar data final
-                        if (master.recurringEndDate && nextDate > new Date(master.recurringEndDate)) {
+                        while (currentDate <= todayDate) {
+                            const nextDate = new Date(currentDate);
+                            
+                            switch(master.recurringFrequency) {
+                                case 'daily':
+                                    nextDate.setDate(nextDate.getDate() + 1);
+                                    break;
+                                case 'weekly':
+                                    nextDate.setDate(nextDate.getDate() + 7);
+                                    break;
+                                case 'monthly':
+                                    nextDate.setMonth(nextDate.getMonth() + 1);
+                                    break;
+                                case 'yearly':
+                                    nextDate.setFullYear(nextDate.getFullYear() + 1);
+                                    break;
+                            }
+                            
+                            currentDate = nextDate;
+                            
+                            if (master.recurringEndDate && currentDate > new Date(master.recurringEndDate)) {
+                                break;
+                            }
+                            
+                            if (maxCount > 0 && (childCount + newTransactions.filter(t => t.recurringParent === master.id).length) >= maxCount) {
+                                break;
+                            }
+                        }
+                        
+                        if (currentDate > todayDate) {
                             continue;
                         }
                         
-                        // Gerar nova transação
+                        const dateStr = currentDate.toISOString().split('T')[0];
+                        
                         const newTransaction = {
                             ...master,
                             id: Utils.id(),
-                            date: nextDateStr,
+                            date: dateStr,
                             status: 'pending',
                             recurringParent: master.id,
-                            recurring: false,
-                            recurringFrequency: undefined,
-                            recurringCount: undefined,
-                            recurringEndDate: undefined,
-                            createdAt: new Date().toISOString()
+                            recurring: false
                         };
                         
-                        // Remover campos do mestre
-                        delete newTransaction.recurring;
                         delete newTransaction.recurringFrequency;
                         delete newTransaction.recurringCount;
                         delete newTransaction.recurringEndDate;
@@ -1785,7 +1751,7 @@
         // --- INDEXEDDB MANAGER ---
         const DB = {
             name: 'FinancaProDB',
-            version: 4,
+            version: 5,
             db: null,
             
             init: async () => {
@@ -2057,7 +2023,6 @@
                     await DB.init();
                     await UI.loadInitialData();
                     
-                    // Processar transações recorrentes automaticamente
                     await UI.processAutoRecurringTransactions();
                     
                     UI.updateMonthDisplay();
@@ -2134,10 +2099,10 @@
                 Utils.toast('Categorias padrão criadas');
             },
             
-            // CORREÇÃO: Processar transações recorrentes automaticamente
+            // FUNÇÃO MELHORADA: Processar transações recorrentes automaticamente
             processAutoRecurringTransactions: async () => {
                 const transactions = FinanceApp.data.transactions;
-                const newTransactions = await Utils.processRecurringTransactions(transactions);
+                const newTransactions = Utils.processRecurringTransactions(transactions);
                 
                 if (newTransactions.length > 0) {
                     for (const transaction of newTransactions) {
@@ -3382,7 +3347,6 @@
                 document.getElementById('title-transaction').textContent = 'Agendar Transação';
             },
             
-            // CORREÇÃO: Corrigido o problema das casas decimais ao editar transação
             editTransaction: async (id) => {
                 const transaction = FinanceApp.data.transactions.find(t => t.id === id);
                 if (!transaction) return;
@@ -3390,7 +3354,6 @@
                 document.getElementById('t-id').value = transaction.id;
                 document.getElementById('t-description').value = transaction.description;
                 
-                // CORREÇÃO: Usar a nova função para formatar o valor corretamente
                 const amountInput = document.getElementById('t-amount');
                 amountInput.value = Utils.formatNumberToCurrencyInput(transaction.amount);
                 Utils.maskMoney(amountInput);
@@ -3437,7 +3400,6 @@
                 document.getElementById('a-id').value = '';
                 document.getElementById('a-color').value = '#10b981';
                 
-                // CORREÇÃO: Formatar corretamente o saldo inicial
                 const balanceInput = document.getElementById('a-balance');
                 balanceInput.value = '0,00';
                 Utils.maskMoney(balanceInput);
@@ -3457,7 +3419,6 @@
                 document.getElementById('a-type').value = account.type;
                 document.getElementById('a-color').value = account.color;
                 
-                // CORREÇÃO: Formatar corretamente o saldo
                 const balanceInput = document.getElementById('a-balance');
                 balanceInput.value = Utils.formatNumberToCurrencyInput(account.balance);
                 Utils.maskMoney(balanceInput);
@@ -3512,7 +3473,6 @@
                 document.getElementById('c-id').value = category.id;
                 document.getElementById('c-name').value = category.name;
                 
-                // CORREÇÃO: Formatar corretamente o orçamento
                 const budgetInput = document.getElementById('c-budget');
                 if (category.budget) {
                     budgetInput.value = Utils.formatNumberToCurrencyInput(category.budget);
@@ -3535,7 +3495,6 @@
                 document.getElementById('form-goal').reset();
                 document.getElementById('g-id').value = '';
                 
-                // CORREÇÃO: Formatar valores corretamente
                 const currentInput = document.getElementById('g-current');
                 currentInput.value = '0,00';
                 Utils.maskMoney(currentInput);
@@ -3553,7 +3512,6 @@
                 document.getElementById('g-id').value = goal.id;
                 document.getElementById('g-name').value = goal.name;
                 
-                // CORREÇÃO: Formatar valores corretamente
                 const targetInput = document.getElementById('g-target');
                 targetInput.value = Utils.formatNumberToCurrencyInput(goal.target);
                 Utils.maskMoney(targetInput);
