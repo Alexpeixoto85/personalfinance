@@ -787,8 +787,11 @@
             </div>
 
             <div class="balance-card">
-                <div class="balance-label">Saldo Total</div>
+                <div class="balance-label" id="balance-card-label">Saldo Total</div>
                 <div class="balance-value" id="current-balance">R$ 0,00</div>
+                <div style="font-size:0.8rem; opacity:0.85; margin-bottom:8px; display:none;" id="projected-month-line">
+                    Saldo projetado do mês: <strong id="projected-month-balance">R$ 0,00</strong>
+                </div>
                 <div class="balance-details">
                     <div class="balance-item">
                         <div class="label">Receitas</div>
@@ -818,21 +821,21 @@
 
             <!-- Projeção Futura -->
             <div class="section-title">
-                Projeção Futura (30 dias)
+                <span id="projection-section-title">Projeção do Mês</span>
                 <span class="badge badge-pending" id="projection-badge" style="display:none">!</span>
             </div>
             <div class="projection-card">
                 <div class="projection-header">
-                    <div class="projection-title">Saldo Projetado</div>
+                    <div class="projection-title" id="projection-card-title">Saldo Projetado do Mês</div>
                     <div class="projection-value" id="projected-balance">R$ 0,00</div>
                 </div>
                 <div class="projection-details">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>Receitas futuras:</span>
+                        <span id="projected-income-label">Receitas previstas:</span>
                         <span class="projection-positive" id="projected-income">R$ 0,00</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
-                        <span>Despesas futuras:</span>
+                        <span id="projected-expense-label">Despesas previstas:</span>
                         <span class="projection-negative" id="projected-expense">R$ 0,00</span>
                     </div>
                 </div>
@@ -1665,32 +1668,31 @@
                 return dates;
             },
             
-            // NOVA FUNÇÃO: Processar transações recorrentes automaticamente
+            // FUNÇÃO MELHORADA: Processar transações recorrentes automaticamente
+            // Garante filhos gerados mesmo para meses futuros (até 24 meses à frente)
             processRecurringTransactions: (transactions) => {
-                const today = Utils.getToday();
                 const newTransactions = [];
-
                 const recurringMasters = transactions.filter(t => t.recurring && !t.recurringParent);
 
                 for (const master of recurringMasters) {
                     const existingChildren = transactions.filter(t => t.recurringParent === master.id);
                     const maxCount = master.recurringCount || 0;
+                    // Máximo de ocorrências a gerar: se indeterminado → 24 meses; se definido → o que falta
+                    const maxOccurrences = maxCount > 0 ? maxCount : 24;
 
-                    // Already hit the repetition limit
+                    // Se já atingiu o limite, pula
                     if (maxCount > 0 && existingChildren.length >= maxCount) continue;
 
-                    // Find the last date already generated (master date or last child)
+                    // Data do último filho (ou data mestre se nenhum filho)
                     const allDates = [master.date, ...existingChildren.map(t => t.date)];
                     const lastDate = allDates.reduce((a, b) => a > b ? a : b);
 
-                    // Generate next occurrence dates from lastDate up to today
                     let currentDate = new Date(lastDate + 'T00:00:00');
+                    let generated = 0;
+                    const remaining = maxCount > 0 ? maxCount - existingChildren.length : 24;
+                    const safetyLimit = Math.min(remaining, 366);
 
-                    const safetyLimit = 366; // prevent infinite loops
-                    let iterations = 0;
-
-                    while (iterations++ < safetyLimit) {
-                        // Advance by frequency
+                    for (let i = 0; i < safetyLimit; i++) {
                         const next = new Date(currentDate);
                         switch (master.recurringFrequency) {
                             case 'daily':   next.setDate(next.getDate() + 1); break;
@@ -1700,17 +1702,14 @@
                             default: break;
                         }
                         currentDate = next;
-
                         const dateStr = currentDate.toISOString().split('T')[0];
 
-                        // Stop if past end date or today
-                        if (dateStr > today) break;
                         if (master.recurringEndDate && dateStr > master.recurringEndDate) break;
 
-                        // Stop if hit repetition limit (including what we've already generated this run)
-                        const totalGenerated = existingChildren.length +
-                            newTransactions.filter(t => t.recurringParent === master.id).length;
-                        if (maxCount > 0 && totalGenerated >= maxCount) break;
+                        // Não gerar duplicata (pode já existir filho para esta data)
+                        const alreadyExists = existingChildren.some(c => c.date === dateStr) ||
+                            newTransactions.some(c => c.recurringParent === master.id && c.date === dateStr);
+                        if (alreadyExists) continue;
 
                         const child = { ...master };
                         child.id = Utils.id();
@@ -1718,11 +1717,14 @@
                         child.status = 'pending';
                         child.recurringParent = master.id;
                         child.recurring = false;
-                        delete child.recurringFrequency;
-                        delete child.recurringCount;
-                        delete child.recurringEndDate;
+                        child.recurringFrequency = null;
+                        child.recurringCount = 0;
+                        child.recurringEndDate = null;
 
                         newTransactions.push(child);
+                        generated++;
+
+                        if (maxCount > 0 && (existingChildren.length + generated) >= maxCount) break;
                     }
                 }
 
@@ -2196,7 +2198,15 @@
             renderDashboard: async () => {
                 const { transactions, accounts, categories, goals, settings } = FinanceApp.data;
                 const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
-                
+                const today = Utils.getToday();
+
+                // Verifica se o mês exibido é o mês atual ou futuro
+                const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+                const viewMonthStr = `${UI.currentYear}-${String(UI.currentMonth+1).padStart(2,'0')}`;
+                const isCurrentMonth = viewMonthStr === currentMonthStr;
+                const isFutureMonth = viewMonthStr > currentMonthStr;
+                const isPastMonth = viewMonthStr < currentMonthStr;
+
                 const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
                 
                 const monthTransactions = transactions.filter(t => 
@@ -2224,30 +2234,83 @@
                     .reduce((sum, t) => sum + t.amount, 0);
                 
                 const pendingTotal = pendingIncome + pendingExpense;
-                
-                const futureRange = Utils.getFutureRange(30);
-                const futureTransactions = transactions.filter(t => 
-                    t.date >= futureRange.start && t.date <= futureRange.end
+
+                // --- PROJEÇÃO DO MÊS ABERTO ---
+                // Todas as transações do mês (efetivadas + pendentes) para calcular projeção
+                const allMonthTx = transactions.filter(t =>
+                    t.date >= monthRange.start && t.date <= monthRange.end
                 );
-                
-                const futureIncome = futureTransactions
+
+                const projMonthIncome = allMonthTx
                     .filter(t => t.type === 'income')
                     .reduce((sum, t) => sum + t.amount, 0);
-                
-                const futureExpense = futureTransactions
-                    .filter(t => t.type === 'expense')
+
+                const projMonthExpense = allMonthTx
+                    .filter(t => t.type === 'expense' || t.type === 'investment')
                     .reduce((sum, t) => sum + t.amount, 0);
-                
-                const projectedBalance = totalBalance + futureIncome - futureExpense;
-                
+
+                // Saldo projetado do mês = saldo atual + todas receitas do mês - todas despesas do mês pendentes ainda
+                // Para mês atual/futuro mostramos o resultado esperado ao fim do mês
+                const pendingMonthIncome = monthPendingTransactions
+                    .filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+                const pendingMonthExpense = monthPendingTransactions
+                    .filter(t => t.type === 'expense' || t.type === 'investment').reduce((sum, t) => sum + t.amount, 0);
+
+                // Projeção = saldo atual + receitas pendentes do mês - despesas pendentes do mês
+                const projectedMonthBalance = totalBalance + pendingMonthIncome - pendingMonthExpense;
+
                 document.getElementById('current-balance').textContent = Utils.formatCurrency(totalBalance);
                 document.getElementById('month-income').textContent = Utils.formatCurrency(income);
                 document.getElementById('month-expense').textContent = Utils.formatCurrency(expense);
                 document.getElementById('month-pending').textContent = Utils.formatCurrency(pendingTotal);
-                
-                document.getElementById('projected-balance').textContent = Utils.formatCurrency(projectedBalance);
-                document.getElementById('projected-income').textContent = Utils.formatCurrency(futureIncome);
-                document.getElementById('projected-expense').textContent = Utils.formatCurrency(futureExpense);
+
+                // Atualiza card de balanço com label contextual
+                const balanceLabel = document.getElementById('balance-card-label');
+                const projMonthLine = document.getElementById('projected-month-line');
+                const projMonthBalanceEl = document.getElementById('projected-month-balance');
+
+                if (isCurrentMonth) {
+                    balanceLabel.textContent = 'Saldo Atual';
+                    if (pendingMonthIncome > 0 || pendingMonthExpense > 0) {
+                        projMonthLine.style.display = 'block';
+                        projMonthBalanceEl.textContent = Utils.formatCurrency(projectedMonthBalance);
+                    } else {
+                        projMonthLine.style.display = 'none';
+                    }
+                } else if (isFutureMonth) {
+                    balanceLabel.textContent = 'Saldo Atual';
+                    projMonthLine.style.display = 'block';
+                    projMonthBalanceEl.textContent = Utils.formatCurrency(projectedMonthBalance);
+                } else {
+                    balanceLabel.textContent = 'Saldo Atual';
+                    projMonthLine.style.display = 'none';
+                }
+
+                // --- CARD DE PROJEÇÃO: mostra dados do mês aberto ---
+                const monthName = Utils.getMonthYear(new Date(UI.currentYear, UI.currentMonth)).name;
+                document.getElementById('projection-section-title').textContent =
+                    isCurrentMonth ? 'Projeção do Mês Atual' :
+                    isFutureMonth ? `Previsão — ${monthName}` :
+                    `Resumo — ${monthName}`;
+
+                document.getElementById('projection-card-title').textContent =
+                    isCurrentMonth ? 'Saldo Projetado ao Final do Mês' :
+                    isFutureMonth ? `Saldo Previsto — ${monthName}` :
+                    `Resultado do Mês`;
+
+                document.getElementById('projected-income-label').textContent =
+                    isPastMonth ? 'Total de receitas:' : 'Receitas previstas:';
+                document.getElementById('projected-expense-label').textContent =
+                    isPastMonth ? 'Total de despesas:' : 'Despesas previstas:';
+
+                document.getElementById('projected-balance').textContent =
+                    isPastMonth
+                        ? Utils.formatCurrency(income - expense)
+                        : Utils.formatCurrency(projectedMonthBalance);
+                document.getElementById('projected-income').textContent =
+                    isPastMonth ? Utils.formatCurrency(income) : Utils.formatCurrency(projMonthIncome);
+                document.getElementById('projected-expense').textContent =
+                    isPastMonth ? Utils.formatCurrency(expense) : Utils.formatCurrency(projMonthExpense);
                 
                 UI.renderAccountsOverview(accounts);
                 UI.renderRecentTransactions(transactions);
@@ -3654,39 +3717,12 @@
                     };
                     
                     try {
-                        if (recurring && recurringCount > 0) {
-                            const dates = Utils.generateRecurringDates(date, recurringFrequency, recurringCount, recurringEndDate);
-                            
-                            await DB.saveTransaction(transaction);
-                            
-                            for (let i = 1; i < dates.length; i++) {
-                                const childTransaction = {
-                                    ...transaction,
-                                    id: Utils.id(),
-                                    date: dates[i],
-                                    status: 'pending',
-                                    recurringParent: id,
-                                    recurring: false,
-                                    recurringFrequency: null,
-                                    recurringCount: 0,
-                                    recurringEndDate: null
-                                };
-                                
-                                delete childTransaction.recurring;
-                                delete childTransaction.recurringFrequency;
-                                delete childTransaction.recurringCount;
-                                delete childTransaction.recurringEndDate;
-                                
-                                await DB.saveTransaction(childTransaction);
-                                FinanceApp.data.transactions.push(childTransaction);
-                            }
-                        } else {
-                            await DB.saveTransaction(transaction);
-                        }
-                        
+                        // Salva a transação mestre
+                        await DB.saveTransaction(transaction);
+
                         const index = FinanceApp.data.transactions.findIndex(t => t.id === id);
                         if (index >= 0) {
-                            // Editing: reverse old balance if it was cleared
+                            // Editando: reverter saldo antigo se efetivado
                             const old = FinanceApp.data.transactions[index];
                             if (old.status === 'cleared') {
                                 await FinanceApp.account.reverseBalance(old);
@@ -3695,8 +3731,49 @@
                         } else {
                             FinanceApp.data.transactions.push(transaction);
                         }
-                        
-                        // Apply new balance only if cleared
+
+                        // Gerar filhos de recorrência (apenas para novas transações recorrentes)
+                        const isNewTransaction = index < 0;
+                        if (recurring && isNewTransaction) {
+                            // Gera ocorrências futuras: até 24 meses à frente (ou conforme o count)
+                            const maxOccurrences = recurringCount > 0 ? recurringCount : 24;
+                            let currentDate = new Date(date + 'T00:00:00');
+                            let generated = 0;
+
+                            for (let i = 0; i < maxOccurrences; i++) {
+                                const next = new Date(currentDate);
+                                switch (recurringFrequency) {
+                                    case 'daily':   next.setDate(next.getDate() + 1); break;
+                                    case 'weekly':  next.setDate(next.getDate() + 7); break;
+                                    case 'monthly': next.setMonth(next.getMonth() + 1); break;
+                                    case 'yearly':  next.setFullYear(next.getFullYear() + 1); break;
+                                    default: break;
+                                }
+                                currentDate = next;
+                                const dateStr = currentDate.toISOString().split('T')[0];
+
+                                // Respeita data final se definida
+                                if (recurringEndDate && dateStr > recurringEndDate) break;
+
+                                const child = {
+                                    ...transaction,
+                                    id: Utils.id(),
+                                    date: dateStr,
+                                    status: 'pending',
+                                    recurringParent: id,
+                                    recurring: false,
+                                    recurringFrequency: null,
+                                    recurringCount: 0,
+                                    recurringEndDate: null
+                                };
+
+                                await DB.saveTransaction(child);
+                                FinanceApp.data.transactions.push(child);
+                                generated++;
+                            }
+                        }
+
+                        // Aplica saldo apenas se efetivado
                         if (status === 'cleared') {
                             await FinanceApp.account.updateBalance(transaction);
                         }
