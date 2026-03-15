@@ -733,11 +733,12 @@
             display: flex;
             border-bottom: 1px solid var(--border);
             margin-bottom: 16px;
+            overflow-x: auto;
         }
         
         .tab-btn {
             flex: 1;
-            padding: 12px;
+            padding: 12px 8px;
             text-align: center;
             border: none;
             background: none;
@@ -745,11 +746,187 @@
             color: var(--secondary);
             cursor: pointer;
             border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            font-size: 0.85rem;
         }
         
         .tab-btn.active {
             color: var(--primary);
             border-bottom: 3px solid var(--primary);
+        }
+
+        /* --- Projeção Avançada --- */
+        .projection-annual-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 16px;
+            color: white;
+        }
+        .projection-annual-title {
+            font-size: 0.85rem; opacity: 0.7; margin-bottom: 4px;
+        }
+        .projection-annual-value {
+            font-size: 1.8rem; font-weight: 800; margin-bottom: 12px;
+        }
+        .projection-months-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 8px; margin-top: 12px;
+        }
+        .proj-month-item {
+            background: rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; text-align: center;
+        }
+        .proj-month-name { font-size: 0.7rem; opacity: 0.7; }
+        .proj-month-val { font-size: 0.85rem; font-weight: 700; margin-top: 2px; }
+        .proj-positive { color: #6ee7b7; }
+        .proj-negative { color: #fca5a5; }
+
+        /* --- Análise Individual --- */
+        .analysis-card {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-sm);
+            border-left: 4px solid transparent;
+        }
+        .analysis-card.saving-opportunity { border-left-color: #f59e0b; }
+        .analysis-card.on-track { border-left-color: var(--income); }
+        .analysis-card.alert { border-left-color: var(--expense); }
+
+        .analysis-header {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+        }
+        .analysis-icon {
+            width: 36px; height: 36px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
+        }
+        .analysis-name { font-weight: 600; color: var(--dark); flex: 1; }
+        .analysis-amount { font-weight: 700; }
+
+        .analysis-insight {
+            background: #fef3c7; border-radius: 8px; padding: 10px; margin-top: 8px;
+            font-size: 0.82rem; color: #92400e;
+            display: flex; gap: 8px; align-items: flex-start;
+        }
+        .analysis-insight.green { background: #d1fae5; color: #065f46; }
+        .analysis-insight.red { background: #fee2e2; color: #991b1b; }
+        .analysis-insight i { margin-top: 1px; flex-shrink: 0; }
+
+        .analysis-bars {
+            display: flex; gap: 6px; margin-top: 10px; align-items: flex-end; height: 50px;
+        }
+        .analysis-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .analysis-bar {
+            width: 100%; border-radius: 3px 3px 0 0;
+            transition: height 0.3s;
+        }
+        .analysis-bar-label { font-size: 0.65rem; color: var(--secondary); }
+
+        /* --- Savings Tips --- */
+        .savings-tip-card {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #f59e0b;
+        }
+        .savings-tip-title { font-weight: 700; color: #92400e; margin-bottom: 4px; font-size: 0.95rem; }
+        .savings-tip-desc { font-size: 0.82rem; color: #78350f; }
+        .savings-tip-amount { font-size: 1.1rem; font-weight: 800; color: #d97706; margin-top: 6px; }
+
+        /* --- Score Financeiro --- */
+        .financial-score-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+            text-align: center;
+        }
+        .score-ring {
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            background: conic-gradient(var(--primary) 0deg, #e2e8f0 0deg);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 12px;
+            position: relative;
+        }
+        .score-ring::before {
+            content: ''; width: 72px; height: 72px;
+            background: white; border-radius: 50%;
+            position: absolute;
+        }
+        .score-number {
+            position: relative; z-index: 1;
+            font-size: 1.5rem; font-weight: 800; color: var(--dark);
+        }
+        .score-label { font-size: 0.8rem; color: var(--secondary); margin-bottom: 12px; }
+        .score-grade { font-size: 1.1rem; font-weight: 700; }
+        .score-details { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }
+        .score-item { background: #f8fafc; border-radius: 8px; padding: 10px; text-align: left; }
+        .score-item-label { font-size: 0.75rem; color: var(--secondary); }
+        .score-item-value { font-size: 0.9rem; font-weight: 700; color: var(--dark); }
+        .score-item-bar { height: 4px; border-radius: 2px; background: #e2e8f0; margin-top: 4px; overflow: hidden; }
+        .score-item-fill { height: 100%; border-radius: 2px; background: var(--primary); }
+
+        /* --- Alertas financeiros --- */
+        .alert-banner {
+            background: #fee2e2; border: 1px solid #fca5a5; border-radius: var(--radius-md);
+            padding: 12px 16px; margin-bottom: 12px;
+            display: flex; gap: 10px; align-items: center;
+        }
+        .alert-banner.warning { background: #fef3c7; border-color: #fde68a; }
+        .alert-banner.success { background: #d1fae5; border-color: #6ee7b7; }
+        .alert-banner i { font-size: 1.1rem; flex-shrink: 0; }
+        .alert-banner.warning i { color: #d97706; }
+        .alert-banner i { color: #dc2626; }
+        .alert-banner.success i { color: #059669; }
+        .alert-text { font-size: 0.85rem; }
+        .alert-text strong { display: block; margin-bottom: 2px; }
+
+        /* --- Comparativo Mensal --- */
+        .comparison-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 0; border-bottom: 1px solid #f1f5f9;
+        }
+        .comparison-row:last-child { border-bottom: none; }
+        .comparison-label { font-size: 0.85rem; color: var(--secondary); flex: 1; }
+        .comparison-vals { display: flex; gap: 16px; }
+        .comparison-val { font-weight: 600; font-size: 0.9rem; text-align: right; min-width: 80px; }
+        .comparison-delta {
+            font-size: 0.75rem; font-weight: 600;
+            padding: 2px 6px; border-radius: 10px;
+        }
+        .delta-up { background: #fee2e2; color: #dc2626; }
+        .delta-down { background: #d1fae5; color: #059669; }
+        .delta-neutral { background: #f1f5f9; color: var(--secondary); }
+
+        /* --- Projeção Timeline --- */
+        .timeline-item {
+            display: flex; gap: 12px; padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .timeline-item:last-child { border-bottom: none; }
+        .timeline-dot {
+            width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+            margin-top: 4px;
+        }
+        .timeline-content { flex: 1; }
+        .timeline-title { font-weight: 600; font-size: 0.9rem; color: var(--dark); }
+        .timeline-desc { font-size: 0.8rem; color: var(--secondary); margin-top: 2px; }
+        .timeline-amount { font-weight: 700; font-size: 0.95rem; }
+
+        /* Análise view */
+        #analysis-view .section-title { margin-top: 8px; }
+        
+        /* Animação de entrada dos cards */
+        .analysis-card, .savings-tip-card, .financial-score-card {
+            animation: slideUp 0.3s ease both;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -891,6 +1068,15 @@
             <div id="active-goals">
                 <!-- Lista de metas será preenchida aqui -->
             </div>
+
+            <!-- Score Financeiro Resumido no Dashboard -->
+            <div class="section-title" style="margin-top:8px;">
+                Saúde Financeira
+                <button class="icon-btn" style="background:var(--accent);color:white;border-radius:8px;font-size:0.8rem;padding:6px 10px;width:auto;" onclick="document.querySelector('[data-target=analysis-view]').click()">
+                    Ver Análise
+                </button>
+            </div>
+            <div id="dashboard-score-mini"></div>
         </div>
 
         <!-- Transações View -->
@@ -981,6 +1167,7 @@
         <div id="reports-view" class="view">
             <div class="tab-nav">
                 <button class="tab-btn active" onclick="UI.setReportTab('overview', this)">Visão Geral</button>
+                <button class="tab-btn" onclick="UI.setReportTab('projection', this)">Projeção</button>
                 <button class="tab-btn" onclick="UI.setReportTab('accounts', this)">Contas</button>
                 <button class="tab-btn" onclick="UI.setReportTab('categories', this)">Categorias</button>
             </div>
@@ -1025,6 +1212,35 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ABA PROJEÇÃO MENSAL E ANUAL -->
+            <div id="report-projection" class="report-tab" style="display:none;">
+                <div id="projection-alerts"></div>
+
+                <!-- Projeção Anual -->
+                <div class="section-title">Projeção Anual</div>
+                <div class="projection-annual-card" id="annual-proj-card">
+                    <div class="projection-annual-title">Resultado Projetado — <span id="proj-year-label">2025</span></div>
+                    <div class="projection-annual-value" id="proj-annual-balance">R$ 0,00</div>
+                    <div style="display:flex; gap:24px; font-size:0.85rem; opacity:0.9;">
+                        <div><div style="opacity:0.7; font-size:0.75rem;">Receitas</div><div id="proj-annual-income" style="color:#6ee7b7; font-weight:700;">R$ 0</div></div>
+                        <div><div style="opacity:0.7; font-size:0.75rem;">Despesas</div><div id="proj-annual-expense" style="color:#fca5a5; font-weight:700;">R$ 0</div></div>
+                        <div><div style="opacity:0.7; font-size:0.75rem;">Taxa poupança</div><div id="proj-annual-rate" style="color:#93c5fd; font-weight:700;">0%</div></div>
+                    </div>
+                    <div class="projection-months-grid" id="projection-months-grid"></div>
+                </div>
+
+                <div class="section-title">Projeção Próximos 6 Meses</div>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="projectionChart"></canvas>
+                </div>
+
+                <div class="section-title">Calendário Financeiro (próx. 30 dias)</div>
+                <div id="financial-timeline"></div>
+
+                <div class="section-title">Comparativo Mês Anterior</div>
+                <div class="projection-card" id="monthly-comparison"></div>
+            </div>
             
             <div id="report-accounts" class="report-tab" style="display: none;">
                 <div class="section-title">Distribuição por Conta</div>
@@ -1045,6 +1261,36 @@
                 </div>
             </div>
         </div>
+
+        <!-- Análise View -->
+        <div id="analysis-view" class="view">
+            <div class="tab-nav">
+                <button class="tab-btn active" onclick="UI.setAnalysisTab('score', this)">Score</button>
+                <button class="tab-btn" onclick="UI.setAnalysisTab('expenses', this)">Despesas</button>
+                <button class="tab-btn" onclick="UI.setAnalysisTab('income', this)">Receitas</button>
+                <button class="tab-btn" onclick="UI.setAnalysisTab('savings', this)">Economia</button>
+            </div>
+
+            <!-- Score Financeiro -->
+            <div id="analysis-score" class="analysis-tab">
+                <div id="financial-score-container"></div>
+            </div>
+
+            <!-- Análise de Despesas -->
+            <div id="analysis-expenses" class="analysis-tab" style="display:none;">
+                <div id="expense-analysis-list"></div>
+            </div>
+
+            <!-- Análise de Receitas -->
+            <div id="analysis-income" class="analysis-tab" style="display:none;">
+                <div id="income-analysis-list"></div>
+            </div>
+
+            <!-- Oportunidades de Economia -->
+            <div id="analysis-savings" class="analysis-tab" style="display:none;">
+                <div id="savings-opportunities-list"></div>
+            </div>
+        </div>
     </main>
 
     <button class="fab" onclick="UI.openNewTransaction('expense')" id="main-fab">
@@ -1058,17 +1304,17 @@
         <a href="#" class="nav-item" data-target="transactions-view" onclick="UI.switchTab(this); return false;">
             <i class="fas fa-exchange-alt"></i> <span>Transações</span>
         </a>
-        <a href="#" class="nav-item" data-target="accounts-view" onclick="UI.switchTab(this); return false;">
-            <i class="fas fa-wallet"></i> <span>Contas</span>
-        </a>
-        <a href="#" class="nav-item" data-target="categories-view" onclick="UI.switchTab(this); return false;">
-            <i class="fas fa-tags"></i> <span>Categorias</span>
-        </a>
         <a href="#" class="nav-item" data-target="goals-view" onclick="UI.switchTab(this); return false;">
             <i class="fas fa-bullseye"></i> <span>Metas</span>
         </a>
+        <a href="#" class="nav-item" data-target="analysis-view" onclick="UI.switchTab(this); UI.renderAnalysis(); return false;">
+            <i class="fas fa-brain"></i> <span>Análise</span>
+        </a>
         <a href="#" class="nav-item" data-target="reports-view" onclick="UI.switchTab(this); return false;">
             <i class="fas fa-chart-bar"></i> <span>Relatórios</span>
+        </a>
+        <a href="#" class="nav-item" data-target="accounts-view" onclick="UI.switchTab(this); return false;">
+            <i class="fas fa-wallet"></i> <span>Contas</span>
         </a>
     </nav>
 
@@ -1487,6 +1733,14 @@
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                 });
+            },
+
+            formatCurrencyShort: (val) => {
+                const abs = Math.abs(val);
+                const sign = val < 0 ? '-' : '';
+                if (abs >= 1000000) return `${sign}R$${(abs/1000000).toFixed(1)}M`;
+                if (abs >= 1000) return `${sign}R$${(abs/1000).toFixed(1)}k`;
+                return `${sign}R$${abs.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
             },
             
             parseCurrency: (str) => {
@@ -2012,6 +2266,7 @@
             transactionViewMode: 'all',
             chartInstances: {},
             reportTab: 'overview',
+            analysisTab: 'score',
             
             init: async () => {
                 try {
@@ -2152,6 +2407,9 @@
                 } else if (target === 'reports-view') {
                     fab.style.display = 'none';
                     UI.renderReports();
+                } else if (target === 'analysis-view') {
+                    fab.style.display = 'none';
+                    UI.renderAnalysis();
                 } else {
                     fab.style.display = 'none';
                 }
@@ -2160,19 +2418,34 @@
             setReportTab: (tab, el) => {
                 UI.reportTab = tab;
                 
-                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('#reports-view .tab-btn').forEach(btn => btn.classList.remove('active'));
                 const target = el || (typeof event !== 'undefined' && event && event.target ? event.target : null);
                 if (target) target.classList.add('active');
                 
                 document.querySelectorAll('.report-tab').forEach(t => t.style.display = 'none');
-                document.getElementById(`report-${tab}`).style.display = 'block';
+                const tabEl = document.getElementById(`report-${tab}`);
+                if (tabEl) tabEl.style.display = 'block';
                 
                 if (tab === 'accounts') {
                     UI.renderAccountsChart();
                     UI.renderBalanceHistoryChart();
                 } else if (tab === 'categories') {
                     UI.renderCategoryTrendChart();
+                } else if (tab === 'projection') {
+                    UI.renderAdvancedProjection();
+                } else {
+                    UI.renderReports();
                 }
+            },
+            
+            setAnalysisTab: (tab, el) => {
+                UI.analysisTab = tab || 'score';
+                document.querySelectorAll('#analysis-view .tab-btn').forEach(btn => btn.classList.remove('active'));
+                if (el) el.classList.add('active');
+                document.querySelectorAll('.analysis-tab').forEach(t => t.style.display = 'none');
+                const tabEl = document.getElementById(`analysis-${UI.analysisTab}`);
+                if (tabEl) tabEl.style.display = 'block';
+                UI.renderAnalysis();
             },
             
             updateMonthDisplay: () => {
@@ -2316,6 +2589,7 @@
                 UI.renderRecentTransactions(transactions);
                 UI.renderPendingTransactions(transactions);
                 UI.renderActiveGoals(goals);
+                UI.renderDashboardScoreMini(transactions, accounts);
                 
                 const pendingCount = transactions.filter(t => 
                     t.status === 'pending' && t.date <= Utils.getToday()
@@ -2421,7 +2695,58 @@
                 
                 list.innerHTML = activeGoals.slice(0, 3).map(g => UI.createGoalCard(g)).join('');
             },
-            
+
+            renderDashboardScoreMini: (transactions, accounts) => {
+                const container = document.getElementById('dashboard-score-mini');
+                if (!container) return;
+                const now = new Date();
+                const range6m = {
+                    start: (() => { const d = new Date(now); d.setMonth(d.getMonth()-5); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; })(),
+                    end: Utils.getMonthRange(now.getMonth(), now.getFullYear()).end
+                };
+                const txs6m = transactions.filter(t => t.date >= range6m.start && t.date <= range6m.end && t.status === 'cleared');
+                const income6m = txs6m.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                const expense6m = txs6m.filter(t => t.type === 'expense' || t.type === 'investment').reduce((s, t) => s + t.amount, 0);
+                const savingsRate = income6m > 0 ? (income6m - expense6m) / income6m : 0;
+                const pendingOverdue = transactions.filter(t => t.status === 'pending' && t.date < Utils.getToday()).length;
+                const scoreEconomy = Math.min(Math.max(savingsRate * 200, 0), 100);
+                const scorePending = Math.max(100 - pendingOverdue * 20, 0);
+                const totalScore = Math.round(scoreEconomy * 0.6 + scorePending * 0.4);
+                const grade = totalScore >= 90 ? { label: 'Excelente', color: '#10b981', emoji: '🏆' } :
+                              totalScore >= 75 ? { label: 'Muito Bom', color: '#3b82f6', emoji: '⭐' } :
+                              totalScore >= 60 ? { label: 'Bom', color: '#8b5cf6', emoji: '👍' } :
+                              totalScore >= 45 ? { label: 'Regular', color: '#f59e0b', emoji: '⚠️' } :
+                                                 { label: 'Melhorar', color: '#ef4444', emoji: '🔴' };
+                const deg = Math.round((totalScore / 100) * 360);
+
+                // Top tip
+                let tip = '';
+                if (savingsRate < 0.1 && income6m > 0) tip = '💡 Tente poupar 10%+ da sua renda mensalmente.';
+                else if (pendingOverdue > 0) tip = `⚡ ${pendingOverdue} transação(ões) pendente(s) em atraso para efetuar.`;
+                else if (savingsRate >= 0.2) tip = '🎉 Ótima taxa de poupança! Considere investir o excedente.';
+                else tip = '✅ Suas finanças estão no caminho certo!';
+
+                container.innerHTML = `
+                    <div class="projection-card" style="display:flex; align-items:center; gap:16px; cursor:pointer;" onclick="document.querySelector('[data-target=analysis-view]').click()">
+                        <div style="position:relative; width:72px; height:72px; flex-shrink:0;">
+                            <svg width="72" height="72" style="transform:rotate(-90deg)">
+                                <circle cx="36" cy="36" r="30" fill="none" stroke="#e2e8f0" stroke-width="7"/>
+                                <circle cx="36" cy="36" r="30" fill="none" stroke="${grade.color}" stroke-width="7"
+                                    stroke-dasharray="${Math.round(2*Math.PI*30)}"
+                                    stroke-dashoffset="${Math.round(2*Math.PI*30*(1-totalScore/100))}"
+                                    stroke-linecap="round"/>
+                            </svg>
+                            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;color:${grade.color}">${totalScore}</div>
+                        </div>
+                        <div style="flex:1;">
+                            <div style="font-weight:700; color:var(--dark); margin-bottom:2px;">${grade.emoji} ${grade.label}</div>
+                            <div style="font-size:0.78rem; color:var(--secondary); margin-bottom:6px;">Poupança: ${(savingsRate*100).toFixed(1)}% · ${pendingOverdue > 0 ? pendingOverdue+' pendente(s)' : 'Sem atrasos'}</div>
+                            <div style="font-size:0.8rem; color:#374151; background:#f8fafc; padding:6px 8px; border-radius:6px;">${tip}</div>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color:var(--secondary); font-size:0.85rem;"></i>
+                    </div>`;
+            },
+
             createTransactionCard: (transaction) => {
                 const typeClass = transaction.type;
                 const amountClass = `amount-${transaction.type}`;
@@ -2795,6 +3120,20 @@
                 // Only render if reports view is active (canvas elements must be visible for Chart.js)
                 const reportsView = document.getElementById('reports-view');
                 if (!reportsView || !reportsView.classList.contains('active')) return;
+
+                if (UI.reportTab === 'projection') {
+                    UI.renderAdvancedProjection();
+                    return;
+                }
+                if (UI.reportTab === 'accounts') {
+                    UI.renderAccountsChart();
+                    UI.renderBalanceHistoryChart();
+                    return;
+                }
+                if (UI.reportTab === 'categories') {
+                    UI.renderCategoryTrendChart();
+                    return;
+                }
                 
                 const { transactions, accounts } = FinanceApp.data;
                 const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
@@ -2834,13 +3173,6 @@
                 UI.renderExpenseChart(monthTransactions);
                 UI.renderIncomeExpenseChart(monthTransactions);
                 UI.renderCashFlowChart(futureTransactions);
-                
-                if (UI.reportTab === 'accounts') {
-                    UI.renderAccountsChart();
-                    UI.renderBalanceHistoryChart();
-                } else if (UI.reportTab === 'categories') {
-                    UI.renderCategoryTrendChart();
-                }
             },
             
             renderExpenseChart: (transactions) => {
@@ -3300,6 +3632,614 @@
                         }
                     }
                 });
+            },
+
+            // ═══════════════════════════════════════════════════════
+            // PROJEÇÃO AVANÇADA (MENSAL E ANUAL)
+            // ═══════════════════════════════════════════════════════
+            renderAdvancedProjection: () => {
+                const { transactions, accounts } = FinanceApp.data;
+                const now = new Date();
+                const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
+
+                // Helper: calcula receita e despesa projetada de um mês (inclui cleared + pending + scheduled)
+                function getMonthProjection(year, month) {
+                    const range = Utils.getMonthRange(month, year);
+                    const txs = transactions.filter(t => t.date >= range.start && t.date <= range.end);
+                    const income = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                    const expense = txs.filter(t => t.type === 'expense' || t.type === 'investment').reduce((s, t) => s + t.amount, 0);
+                    return { income, expense, net: income - expense };
+                }
+
+                // ── Projeção Anual ──
+                const year = now.getFullYear();
+                document.getElementById('proj-year-label').textContent = year;
+
+                let annualIncome = 0, annualExpense = 0;
+                const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+                let monthsGridHtml = '';
+
+                for (let m = 0; m < 12; m++) {
+                    const proj = getMonthProjection(year, m);
+                    annualIncome += proj.income;
+                    annualExpense += proj.expense;
+                    const net = proj.net;
+                    const cls = net >= 0 ? 'proj-positive' : 'proj-negative';
+                    const isPast = m < now.getMonth();
+                    const isCurrent = m === now.getMonth();
+                    monthsGridHtml += `
+                        <div class="proj-month-item" style="${isCurrent ? 'background:rgba(16,185,129,0.25);' : isPast ? 'opacity:0.6;' : ''}">
+                            <div class="proj-month-name">${monthNames[m]}</div>
+                            <div class="proj-month-val ${cls}">${net >= 0 ? '+' : ''}${Utils.formatCurrencyShort(net)}</div>
+                        </div>`;
+                }
+
+                const annualNet = annualIncome - annualExpense;
+                const annualRate = annualIncome > 0 ? ((annualNet / annualIncome) * 100).toFixed(1) : '0.0';
+
+                document.getElementById('proj-annual-balance').textContent = Utils.formatCurrency(annualNet);
+                document.getElementById('proj-annual-balance').style.color = annualNet >= 0 ? '#6ee7b7' : '#fca5a5';
+                document.getElementById('proj-annual-income').textContent = Utils.formatCurrency(annualIncome);
+                document.getElementById('proj-annual-expense').textContent = Utils.formatCurrency(annualExpense);
+                document.getElementById('proj-annual-rate').textContent = `${annualRate}%`;
+                document.getElementById('projection-months-grid').innerHTML = monthsGridHtml;
+
+                // ── Alertas de projeção ──
+                const alertsEl = document.getElementById('projection-alerts');
+                let alertsHtml = '';
+                const projCurrent = getMonthProjection(now.getFullYear(), now.getMonth());
+                if (projCurrent.net < 0) {
+                    alertsHtml += `<div class="alert-banner"><i class="fas fa-exclamation-triangle"></i><div class="alert-text"><strong>Atenção: saldo negativo projetado</strong>Suas despesas previstas superam as receitas neste mês em ${Utils.formatCurrency(Math.abs(projCurrent.net))}.</div></div>`;
+                }
+                const pendingCount = transactions.filter(t => t.status === 'pending' && t.date <= Utils.getToday()).length;
+                if (pendingCount > 0) {
+                    alertsHtml += `<div class="alert-banner warning"><i class="fas fa-clock"></i><div class="alert-text"><strong>${pendingCount} transação(ões) pendente(s)</strong>Efetive-as para manter seu saldo atualizado.</div></div>`;
+                }
+                if (annualNet > 0) {
+                    alertsHtml += `<div class="alert-banner success"><i class="fas fa-check-circle"></i><div class="alert-text"><strong>Projeção anual positiva!</strong>Você deve fechar o ano com saldo de ${Utils.formatCurrency(annualNet)}.</div></div>`;
+                }
+                alertsEl.innerHTML = alertsHtml;
+
+                // ── Gráfico 6 meses ──
+                const projLabels = [], projIncome = [], projExpense = [], projNet = [];
+                for (let i = 0; i < 6; i++) {
+                    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                    const p = getMonthProjection(d.getFullYear(), d.getMonth());
+                    projLabels.push(monthNames[d.getMonth()] + '/' + String(d.getFullYear()).slice(-2));
+                    projIncome.push(p.income);
+                    projExpense.push(p.expense);
+                    projNet.push(p.net);
+                }
+
+                const projCtx = document.getElementById('projectionChart');
+                if (!projCtx) return;
+                if (UI.chartInstances.projectionChart) UI.chartInstances.projectionChart.destroy();
+                UI.chartInstances.projectionChart = new Chart(projCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: projLabels,
+                        datasets: [
+                            { label: 'Receitas', data: projIncome, backgroundColor: '#10b98180', borderColor: '#10b981', borderWidth: 2, borderRadius: 4 },
+                            { label: 'Despesas', data: projExpense, backgroundColor: '#ef444480', borderColor: '#ef4444', borderWidth: 2, borderRadius: 4 },
+                            { label: 'Resultado', data: projNet, type: 'line', borderColor: '#8b5cf6', backgroundColor: 'transparent', borderWidth: 2, tension: 0.4, pointBackgroundColor: '#8b5cf6' }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
+                            tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${Utils.formatCurrency(ctx.raw)}` } }
+                        },
+                        scales: {
+                            y: { ticks: { callback: v => Utils.formatCurrencyShort(v), font: { size: 10 } }, grid: { color: '#e2e8f0' } },
+                            x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                        }
+                    }
+                });
+
+                // ── Timeline (próx. 30 dias) ──
+                const today = Utils.getToday();
+                const futureDate = Utils.getFutureDate(30);
+                const upcoming = transactions
+                    .filter(t => t.date >= today && t.date <= futureDate && t.type !== 'transfer')
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                const timelineEl = document.getElementById('financial-timeline');
+                if (upcoming.length === 0) {
+                    timelineEl.innerHTML = `<div class="empty-state"><i class="fas fa-calendar-check"></i><p>Nenhuma transação nos próximos 30 dias!</p></div>`;
+                } else {
+                    let html = '<div class="projection-card">';
+                    upcoming.slice(0, 15).forEach(t => {
+                        const color = t.type === 'income' ? '#10b981' : t.type === 'expense' ? '#ef4444' : '#8b5cf6';
+                        const sign = t.type === 'income' ? '+' : '-';
+                        const amtClass = t.type === 'income' ? 'proj-positive' : 'proj-negative';
+                        const statusLabel = t.status === 'pending' ? '⏳' : t.status === 'scheduled' ? '📅' : '✅';
+                        html += `
+                            <div class="timeline-item">
+                                <div class="timeline-dot" style="background:${color}"></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">${t.description} ${statusLabel}</div>
+                                    <div class="timeline-desc">${Utils.formatDate(t.date)}</div>
+                                </div>
+                                <div class="timeline-amount ${amtClass}">${sign}${Utils.formatCurrency(t.amount)}</div>
+                            </div>`;
+                    });
+                    html += '</div>';
+                    timelineEl.innerHTML = html;
+                }
+
+                // ── Comparativo mês anterior ──
+                const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+                const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+                const prev = getMonthProjection(prevYear, prevMonth);
+                const curr = getMonthProjection(now.getFullYear(), now.getMonth());
+
+                function deltaHtml(curr, prev, invertGood) {
+                    if (prev === 0) return `<span class="comparison-delta delta-neutral">—</span>`;
+                    const pct = ((curr - prev) / prev * 100).toFixed(1);
+                    const up = curr > prev;
+                    const good = invertGood ? !up : up;
+                    const cls = good ? 'delta-down' : 'delta-up';
+                    return `<span class="comparison-delta ${cls}">${up ? '▲' : '▼'} ${Math.abs(pct)}%</span>`;
+                }
+
+                const compEl = document.getElementById('monthly-comparison');
+                compEl.innerHTML = `
+                    <div style="padding: 4px 0;">
+                        <div class="comparison-row">
+                            <div class="comparison-label">Categoria</div>
+                            <div class="comparison-vals">
+                                <div class="comparison-val" style="color:var(--secondary);font-size:0.78rem;">${monthNames[prevMonth]}</div>
+                                <div class="comparison-val" style="color:var(--secondary);font-size:0.78rem;">${monthNames[now.getMonth()]}</div>
+                                <div class="comparison-val" style="color:var(--secondary);font-size:0.78rem;">Δ</div>
+                            </div>
+                        </div>
+                        <div class="comparison-row">
+                            <div class="comparison-label">💰 Receitas</div>
+                            <div class="comparison-vals">
+                                <div class="comparison-val" style="color:var(--income)">${Utils.formatCurrencyShort(prev.income)}</div>
+                                <div class="comparison-val" style="color:var(--income)">${Utils.formatCurrencyShort(curr.income)}</div>
+                                <div class="comparison-val">${deltaHtml(curr.income, prev.income, false)}</div>
+                            </div>
+                        </div>
+                        <div class="comparison-row">
+                            <div class="comparison-label">💸 Despesas</div>
+                            <div class="comparison-vals">
+                                <div class="comparison-val" style="color:var(--expense)">${Utils.formatCurrencyShort(prev.expense)}</div>
+                                <div class="comparison-val" style="color:var(--expense)">${Utils.formatCurrencyShort(curr.expense)}</div>
+                                <div class="comparison-val">${deltaHtml(curr.expense, prev.expense, true)}</div>
+                            </div>
+                        </div>
+                        <div class="comparison-row">
+                            <div class="comparison-label">📊 Resultado</div>
+                            <div class="comparison-vals">
+                                <div class="comparison-val" style="color:${prev.net>=0?'var(--income)':'var(--expense)'}">${Utils.formatCurrencyShort(prev.net)}</div>
+                                <div class="comparison-val" style="color:${curr.net>=0?'var(--income)':'var(--expense)'}">${Utils.formatCurrencyShort(curr.net)}</div>
+                                <div class="comparison-val">${deltaHtml(curr.net, prev.net, false)}</div>
+                            </div>
+                        </div>
+                    </div>`;
+            },
+
+            // ═══════════════════════════════════════════════════════
+            // ANÁLISE COMPLETA (SCORE + DESPESAS + RECEITAS + ECONOMIA)
+            // ═══════════════════════════════════════════════════════
+            renderAnalysis: () => {
+                const tab = UI.analysisTab || 'score';
+                if (tab === 'score') UI.renderFinancialScore();
+                else if (tab === 'expenses') UI.renderExpenseAnalysis();
+                else if (tab === 'income') UI.renderIncomeAnalysis();
+                else if (tab === 'savings') UI.renderSavingsOpportunities();
+            },
+
+            renderFinancialScore: () => {
+                const { transactions, accounts, categories, goals } = FinanceApp.data;
+                const now = new Date();
+                const range6m = { start: (() => { const d = new Date(now); d.setMonth(d.getMonth()-5); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; })(), end: Utils.getMonthRange(now.getMonth(), now.getFullYear()).end };
+                const txs6m = transactions.filter(t => t.date >= range6m.start && t.date <= range6m.end && t.status === 'cleared');
+                const income6m = txs6m.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                const expense6m = txs6m.filter(t => t.type === 'expense' || t.type === 'investment').reduce((s, t) => s + t.amount, 0);
+
+                // Critérios de pontuação (0-100 cada, peso diferente)
+                const savingsRate = income6m > 0 ? (income6m - expense6m) / income6m : 0;
+                const scoreEconomy = Math.min(Math.max(savingsRate * 200, 0), 100); // 50% poupança = 100pts
+
+                const pendingOverdue = transactions.filter(t => t.status === 'pending' && t.date < Utils.getToday()).length;
+                const scorePending = Math.max(100 - pendingOverdue * 20, 0);
+
+                const categoriesWithBudget = categories.filter(c => c.budget > 0);
+                let budgetScore = 100;
+                if (categoriesWithBudget.length > 0) {
+                    const monthRange = Utils.getMonthRange(now.getMonth(), now.getFullYear());
+                    const monthTxs = transactions.filter(t => t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'cleared');
+                    const overBudget = categoriesWithBudget.filter(c => {
+                        const spent = monthTxs.filter(t => t.category === c.id).reduce((s, t) => s + t.amount, 0);
+                        return spent > c.budget;
+                    }).length;
+                    budgetScore = Math.max(100 - (overBudget / categoriesWithBudget.length) * 100, 0);
+                }
+
+                const goalsProgress = goals.length > 0 ? goals.reduce((s, g) => s + Math.min(g.current / g.target, 1), 0) / goals.length * 100 : 50;
+                const scoreGoals = Math.min(goalsProgress, 100);
+
+                const diversification = accounts.length;
+                const scoreDiversification = Math.min(diversification * 25, 100);
+
+                const totalScore = Math.round(
+                    scoreEconomy * 0.35 +
+                    scorePending * 0.20 +
+                    budgetScore * 0.20 +
+                    scoreGoals * 0.15 +
+                    scoreDiversification * 0.10
+                );
+
+                const grade = totalScore >= 90 ? { label: 'Excelente 🏆', color: '#10b981' } :
+                              totalScore >= 75 ? { label: 'Muito Bom ⭐', color: '#3b82f6' } :
+                              totalScore >= 60 ? { label: 'Bom 👍', color: '#8b5cf6' } :
+                              totalScore >= 45 ? { label: 'Regular ⚠️', color: '#f59e0b' } :
+                                                 { label: 'Precisa Melhorar 🔴', color: '#ef4444' };
+
+                const deg = Math.round((totalScore / 100) * 360);
+                const container = document.getElementById('financial-score-container');
+                container.innerHTML = `
+                    <div class="financial-score-card">
+                        <div class="score-ring" style="background: conic-gradient(${grade.color} ${deg}deg, #e2e8f0 ${deg}deg);">
+                            <div class="score-number">${totalScore}</div>
+                        </div>
+                        <div class="score-label">Score Financeiro</div>
+                        <div class="score-grade" style="color:${grade.color}">${grade.label}</div>
+                        <div class="score-details">
+                            ${UI._scoreItem('Taxa de Poupança', scoreEconomy, (savingsRate*100).toFixed(1)+'%')}
+                            ${UI._scoreItem('Gestão de Pendências', scorePending, pendingOverdue > 0 ? pendingOverdue+' pendente(s)' : 'Em dia')}
+                            ${UI._scoreItem('Controle de Orçamento', budgetScore, budgetScore >= 100 ? 'Dentro do limite' : 'Ajuste necessário')}
+                            ${UI._scoreItem('Progresso de Metas', scoreGoals, goals.length > 0 ? goalsProgress.toFixed(0)+'% médio' : 'Sem metas')}
+                        </div>
+                    </div>
+                    ${UI._scoreInsight(totalScore, savingsRate, pendingOverdue, income6m, expense6m)}
+                `;
+            },
+
+            _scoreItem: (label, score, desc) => `
+                <div class="score-item">
+                    <div class="score-item-label">${label}</div>
+                    <div class="score-item-value">${desc}</div>
+                    <div class="score-item-bar"><div class="score-item-fill" style="width:${score}%; background:${score>=70?'#10b981':score>=40?'#f59e0b':'#ef4444'}"></div></div>
+                </div>`,
+
+            _scoreInsight: (score, savingsRate, pendingOverdue, income, expense) => {
+                const tips = [];
+                if (savingsRate < 0.1) tips.push('💡 Tente poupar pelo menos 10% da renda mensal. Automatize transferências para poupança logo no dia do salário.');
+                if (savingsRate >= 0.2) tips.push('🎉 Ótima taxa de poupança! Continue assim e considere diversificar em investimentos.');
+                if (pendingOverdue > 0) tips.push(`⚡ Você tem ${pendingOverdue} transação(ões) pendente(s) em atraso. Efetive-as para ter um saldo real preciso.`);
+                if (income > 0 && expense / income > 0.8) tips.push('⚠️ Suas despesas representam mais de 80% da renda. Revise gastos fixos e encontre o que pode cortar.');
+                if (tips.length === 0) tips.push('✅ Sua saúde financeira está em bom estado! Continue monitorando suas finanças regularmente.');
+                return tips.map(t => `<div class="analysis-insight green" style="margin-top:8px; text-align:left;"><i class="fas fa-lightbulb"></i><span>${t}</span></div>`).join('');
+            },
+
+            renderExpenseAnalysis: () => {
+                const { transactions, categories } = FinanceApp.data;
+                const now = new Date();
+                const currRange = Utils.getMonthRange(now.getMonth(), now.getFullYear());
+                const prevRange = Utils.getMonthRange(now.getMonth() === 0 ? 11 : now.getMonth()-1, now.getMonth() === 0 ? now.getFullYear()-1 : now.getFullYear());
+
+                const currTxs = transactions.filter(t => t.date >= currRange.start && t.date <= currRange.end && (t.status === 'cleared' || t.status === 'pending') && t.type === 'expense');
+                const prevTxs = transactions.filter(t => t.date >= prevRange.start && t.date <= prevRange.end && t.status === 'cleared' && t.type === 'expense');
+
+                const currTotal = currTxs.reduce((s, t) => s + t.amount, 0);
+                const prevTotal = prevTxs.reduce((s, t) => s + t.amount, 0);
+
+                const expenseCats = categories.filter(c => c.type === 'expense');
+                let html = '';
+
+                // Alerta global
+                if (prevTotal > 0 && currTotal > prevTotal * 1.1) {
+                    html += `<div class="alert-banner"><i class="fas fa-exclamation-triangle"></i><div class="alert-text"><strong>Despesas ${((currTotal/prevTotal-1)*100).toFixed(0)}% maiores que o mês passado</strong>Mês atual: ${Utils.formatCurrency(currTotal)} vs. ${Utils.formatCurrency(prevTotal)} anterior.</div></div>`;
+                } else if (prevTotal > 0 && currTotal < prevTotal * 0.9) {
+                    html += `<div class="alert-banner success"><i class="fas fa-thumbs-up"></i><div class="alert-text"><strong>Ótimo! Despesas ${((1-currTotal/prevTotal)*100).toFixed(0)}% menores que o mês passado</strong>Você economizou ${Utils.formatCurrency(prevTotal - currTotal)} comparado ao mês anterior.</div></div>`;
+                }
+
+                if (expenseCats.length === 0) {
+                    html += `<div class="empty-state"><i class="fas fa-tags"></i><p>Nenhuma categoria de despesa cadastrada.</p></div>`;
+                } else {
+                    expenseCats.sort((a, b) => {
+                        const aAmt = currTxs.filter(t => t.category === a.id).reduce((s, t) => s + t.amount, 0);
+                        const bAmt = currTxs.filter(t => t.category === b.id).reduce((s, t) => s + t.amount, 0);
+                        return bAmt - aAmt;
+                    }).forEach((cat, idx) => {
+                        const curr = currTxs.filter(t => t.category === cat.id).reduce((s, t) => s + t.amount, 0);
+                        const prev = prevTxs.filter(t => t.category === cat.id).reduce((s, t) => s + t.amount, 0);
+                        const pct = currTotal > 0 ? (curr / currTotal * 100).toFixed(1) : 0;
+                        const overBudget = cat.budget > 0 && curr > cat.budget;
+                        const nearBudget = cat.budget > 0 && curr > cat.budget * 0.8 && curr <= cat.budget;
+                        const delta = prev > 0 ? ((curr - prev) / prev * 100) : null;
+
+                        let cardClass = 'on-track';
+                        if (overBudget) cardClass = 'alert';
+                        else if (nearBudget) cardClass = 'saving-opportunity';
+
+                        let insightHtml = '';
+                        if (overBudget) {
+                            insightHtml = `<div class="analysis-insight red"><i class="fas fa-exclamation-circle"></i><span>Orçamento de ${Utils.formatCurrency(cat.budget)} ultrapassado em ${Utils.formatCurrency(curr - cat.budget)}. Revise esses gastos ou aumente o limite.</span></div>`;
+                        } else if (nearBudget) {
+                            insightHtml = `<div class="analysis-insight"><i class="fas fa-fire"></i><span>Você já usou ${(curr/cat.budget*100).toFixed(0)}% do orçamento mensal desta categoria. Cuidado!</span></div>`;
+                        } else if (delta !== null && delta > 20) {
+                            insightHtml = `<div class="analysis-insight"><i class="fas fa-arrow-up"></i><span>Alta de ${delta.toFixed(0)}% em relação ao mês passado. Verifique se é um gasto pontual ou hábito crescente.</span></div>`;
+                        } else if (delta !== null && delta < -20) {
+                            insightHtml = `<div class="analysis-insight green"><i class="fas fa-arrow-down"></i><span>Queda de ${Math.abs(delta).toFixed(0)}% em relação ao mês passado. Excelente controle nesta categoria!</span></div>`;
+                        } else if (curr === 0) {
+                            insightHtml = `<div class="analysis-insight green"><i class="fas fa-check"></i><span>Nenhum gasto nesta categoria neste mês.</span></div>`;
+                        }
+
+                        // Mini barras dos últimos 4 meses
+                        let bars = '';
+                        const maxBarVal = Math.max(...[0,1,2,3].map(i => {
+                            const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+                            const r = Utils.getMonthRange(d.getMonth(), d.getFullYear());
+                            return transactions.filter(t => t.category === cat.id && t.date >= r.start && t.date <= r.end && t.status === 'cleared').reduce((s, t) => s + t.amount, 0);
+                        }), 1);
+                        [3,2,1,0].forEach(i => {
+                            const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+                            const r = Utils.getMonthRange(d.getMonth(), d.getFullYear());
+                            const val = transactions.filter(t => t.category === cat.id && t.date >= r.start && t.date <= r.end && t.status === 'cleared').reduce((s, t) => s + t.amount, 0);
+                            const h = maxBarVal > 0 ? Math.max((val / maxBarVal) * 38, 2) : 2;
+                            const mName = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][d.getMonth()];
+                            bars += `<div class="analysis-bar-wrap"><div class="analysis-bar" style="height:${h}px; background:${cat.color || '#ef4444'}${i===0?'':'80'}"></div><div class="analysis-bar-label">${mName}</div></div>`;
+                        });
+
+                        html += `
+                            <div class="analysis-card ${cardClass}" style="animation-delay:${idx*0.05}s">
+                                <div class="analysis-header">
+                                    <div class="analysis-icon" style="background:${cat.color || '#ef4444'}22; color:${cat.color || '#ef4444'}">
+                                        <i class="${Utils.getCategoryIcon(cat.icon)}"></i>
+                                    </div>
+                                    <div class="analysis-name">${cat.name}</div>
+                                    <div>
+                                        <div class="analysis-amount" style="color:var(--expense)">${Utils.formatCurrency(curr)}</div>
+                                        <div style="font-size:0.75rem; color:var(--secondary); text-align:right">${pct}% do total</div>
+                                    </div>
+                                </div>
+                                ${cat.budget > 0 ? `<div style="margin: 4px 0 8px;">
+                                    <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;">
+                                        <div style="height:100%; width:${Math.min(curr/cat.budget*100, 100)}%; background:${overBudget?'#ef4444':nearBudget?'#f59e0b':'#10b981'}; border-radius:3px;"></div>
+                                    </div>
+                                    <div style="font-size:0.75rem; color:var(--secondary); margin-top:3px;">${overBudget ? '⚠️ Orçamento excedido' : `${Utils.formatCurrency(curr)} / ${Utils.formatCurrency(cat.budget)}`}</div>
+                                </div>` : ''}
+                                <div class="analysis-bars">${bars}</div>
+                                ${insightHtml}
+                            </div>`;
+                    });
+                }
+
+                document.getElementById('expense-analysis-list').innerHTML = html;
+            },
+
+            renderIncomeAnalysis: () => {
+                const { transactions, categories } = FinanceApp.data;
+                const now = new Date();
+                const currRange = Utils.getMonthRange(now.getMonth(), now.getFullYear());
+                const prevRange = Utils.getMonthRange(now.getMonth() === 0 ? 11 : now.getMonth()-1, now.getMonth() === 0 ? now.getFullYear()-1 : now.getFullYear());
+
+                const currTxs = transactions.filter(t => t.date >= currRange.start && t.date <= currRange.end && (t.status === 'cleared' || t.status === 'pending') && t.type === 'income');
+                const prevTxs = transactions.filter(t => t.date >= prevRange.start && t.date <= prevRange.end && t.status === 'cleared' && t.type === 'income');
+
+                const currTotal = currTxs.reduce((s, t) => s + t.amount, 0);
+                const prevTotal = prevTxs.reduce((s, t) => s + t.amount, 0);
+
+                const incomeCats = categories.filter(c => c.type === 'income');
+                let html = '';
+
+                if (prevTotal > 0 && currTotal < prevTotal * 0.9) {
+                    html += `<div class="alert-banner"><i class="fas fa-exclamation-triangle"></i><div class="alert-text"><strong>Receitas ${((1-currTotal/prevTotal)*100).toFixed(0)}% menores que o mês passado</strong>Mês atual: ${Utils.formatCurrency(currTotal)} vs. ${Utils.formatCurrency(prevTotal)} anterior.</div></div>`;
+                } else if (currTotal > 0) {
+                    html += `<div class="alert-banner success"><i class="fas fa-dollar-sign"></i><div class="alert-text"><strong>Total de receitas este mês: ${Utils.formatCurrency(currTotal)}</strong>${prevTotal > 0 ? `${currTotal >= prevTotal ? '▲ Alta' : '▼ Queda'} de ${Math.abs((currTotal/prevTotal-1)*100).toFixed(0)}% vs. mês anterior.` : ''}</div></div>`;
+                }
+
+                // Análise por transação individual de receita (não só categoria)
+                const incomeTxs = currTxs.sort((a, b) => b.amount - a.amount);
+
+                if (incomeTxs.length === 0) {
+                    html += `<div class="empty-state"><i class="fas fa-money-bill-wave"></i><p>Nenhuma receita neste mês.</p></div>`;
+                } else {
+                    html += `<div class="section-title">Por Transação</div>`;
+                    incomeTxs.forEach((t, idx) => {
+                        const cat = categories.find(c => c.id === t.category);
+                        const pct = currTotal > 0 ? (t.amount / currTotal * 100).toFixed(1) : 0;
+                        const prevSimilar = transactions.filter(tx => tx.description === t.description && tx.date >= prevRange.start && tx.date <= prevRange.end && tx.status === 'cleared').reduce((s, tx) => s + tx.amount, 0);
+                        const delta = prevSimilar > 0 ? ((t.amount - prevSimilar) / prevSimilar * 100) : null;
+
+                        let insight = '';
+                        if (delta !== null && Math.abs(delta) > 5) {
+                            if (delta > 0) insight = `<div class="analysis-insight green"><i class="fas fa-arrow-up"></i><span>Alta de ${delta.toFixed(1)}% comparado ao mês passado. Ótima evolução!</span></div>`;
+                            else insight = `<div class="analysis-insight red"><i class="fas fa-arrow-down"></i><span>Queda de ${Math.abs(delta).toFixed(1)}% comparado ao mês passado. Fique atento.</span></div>`;
+                        }
+                        if (t.status === 'pending') {
+                            insight += `<div class="analysis-insight"><i class="fas fa-clock"></i><span>Esta receita ainda está pendente. Efetive quando receber.</span></div>`;
+                        }
+
+                        html += `
+                            <div class="analysis-card on-track" style="animation-delay:${idx*0.05}s">
+                                <div class="analysis-header">
+                                    <div class="analysis-icon" style="background:#d1fae5; color:#10b981">
+                                        <i class="fas fa-${cat ? Utils.getCategoryIcon(cat.icon).replace('fas fa-','') : 'money-bill-wave'}"></i>
+                                    </div>
+                                    <div>
+                                        <div class="analysis-name">${t.description}</div>
+                                        <div style="font-size:0.75rem; color:var(--secondary)">${cat ? cat.name : 'Sem categoria'} · ${Utils.formatDate(t.date)}</div>
+                                    </div>
+                                    <div>
+                                        <div class="analysis-amount" style="color:var(--income)">+${Utils.formatCurrency(t.amount)}</div>
+                                        <div style="font-size:0.75rem; color:var(--secondary); text-align:right">${pct}% do total</div>
+                                    </div>
+                                </div>
+                                ${insight}
+                            </div>`;
+                    });
+
+                    // Por categoria
+                    if (incomeCats.length > 0) {
+                        html += `<div class="section-title" style="margin-top:16px;">Por Categoria</div>`;
+                        incomeCats.forEach((cat, idx) => {
+                            const curr = currTxs.filter(t => t.category === cat.id).reduce((s, t) => s + t.amount, 0);
+                            if (curr === 0) return;
+                            const pct = currTotal > 0 ? (curr / currTotal * 100).toFixed(1) : 0;
+                            html += `
+                                <div class="analysis-card on-track" style="animation-delay:${idx*0.05}s">
+                                    <div class="analysis-header">
+                                        <div class="analysis-icon" style="background:${cat.color||'#10b981'}22; color:${cat.color||'#10b981'}">
+                                            <i class="${Utils.getCategoryIcon(cat.icon)}"></i>
+                                        </div>
+                                        <div class="analysis-name">${cat.name}</div>
+                                        <div>
+                                            <div class="analysis-amount" style="color:var(--income)">+${Utils.formatCurrency(curr)}</div>
+                                            <div style="font-size:0.75rem; color:var(--secondary); text-align:right">${pct}%</div>
+                                        </div>
+                                    </div>
+                                    <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; margin-top:8px;">
+                                        <div style="height:100%; width:${pct}%; background:#10b981; border-radius:3px;"></div>
+                                    </div>
+                                </div>`;
+                        });
+                    }
+                }
+
+                document.getElementById('income-analysis-list').innerHTML = html;
+            },
+
+            renderSavingsOpportunities: () => {
+                const { transactions, categories, accounts } = FinanceApp.data;
+                const now = new Date();
+                const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
+
+                // Coleta dados dos últimos 3 meses para análise de padrão
+                function getMonthExpenses(monthsBack) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
+                    const range = Utils.getMonthRange(d.getMonth(), d.getFullYear());
+                    return transactions.filter(t => t.date >= range.start && t.date <= range.end && t.status === 'cleared' && t.type === 'expense');
+                }
+
+                const curr = getMonthExpenses(0);
+                const prev1 = getMonthExpenses(1);
+                const prev2 = getMonthExpenses(2);
+                const currIncome = transactions.filter(t => {
+                    const range = Utils.getMonthRange(now.getMonth(), now.getFullYear());
+                    return t.date >= range.start && t.date <= range.end && t.status === 'cleared' && t.type === 'income';
+                }).reduce((s, t) => s + t.amount, 0);
+
+                const currTotal = curr.reduce((s, t) => s + t.amount, 0);
+                const opportunities = [];
+
+                // 1) Categorias com gasto crescente (3 meses consecutivos)
+                categories.filter(c => c.type === 'expense').forEach(cat => {
+                    const v0 = prev2.filter(t => t.category === cat.id).reduce((s, t) => s + t.amount, 0);
+                    const v1 = prev1.filter(t => t.category === cat.id).reduce((s, t) => s + t.amount, 0);
+                    const v2 = curr.filter(t => t.category === cat.id).reduce((s, t) => s + t.amount, 0);
+                    if (v0 > 0 && v1 > v0 * 1.05 && v2 > v1 * 1.05) {
+                        opportunities.push({
+                            type: 'growing',
+                            icon: Utils.getCategoryIcon(cat.icon),
+                            color: cat.color || '#f59e0b',
+                            title: `${cat.name} crescendo consistentemente`,
+                            desc: `Gasto nesta categoria aumentou 3 meses seguidos: ${Utils.formatCurrencyShort(v0)} → ${Utils.formatCurrencyShort(v1)} → ${Utils.formatCurrencyShort(v2)}.`,
+                            potential: v2 - v0,
+                            action: `Reduza para ${Utils.formatCurrency(v0)} (nível de 2 meses atrás) e economize ${Utils.formatCurrency(v2 - v0)}/mês.`
+                        });
+                    }
+                });
+
+                // 2) Categoria acima de 30% da renda
+                if (currIncome > 0) {
+                    categories.filter(c => c.type === 'expense').forEach(cat => {
+                        const spent = curr.filter(t => t.category === cat.id).reduce((s, t) => s + t.amount, 0);
+                        const pct = spent / currIncome;
+                        if (pct > 0.30) {
+                            opportunities.push({
+                                type: 'high-pct',
+                                icon: Utils.getCategoryIcon(cat.icon),
+                                color: '#ef4444',
+                                title: `${cat.name} consome ${(pct*100).toFixed(0)}% da sua renda`,
+                                desc: `Você gastou ${Utils.formatCurrency(spent)} nesta categoria. Especialistas recomendam no máximo 30%.`,
+                                potential: spent - currIncome * 0.25,
+                                action: `Reduza para ${Utils.formatCurrency(currIncome * 0.25)} e economize ${Utils.formatCurrency(spent - currIncome * 0.25)}/mês.`
+                            });
+                        }
+                    });
+                }
+
+                // 3) Gastos recorrentes que podem ser renegociados
+                const recurringExpenses = transactions.filter(t => t.recurring && t.type === 'expense');
+                if (recurringExpenses.length > 0) {
+                    const totalRecurring = recurringExpenses.reduce((s, t) => s + t.amount, 0);
+                    if (totalRecurring > 200) {
+                        opportunities.push({
+                            type: 'recurring',
+                            icon: 'fas fa-sync-alt',
+                            color: '#8b5cf6',
+                            title: `${recurringExpenses.length} gastos recorrentes detectados`,
+                            desc: `Total de ${Utils.formatCurrency(totalRecurring)}/mês em despesas recorrentes. Revise assinaturas e serviços que você não usa mais.`,
+                            potential: totalRecurring * 0.15,
+                            action: `Cancelar ou renegociar 15% pode gerar ${Utils.formatCurrency(totalRecurring * 0.15)}/mês de economia.`
+                        });
+                    }
+                }
+
+                // 4) Taxa de poupança baixa
+                if (currIncome > 0) {
+                    const savingsRate = (currIncome - currTotal) / currIncome;
+                    if (savingsRate < 0.10) {
+                        opportunities.push({
+                            type: 'savings-rate',
+                            icon: 'fas fa-piggy-bank',
+                            color: '#f59e0b',
+                            title: 'Taxa de poupança abaixo de 10%',
+                            desc: `Você está poupando apenas ${(savingsRate*100).toFixed(1)}% da renda. A regra 50/30/20 sugere guardar ao menos 20%.`,
+                            potential: currIncome * 0.10,
+                            action: `Automatize ${Utils.formatCurrency(currIncome * 0.10)} para poupança ou investimento logo que receber o salário.`
+                        });
+                    }
+                }
+
+                // 5) Saldo alto parado (acima de 6x gastos mensais)
+                if (currTotal > 0 && totalBalance > currTotal * 6) {
+                    opportunities.push({
+                        type: 'idle-money',
+                        icon: 'fas fa-chart-line',
+                        color: '#3b82f6',
+                        title: 'Dinheiro parado — invista o excedente',
+                        desc: `Seu saldo atual (${Utils.formatCurrency(totalBalance)}) equivale a mais de 6 meses de despesas. Considere investir o excedente.`,
+                        potential: totalBalance - currTotal * 6,
+                        action: `Invista ${Utils.formatCurrency(totalBalance - currTotal * 6)} em renda fixa/variável e faça seu dinheiro trabalhar por você.`
+                    });
+                }
+
+                const container = document.getElementById('savings-opportunities-list');
+
+                if (opportunities.length === 0) {
+                    container.innerHTML = `
+                        <div class="alert-banner success"><i class="fas fa-trophy"></i><div class="alert-text"><strong>Parabéns! Finanças bem controladas.</strong>Não identificamos oportunidades de melhoria significativas neste momento.</div></div>
+                        <div class="empty-state"><i class="fas fa-leaf"></i><p>Continue com os bons hábitos financeiros!</p></div>`;
+                    return;
+                }
+
+                let html = `<div class="alert-banner warning"><i class="fas fa-lightbulb"></i><div class="alert-text"><strong>${opportunities.length} oportunidade(s) de economia encontrada(s)</strong>Potencial total de economia: ${Utils.formatCurrency(opportunities.reduce((s, o) => s + (o.potential || 0), 0))}/mês.</div></div>`;
+
+                opportunities.sort((a, b) => (b.potential || 0) - (a.potential || 0)).forEach((op, idx) => {
+                    html += `
+                        <div class="savings-tip-card" style="animation-delay:${idx*0.07}s; border-left-color:${op.color}; background: ${op.color}15;">
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                                <div style="width:36px; height:36px; border-radius:8px; background:${op.color}25; color:${op.color}; display:flex; align-items:center; justify-content:center;">
+                                    <i class="${op.icon}"></i>
+                                </div>
+                                <div class="savings-tip-title" style="color:${op.color}; flex:1">${op.title}</div>
+                                ${op.potential > 0 ? `<div class="savings-tip-amount" style="color:${op.color}">-${Utils.formatCurrencyShort(op.potential)}</div>` : ''}
+                            </div>
+                            <div class="savings-tip-desc">${op.desc}</div>
+                            <div style="margin-top:8px; font-size:0.82rem; font-weight:600; color:${op.color}; background:${op.color}20; padding:8px; border-radius:6px;">
+                                <i class="fas fa-arrow-right" style="margin-right:6px;"></i>${op.action}
+                            </div>
+                        </div>`;
+                });
+
+                container.innerHTML = html;
             },
             
             openModal: (type) => {
