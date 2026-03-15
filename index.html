@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -453,6 +454,7 @@
             overflow-y: auto;
             z-index: 101;
         }
+        .modal-sheet.active { transform: translateY(0); }
         .modal-overlay.active + .modal-sheet { transform: translateY(0); }
 
         .sheet-handle {
@@ -896,19 +898,19 @@
             </div>
             
             <div class="toggle-buttons">
-                <button class="toggle-btn active" onclick="UI.setTransactionViewMode('all')">Todas</button>
-                <button class="toggle-btn" onclick="UI.setTransactionViewMode('pending')">Pendentes</button>
-                <button class="toggle-btn" onclick="UI.setTransactionViewMode('cleared')">Efetivadas</button>
+                <button class="toggle-btn active" onclick="UI.setTransactionViewMode('all', this)">Todas</button>
+                <button class="toggle-btn" onclick="UI.setTransactionViewMode('pending', this)">Pendentes</button>
+                <button class="toggle-btn" onclick="UI.setTransactionViewMode('cleared', this)">Efetivadas</button>
             </div>
             
             <div class="filter-buttons">
-                <button class="filter-btn active" onclick="UI.setTransactionFilter('all')">Todas</button>
-                <button class="filter-btn" onclick="UI.setTransactionFilter('income')">Receitas</button>
-                <button class="filter-btn" onclick="UI.setTransactionFilter('expense')">Despesas</button>
-                <button class="filter-btn" onclick="UI.setTransactionFilter('investment')">Investimentos</button>
-                <button class="filter-btn" onclick="UI.setTransactionFilter('transfer')">Transferências</button>
-                <button class="filter-btn" onclick="UI.setTransactionFilter('recurring')">Recorrentes</button>
-                <button class="filter-btn" onclick="UI.setTransactionFilter('scheduled')">Agendadas</button>
+                <button class="filter-btn active" onclick="UI.setTransactionFilter('all', this)">Todas</button>
+                <button class="filter-btn" onclick="UI.setTransactionFilter('income', this)">Receitas</button>
+                <button class="filter-btn" onclick="UI.setTransactionFilter('expense', this)">Despesas</button>
+                <button class="filter-btn" onclick="UI.setTransactionFilter('investment', this)">Investimentos</button>
+                <button class="filter-btn" onclick="UI.setTransactionFilter('transfer', this)">Transferências</button>
+                <button class="filter-btn" onclick="UI.setTransactionFilter('recurring', this)">Recorrentes</button>
+                <button class="filter-btn" onclick="UI.setTransactionFilter('scheduled', this)">Agendadas</button>
             </div>
             
             <div class="month-selector" style="margin-bottom: 16px;">
@@ -939,7 +941,9 @@
                 <!-- Lista completa de contas será preenchida aqui -->
             </div>
             
-            <div class="section-title">Transferências</div>
+            <div class="section-title">Transferências
+                <button class="icon-btn" style="background: var(--transfer); color: white; border-radius: 8px;" onclick="UI.openTransferModal()"><i class="fas fa-plus"></i></button>
+            </div>
             <div id="transfer-history">
                 <!-- Histórico de transferências será preenchido aqui -->
             </div>
@@ -973,9 +977,9 @@
         <!-- Relatórios View -->
         <div id="reports-view" class="view">
             <div class="tab-nav">
-                <button class="tab-btn active" onclick="UI.setReportTab('overview')">Visão Geral</button>
-                <button class="tab-btn" onclick="UI.setReportTab('accounts')">Contas</button>
-                <button class="tab-btn" onclick="UI.setReportTab('categories')">Categorias</button>
+                <button class="tab-btn active" onclick="UI.setReportTab('overview', this)">Visão Geral</button>
+                <button class="tab-btn" onclick="UI.setReportTab('accounts', this)">Contas</button>
+                <button class="tab-btn" onclick="UI.setReportTab('categories', this)">Categorias</button>
             </div>
             
             <div id="report-overview" class="report-tab active">
@@ -1045,22 +1049,22 @@
     </button>
 
     <nav class="bottom-nav">
-        <a href="#" class="nav-item active" data-target="dashboard-view" onclick="UI.switchTab(this)">
+        <a href="#" class="nav-item active" data-target="dashboard-view" onclick="UI.switchTab(this); return false;">
             <i class="fas fa-home"></i> <span>Início</span>
         </a>
-        <a href="#" class="nav-item" data-target="transactions-view" onclick="UI.switchTab(this)">
+        <a href="#" class="nav-item" data-target="transactions-view" onclick="UI.switchTab(this); return false;">
             <i class="fas fa-exchange-alt"></i> <span>Transações</span>
         </a>
-        <a href="#" class="nav-item" data-target="accounts-view" onclick="UI.switchTab(this)">
+        <a href="#" class="nav-item" data-target="accounts-view" onclick="UI.switchTab(this); return false;">
             <i class="fas fa-wallet"></i> <span>Contas</span>
         </a>
-        <a href="#" class="nav-item" data-target="categories-view" onclick="UI.switchTab(this)">
+        <a href="#" class="nav-item" data-target="categories-view" onclick="UI.switchTab(this); return false;">
             <i class="fas fa-tags"></i> <span>Categorias</span>
         </a>
-        <a href="#" class="nav-item" data-target="goals-view" onclick="UI.switchTab(this)">
+        <a href="#" class="nav-item" data-target="goals-view" onclick="UI.switchTab(this); return false;">
             <i class="fas fa-bullseye"></i> <span>Metas</span>
         </a>
-        <a href="#" class="nav-item" data-target="reports-view" onclick="UI.switchTab(this)">
+        <a href="#" class="nav-item" data-target="reports-view" onclick="UI.switchTab(this); return false;">
             <i class="fas fa-chart-bar"></i> <span>Relatórios</span>
         </a>
     </nav>
@@ -1076,16 +1080,16 @@
             <input type="hidden" id="t-status" value="cleared">
             
             <div class="type-selector">
-                <div class="type-option type-income" onclick="UI.setTransactionType('income')">
+                <div class="type-option type-income" onclick="UI.setTransactionType('income', this)">
                     <i class="fas fa-plus-circle"></i> Receita
                 </div>
-                <div class="type-option type-expense active" onclick="UI.setTransactionType('expense')">
+                <div class="type-option type-expense active" onclick="UI.setTransactionType('expense', this)">
                     <i class="fas fa-minus-circle"></i> Despesa
                 </div>
-                <div class="type-option type-transfer" onclick="UI.setTransactionType('transfer')">
+                <div class="type-option type-transfer" onclick="UI.setTransactionType('transfer', this)">
                     <i class="fas fa-exchange-alt"></i> Transferência
                 </div>
-                <div class="type-option type-investment" onclick="UI.setTransactionType('investment')">
+                <div class="type-option type-investment" onclick="UI.setTransactionType('investment', this)">
                     <i class="fas fa-chart-line"></i> Investimento
                 </div>
             </div>
@@ -1155,7 +1159,7 @@
 
             <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="t-recurring">
+                    <input type="checkbox" id="t-recurring" onchange="document.getElementById('t-recurring-group').style.display = this.checked ? 'block' : 'none'">
                     Transação Recorrente
                 </label>
             </div>
@@ -1263,10 +1267,10 @@
             <input type="hidden" id="c-type" value="expense">
             
             <div class="type-selector">
-                <div class="type-option type-income" onclick="UI.setCategoryType('income')">
+                <div class="type-option type-income" onclick="UI.setCategoryType('income', this)">
                     Receita
                 </div>
-                <div class="type-option type-expense active" onclick="UI.setCategoryType('expense')">
+                <div class="type-option type-expense active" onclick="UI.setCategoryType('expense', this)">
                     Despesa
                 </div>
             </div>
@@ -1308,6 +1312,7 @@
 
             <button type="submit" class="btn-block">Salvar Categoria</button>
             <button type="button" class="btn-block" style="background: var(--light); color: var(--secondary); margin-top: 8px;" onclick="UI.closeModals()">Cancelar</button>
+            <button type="button" id="delete-category-btn" class="btn-block" style="background: var(--expense); color: white; margin-top: 8px; display: none;" onclick="FinanceApp.category.deleteCategory()">Excluir Categoria</button>
         </form>
     </div>
 
@@ -1373,6 +1378,7 @@
 
             <button type="submit" class="btn-block">Salvar Meta</button>
             <button type="button" class="btn-block" style="background: var(--light); color: var(--secondary); margin-top: 8px;" onclick="UI.closeModals()">Cancelar</button>
+            <button type="button" id="delete-goal-btn" class="btn-block" style="background: var(--expense); color: white; margin-top: 8px; display: none;" onclick="FinanceApp.goal.deleteGoal(document.getElementById('g-id').value)">Excluir Meta</button>
         </form>
     </div>
 
@@ -1663,87 +1669,63 @@
             processRecurringTransactions: (transactions) => {
                 const today = Utils.getToday();
                 const newTransactions = [];
-                
-                const recurringMasters = transactions.filter(t => 
-                    t.recurring && !t.recurringParent
-                );
-                
+
+                const recurringMasters = transactions.filter(t => t.recurring && !t.recurringParent);
+
                 for (const master of recurringMasters) {
-                    const existingChildren = transactions.filter(t => 
-                        t.recurringParent === master.id
-                    );
-                    
-                    const lastChildDate = existingChildren.length > 0 
-                        ? existingChildren.reduce((latest, t) => {
-                            return new Date(t.date) > new Date(latest) ? t.date : latest;
-                        }, existingChildren[0].date)
-                        : master.date;
-                    
-                    const lastDate = new Date(lastChildDate);
-                    const todayDate = new Date(today);
-                    
-                    if (lastDate < todayDate) {
-                        let currentDate = new Date(lastDate);
-                        
-                        const maxCount = master.recurringCount || 0;
-                        const childCount = existingChildren.length;
-                        
-                        if (maxCount > 0 && childCount >= maxCount) {
-                            continue;
+                    const existingChildren = transactions.filter(t => t.recurringParent === master.id);
+                    const maxCount = master.recurringCount || 0;
+
+                    // Already hit the repetition limit
+                    if (maxCount > 0 && existingChildren.length >= maxCount) continue;
+
+                    // Find the last date already generated (master date or last child)
+                    const allDates = [master.date, ...existingChildren.map(t => t.date)];
+                    const lastDate = allDates.reduce((a, b) => a > b ? a : b);
+
+                    // Generate next occurrence dates from lastDate up to today
+                    let currentDate = new Date(lastDate + 'T00:00:00');
+
+                    const safetyLimit = 366; // prevent infinite loops
+                    let iterations = 0;
+
+                    while (iterations++ < safetyLimit) {
+                        // Advance by frequency
+                        const next = new Date(currentDate);
+                        switch (master.recurringFrequency) {
+                            case 'daily':   next.setDate(next.getDate() + 1); break;
+                            case 'weekly':  next.setDate(next.getDate() + 7); break;
+                            case 'monthly': next.setMonth(next.getMonth() + 1); break;
+                            case 'yearly':  next.setFullYear(next.getFullYear() + 1); break;
+                            default: break;
                         }
-                        
-                        while (currentDate <= todayDate) {
-                            const nextDate = new Date(currentDate);
-                            
-                            switch(master.recurringFrequency) {
-                                case 'daily':
-                                    nextDate.setDate(nextDate.getDate() + 1);
-                                    break;
-                                case 'weekly':
-                                    nextDate.setDate(nextDate.getDate() + 7);
-                                    break;
-                                case 'monthly':
-                                    nextDate.setMonth(nextDate.getMonth() + 1);
-                                    break;
-                                case 'yearly':
-                                    nextDate.setFullYear(nextDate.getFullYear() + 1);
-                                    break;
-                            }
-                            
-                            currentDate = nextDate;
-                            
-                            if (master.recurringEndDate && currentDate > new Date(master.recurringEndDate)) {
-                                break;
-                            }
-                            
-                            if (maxCount > 0 && (childCount + newTransactions.filter(t => t.recurringParent === master.id).length) >= maxCount) {
-                                break;
-                            }
-                        }
-                        
-                        if (currentDate > todayDate) {
-                            continue;
-                        }
-                        
+                        currentDate = next;
+
                         const dateStr = currentDate.toISOString().split('T')[0];
-                        
-                        const newTransaction = {
-                            ...master,
-                            id: Utils.id(),
-                            date: dateStr,
-                            status: 'pending',
-                            recurringParent: master.id,
-                            recurring: false
-                        };
-                        
-                        delete newTransaction.recurringFrequency;
-                        delete newTransaction.recurringCount;
-                        delete newTransaction.recurringEndDate;
-                        
-                        newTransactions.push(newTransaction);
+
+                        // Stop if past end date or today
+                        if (dateStr > today) break;
+                        if (master.recurringEndDate && dateStr > master.recurringEndDate) break;
+
+                        // Stop if hit repetition limit (including what we've already generated this run)
+                        const totalGenerated = existingChildren.length +
+                            newTransactions.filter(t => t.recurringParent === master.id).length;
+                        if (maxCount > 0 && totalGenerated >= maxCount) break;
+
+                        const child = { ...master };
+                        child.id = Utils.id();
+                        child.date = dateStr;
+                        child.status = 'pending';
+                        child.recurringParent = master.id;
+                        child.recurring = false;
+                        delete child.recurringFrequency;
+                        delete child.recurringCount;
+                        delete child.recurringEndDate;
+
+                        newTransactions.push(child);
                     }
                 }
-                
+
                 return newTransactions;
             }
         };
@@ -1886,6 +1868,17 @@
                     request.onerror = () => reject(request.error);
                 });
             },
+
+            deleteCategory: async (id) => {
+                return new Promise((resolve, reject) => {
+                    const tx = DB.db.transaction(['categories'], 'readwrite');
+                    const store = tx.objectStore('categories');
+                    const request = store.delete(id);
+                    
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            },
             
             getAllGoals: async () => {
                 return new Promise((resolve, reject) => {
@@ -2021,30 +2014,31 @@
             init: async () => {
                 try {
                     await DB.init();
+
+                    // Create defaults if first run (before loading so data is ready)
+                    const existingCategories = await DB.getAllCategories();
+                    if (existingCategories.length === 0) {
+                        await UI.createDefaultCategories();
+                    }
+                    const existingAccounts = await DB.getAllAccounts();
+                    if (existingAccounts.length === 0) {
+                        await UI.createDefaultAccounts();
+                    }
+
                     await UI.loadInitialData();
-                    
                     await UI.processAutoRecurringTransactions();
-                    
+
                     UI.updateMonthDisplay();
                     UI.updateTransactionMonthDisplay();
                     UI.renderDashboard();
-                    
+
+                    // Prevent nav link scroll-to-top
                     document.querySelectorAll('.bottom-nav .nav-item').forEach(el => {
                         el.addEventListener('click', (e) => e.preventDefault());
                     });
-                    
-                    const categories = await DB.getAllCategories();
-                    if (categories.length === 0) {
-                        await UI.createDefaultCategories();
-                    }
-                    
-                    const accounts = await DB.getAllAccounts();
-                    if (accounts.length === 0) {
-                        await UI.createDefaultAccounts();
-                    }
-                    
+
                     UI.checkFuturePendingTransactions();
-                    
+
                 } catch (error) {
                     console.error('Erro ao inicializar:', error);
                     Utils.toast('Erro ao carregar dados', 'error');
@@ -2161,11 +2155,12 @@
                 }
             },
             
-            setReportTab: (tab) => {
+            setReportTab: (tab, el) => {
                 UI.reportTab = tab;
                 
                 document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-                event.target.classList.add('active');
+                const target = el || (typeof event !== 'undefined' && event && event.target ? event.target : null);
+                if (target) target.classList.add('active');
                 
                 document.querySelectorAll('.report-tab').forEach(t => t.style.display = 'none');
                 document.getElementById(`report-${tab}`).style.display = 'block';
@@ -2190,10 +2185,11 @@
                 document.getElementById('transaction-month-year').textContent = `${monthYear.year}`;
             },
             
-            setTransactionViewMode: (mode) => {
+            setTransactionViewMode: (mode, el) => {
                 UI.transactionViewMode = mode;
                 document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
-                event.target.classList.add('active');
+                const target = el || (typeof event !== 'undefined' && event && event.target ? event.target : null);
+                if (target) target.classList.add('active');
                 UI.renderTransactions();
             },
             
@@ -2532,10 +2528,11 @@
                 UI.renderTransactions();
             },
             
-            setTransactionFilter: (filter) => {
+            setTransactionFilter: (filter, el) => {
                 UI.transactionFilter = filter;
                 document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-                event.target.classList.add('active');
+                const target = el || (typeof event !== 'undefined' && event && event.target ? event.target : null);
+                if (target) target.classList.add('active');
                 UI.renderTransactions();
             },
             
@@ -2732,6 +2729,10 @@
             },
             
             renderReports: () => {
+                // Only render if reports view is active (canvas elements must be visible for Chart.js)
+                const reportsView = document.getElementById('reports-view');
+                if (!reportsView || !reportsView.classList.contains('active')) return;
+                
                 const { transactions, accounts } = FinanceApp.data;
                 const monthRange = Utils.getMonthRange(UI.currentMonth, UI.currentYear);
                 const futureRange = Utils.getFutureRange(30);
@@ -3239,23 +3240,32 @@
             },
             
             openModal: (type) => {
-                document.getElementById(`overlay-${type}`).classList.add('active');
-                requestAnimationFrame(() => {
-                    document.getElementById(`overlay-${type}`).classList.add('active');
-                });
+                // Close any open modal first
+                UI.closeModals();
+                const overlay = document.getElementById(`overlay-${type}`);
+                const sheet = document.getElementById(`sheet-${type}`);
+                if (overlay) overlay.classList.add('active');
+                if (sheet) {
+                    requestAnimationFrame(() => {
+                        sheet.classList.add('active');
+                    });
+                }
             },
             
             closeModals: () => {
                 document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.modal-sheet').forEach(el => el.classList.remove('active'));
             },
             
-            setTransactionType: (type) => {
+            setTransactionType: (type, el) => {
                 document.getElementById('t-type').value = type;
-                
-                document.querySelectorAll('.type-option').forEach(opt => {
-                    opt.classList.remove('active');
-                });
-                event.target.classList.add('active');
+                document.querySelectorAll('#sheet-transaction .type-option').forEach(opt => opt.classList.remove('active'));
+                if (el) {
+                    el.classList.add('active');
+                } else {
+                    const opt = document.querySelector(`#sheet-transaction .type-${type}`);
+                    if (opt) opt.classList.add('active');
+                }
                 
                 const categoryGroup = document.getElementById('t-category-group');
                 const accountGroup = document.getElementById('t-account-group');
@@ -3324,6 +3334,7 @@
                 document.getElementById('title-transaction').textContent = 'Nova Transação';
                 document.getElementById('delete-transaction-btn').style.display = 'none';
                 document.getElementById('toggle-status-btn').style.display = 'none';
+                document.getElementById('t-recurring-group').style.display = 'none';
                 
                 UI.setTransactionType(type);
                 
@@ -3332,11 +3343,6 @@
                 
                 UI.updateCategorySelect(type);
                 UI.updateAccountSelect();
-                
-                document.getElementById('t-recurring').addEventListener('change', function() {
-                    document.getElementById('t-recurring-group').style.display = 
-                        this.checked ? 'block' : 'none';
-                });
                 
                 UI.openModal('transaction');
             },
@@ -3442,13 +3448,15 @@
                 UI.openModal('transfer');
             },
             
-            setCategoryType: (type) => {
+            setCategoryType: (type, el) => {
                 document.getElementById('c-type').value = type;
-                
-                document.querySelectorAll('.type-option').forEach(opt => {
-                    opt.classList.remove('active');
-                });
-                event.target.classList.add('active');
+                document.querySelectorAll('#sheet-category .type-option').forEach(opt => opt.classList.remove('active'));
+                if (el) {
+                    el.classList.add('active');
+                } else {
+                    const opt = document.querySelector(`#sheet-category .type-${type}`);
+                    if (opt) opt.classList.add('active');
+                }
             },
             
             openNewCategory: () => {
@@ -3457,12 +3465,11 @@
                 document.getElementById('c-type').value = 'expense';
                 document.getElementById('c-color').value = '#10b981';
                 document.getElementById('title-category').textContent = 'Nova Categoria';
-                
-                document.querySelectorAll('.type-option').forEach(opt => {
-                    opt.classList.remove('active');
-                });
-                document.querySelector('.type-option.type-expense').classList.add('active');
-                
+                document.getElementById('delete-category-btn').style.display = 'none';
+
+                document.querySelectorAll('#sheet-category .type-option').forEach(opt => opt.classList.remove('active'));
+                document.querySelector('#sheet-category .type-option.type-expense').classList.add('active');
+
                 UI.openModal('category');
             },
             
@@ -3483,10 +3490,11 @@
                 
                 document.getElementById('c-icon').value = category.icon;
                 document.getElementById('c-color').value = category.color;
+
+                document.getElementById('title-category').textContent = 'Editar Categoria';
+                document.getElementById('delete-category-btn').style.display = 'block';
                 
                 UI.setCategoryType(category.type);
-                
-                document.getElementById('title-category').textContent = 'Editar Categoria';
                 
                 UI.openModal('category');
             },
@@ -3494,14 +3502,15 @@
             openNewGoal: () => {
                 document.getElementById('form-goal').reset();
                 document.getElementById('g-id').value = '';
-                
+                document.getElementById('delete-goal-btn').style.display = 'none';
+
                 const currentInput = document.getElementById('g-current');
                 currentInput.value = '0,00';
                 Utils.maskMoney(currentInput);
-                
+
                 document.getElementById('g-deadline').value = '';
                 document.getElementById('title-goal').textContent = 'Nova Meta';
-                
+
                 UI.openModal('goal');
             },
             
@@ -3529,8 +3538,8 @@
                 document.getElementById('g-category').value = goal.category || 'outro';
                 document.getElementById('g-description').value = goal.description || '';
                 document.getElementById('g-icon').value = goal.icon || 'piggy-bank';
-                
                 document.getElementById('title-goal').textContent = 'Editar Meta';
+                document.getElementById('delete-goal-btn').style.display = 'block';
                 
                 UI.openModal('goal');
             },
@@ -3677,11 +3686,17 @@
                         
                         const index = FinanceApp.data.transactions.findIndex(t => t.id === id);
                         if (index >= 0) {
+                            // Editing: reverse old balance if it was cleared
+                            const old = FinanceApp.data.transactions[index];
+                            if (old.status === 'cleared') {
+                                await FinanceApp.account.reverseBalance(old);
+                            }
                             FinanceApp.data.transactions[index] = transaction;
                         } else {
                             FinanceApp.data.transactions.push(transaction);
                         }
                         
+                        // Apply new balance only if cleared
                         if (status === 'cleared') {
                             await FinanceApp.account.updateBalance(transaction);
                         }
@@ -3706,15 +3721,18 @@
                     const transaction = FinanceApp.data.transactions.find(t => t.id === id);
                     if (!transaction) return;
                     
-                    const newStatus = transaction.status === 'pending' ? 'cleared' : 'pending';
+                    const oldStatus = transaction.status;
+                    const newStatus = oldStatus === 'pending' || oldStatus === 'scheduled' ? 'cleared' : 'pending';
                     transaction.status = newStatus;
                     
                     try {
                         await DB.saveTransaction(transaction);
                         
                         if (newStatus === 'cleared') {
+                            // Was pending/scheduled, now cleared → apply to balance
                             await FinanceApp.account.updateBalance(transaction);
-                        } else if (transaction.status === 'cleared') {
+                        } else if (oldStatus === 'cleared') {
+                            // Was cleared, now pending → reverse from balance
                             await FinanceApp.account.reverseBalance(transaction);
                         }
                         
@@ -4039,6 +4057,30 @@
                         console.error('Erro ao salvar categoria:', error);
                         Utils.toast('Erro ao salvar categoria', 'error');
                     }
+                },
+
+                deleteCategory: async () => {
+                    const id = document.getElementById('c-id').value;
+                    if (!id) return;
+
+                    const usedInTransactions = FinanceApp.data.transactions.some(t => t.category === id);
+                    if (usedInTransactions) {
+                        if (!confirm('Esta categoria possui transações associadas. Deseja excluí-la mesmo assim?')) return;
+                    } else {
+                        if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
+                    }
+
+                    try {
+                        await DB.deleteCategory(id);
+                        FinanceApp.data.categories = FinanceApp.data.categories.filter(c => c.id !== id);
+                        Utils.toast('Categoria excluída!');
+                        UI.closeModals();
+                        UI.renderCategories();
+                        UI.renderDashboard();
+                    } catch (error) {
+                        console.error('Erro ao excluir categoria:', error);
+                        Utils.toast('Erro ao excluir categoria', 'error');
+                    }
                 }
             },
             
@@ -4215,21 +4257,15 @@
             }
         };
 
-        // Event listeners para modais
+        // Event listeners para modais (fechar ao clicar fora)
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) UI.closeModals();
             });
         });
 
-        // Inicializar o app quando o DOM estiver carregado
-        document.addEventListener('DOMContentLoaded', () => FinanceApp.init());
-
-        // Listener para campo recorrente
-        document.getElementById('t-recurring')?.addEventListener('change', function() {
-            document.getElementById('t-recurring-group').style.display = 
-                this.checked ? 'block' : 'none';
-        });
+        // Inicializar o app
+        FinanceApp.init();
     </script>
 </body>
 </html>
