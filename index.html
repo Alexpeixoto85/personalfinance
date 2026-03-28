@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#10b981">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -37,7 +36,7 @@
             --nav-height: calc(65px + var(--safe-bottom));
             --radius-lg: 16px;
             --radius-md: 12px;
-            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.04);
             --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
             --shadow-float: 0 10px 15px -3px rgb(0 0 0 / 0.1);
         }
@@ -879,8 +878,8 @@
         .alert-banner.warning { background: #fef3c7; border-color: #fde68a; }
         .alert-banner.success { background: #d1fae5; border-color: #6ee7b7; }
         .alert-banner i { font-size: 1.1rem; flex-shrink: 0; }
-        .alert-banner.warning i { color: #d97706; }
         .alert-banner i { color: #dc2626; }
+        .alert-banner.warning i { color: #d97706; }
         .alert-banner.success i { color: #059669; }
         .alert-text { font-size: 0.85rem; }
         .alert-text strong { display: block; margin-bottom: 2px; }
@@ -928,18 +927,1016 @@
             from { opacity: 0; transform: translateY(12px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        /* --- Login Screen --- */
+        #login-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        #login-screen.hidden { display: none; }
+
+        .login-logo {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: white;
+            letter-spacing: -1px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .login-logo i { color: var(--primary); font-size: 2.2rem; }
+        .login-logo span { color: var(--primary); }
+
+        .login-tagline {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .login-card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 28px 24px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-tabs {
+            display: flex;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 24px;
+        }
+        .login-tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .login-tab-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .login-form-group { margin-bottom: 16px; }
+        .login-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+        }
+        .login-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.07);
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .login-input:focus {
+            border-color: var(--primary);
+            background: rgba(255,255,255,0.1);
+        }
+        .login-input::placeholder { color: #475569; }
+
+        .login-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: var(--primary);
+            color: white;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background 0.2s, transform 0.1s;
+            font-family: 'Inter', sans-serif;
+        }
+        .login-btn:active { transform: scale(0.98); }
+        .login-btn:hover { background: var(--primary-dark); }
+        .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .login-error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .login-error.show { display: block; }
+
+        .login-success {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #6ee7b7;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .login-success.show { display: block; }
+
+        .login-footer {
+            color: #475569;
+            font-size: 0.78rem;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+        .toggle-pw {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 0.9rem;
+        }
+
+        /* Logout button in header */
+        .user-greeting {
+            font-size: 0.8rem;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .user-greeting strong { color: var(--dark); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* =========================================================
+           RESPONSIVE DESIGN — DESKTOP & TABLET
+           ========================================================= */
+
+        /* Variáveis desktop */
+        @media (min-width: 768px) {
+            :root {
+                --header-height: 64px;
+                --nav-height: 0px;
+                --sidebar-width: 240px;
+                --content-max: 1100px;
+                --radius-lg: 20px;
+                --radius-md: 14px;
+                --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+                --shadow-md: 0 4px 12px -1px rgb(0 0 0 / 0.1), 0 2px 6px -2px rgb(0 0 0 / 0.06);
+                --shadow-float: 0 20px 40px -8px rgb(0 0 0 / 0.15);
+                --safe-top: 0px;
+                --safe-bottom: 0px;
+            }
+        }
+
+        /* ---- BODY DESKTOP ---- */
+        @media (min-width: 768px) {
+            body {
+                overflow: hidden;
+                height: 100vh;
+                background: #f0f4f8;
+            }
+        }
+
+        /* ---- HEADER DESKTOP ---- */
+        @media (min-width: 768px) {
+            header {
+                left: var(--sidebar-width);
+                padding: 0 28px;
+                height: var(--header-height);
+                background: rgba(255,255,255,0.98);
+                border-bottom: 1px solid #e8edf2;
+                box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+            }
+
+            .brand { display: none; }
+
+            .icon-btn {
+                width: 38px; height: 38px;
+                display: flex; align-items: center; justify-content: center;
+                border-radius: 10px;
+                background: #f8fafc;
+                border: 1px solid #e8edf2;
+                font-size: 1rem;
+                transition: all 0.15s;
+            }
+            .icon-btn:hover {
+                background: #f0fdf4;
+                color: var(--primary);
+                border-color: var(--primary);
+            }
+            .icon-btn:active { transform: scale(0.95); }
+
+            .header-actions { gap: 8px; align-items: center !important; }
+            .user-greeting {
+                background: #f8fafc;
+                border: 1px solid #e8edf2;
+                border-radius: 10px;
+                padding: 6px 12px;
+                font-size: 0.82rem;
+            }
+        }
+
+        /* ---- SIDEBAR ---- */
+        @media (min-width: 768px) {
+            .sidebar {
+                position: fixed;
+                top: 0; left: 0;
+                width: var(--sidebar-width);
+                height: 100vh;
+                background: #0f172a;
+                display: flex;
+                flex-direction: column;
+                z-index: 60;
+                overflow: hidden;
+            }
+
+            .sidebar-logo {
+                padding: 20px 20px 16px;
+                border-bottom: 1px solid rgba(255,255,255,0.06);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .sidebar-logo-icon {
+                width: 36px; height: 36px;
+                background: var(--primary);
+                border-radius: 10px;
+                display: flex; align-items: center; justify-content: center;
+                color: white;
+                font-size: 1rem;
+                flex-shrink: 0;
+            }
+            .sidebar-logo-text {
+                font-size: 1.1rem;
+                font-weight: 800;
+                color: white;
+                letter-spacing: -0.5px;
+            }
+            .sidebar-logo-text span { color: var(--primary); }
+
+            .sidebar-nav {
+                flex: 1;
+                padding: 12px 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                overflow-y: auto;
+            }
+
+            .sidebar-item {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 11px 14px;
+                border-radius: 12px;
+                color: #94a3b8;
+                text-decoration: none;
+                font-size: 0.875rem;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.15s;
+                position: relative;
+            }
+            .sidebar-item:hover {
+                background: rgba(255,255,255,0.06);
+                color: white;
+            }
+            .sidebar-item.active {
+                background: rgba(16, 185, 129, 0.15);
+                color: var(--primary);
+            }
+            .sidebar-item.active i { color: var(--primary); }
+            .sidebar-item i {
+                width: 20px;
+                text-align: center;
+                font-size: 1rem;
+                flex-shrink: 0;
+            }
+            .sidebar-item .nav-badge {
+                margin-left: auto;
+                background: var(--primary);
+                color: white;
+                font-size: 0.65rem;
+                padding: 2px 6px;
+                border-radius: 10px;
+                font-weight: 700;
+            }
+
+            .sidebar-section-label {
+                padding: 16px 14px 6px;
+                font-size: 0.7rem;
+                font-weight: 700;
+                color: #475569;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+            }
+
+            .sidebar-footer {
+                padding: 12px 10px;
+                border-top: 1px solid rgba(255,255,255,0.06);
+            }
+
+            .sidebar-user {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 14px;
+                border-radius: 12px;
+                cursor: pointer;
+                transition: background 0.15s;
+            }
+            .sidebar-user:hover { background: rgba(255,255,255,0.06); }
+            .sidebar-avatar {
+                width: 34px; height: 34px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+                display: flex; align-items: center; justify-content: center;
+                color: white;
+                font-size: 0.85rem;
+                font-weight: 700;
+                flex-shrink: 0;
+            }
+            .sidebar-user-info { flex: 1; min-width: 0; }
+            .sidebar-user-name {
+                font-size: 0.82rem;
+                font-weight: 600;
+                color: white;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .sidebar-user-role {
+                font-size: 0.72rem;
+                color: #64748b;
+            }
+        }
+
+        /* Ocultar sidebar no mobile */
+        @media (max-width: 767px) {
+            .sidebar { display: none; }
+        }
+
+        /* ---- BOTTOM NAV: OCULTAR NO DESKTOP ---- */
+        @media (min-width: 768px) {
+            .bottom-nav { display: none !important; }
+        }
+
+        /* ---- MAIN CONTENT DESKTOP ---- */
+        @media (min-width: 768px) {
+            main {
+                margin-left: var(--sidebar-width);
+                padding: calc(var(--header-height) + 24px) 32px 40px;
+                overflow-y: auto;
+                height: 100vh;
+            }
+        }
+
+        /* ---- CONTEÚDO CENTRALIZADO ---- */
+        @media (min-width: 768px) {
+            .view-content-inner {
+                max-width: var(--content-max);
+                margin: 0 auto;
+            }
+        }
+
+        /* ---- FAB DESKTOP ---- */
+        @media (min-width: 768px) {
+            .fab {
+                bottom: 32px;
+                right: 36px;
+                width: 52px; height: 52px;
+                font-size: 1.3rem;
+                box-shadow: 0 8px 24px rgba(16,185,129,0.4);
+            }
+            .fab:hover { background: var(--primary-dark); transform: scale(1.05); }
+            .fab:active { transform: scale(0.95) rotate(90deg); }
+        }
+
+        /* ---- BALANCE CARD DESKTOP ---- */
+        @media (min-width: 768px) {
+            .balance-card {
+                padding: 28px 32px;
+                border-radius: 20px;
+                background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
+                position: relative;
+                overflow: hidden;
+            }
+            .balance-card::before {
+                content: '';
+                position: absolute;
+                top: -40px; right: -40px;
+                width: 200px; height: 200px;
+                background: rgba(255,255,255,0.05);
+                border-radius: 50%;
+            }
+            .balance-card::after {
+                content: '';
+                position: absolute;
+                bottom: -60px; left: 20px;
+                width: 160px; height: 160px;
+                background: rgba(255,255,255,0.03);
+                border-radius: 50%;
+            }
+            .balance-value { font-size: 2.5rem; }
+        }
+
+        /* ---- STATS GRID DESKTOP ---- */
+        @media (min-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 16px;
+            }
+            .stat-card {
+                padding: 20px;
+                border-radius: 16px;
+                transition: transform 0.2s, box-shadow 0.2s;
+            }
+            .stat-card:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-md);
+            }
+            .stat-value { font-size: 1.6rem; }
+        }
+
+        /* ---- CARDS DESKTOP ---- */
+        @media (min-width: 768px) {
+            .transaction-card, .account-card, .category-card, .goal-card {
+                border-radius: 14px;
+                transition: transform 0.15s, box-shadow 0.15s;
+            }
+            .transaction-card:hover, .account-card:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            }
+            .goal-card:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            }
+        }
+
+        /* ---- MODAIS DESKTOP: DIALOG CENTRADO ---- */
+        @media (min-width: 768px) {
+            .modal-overlay {
+                align-items: center !important;
+                justify-content: center !important;
+                background: rgba(15, 23, 42, 0.6) !important;
+                backdrop-filter: blur(8px) !important;
+                -webkit-backdrop-filter: blur(8px) !important;
+            }
+
+            .modal-sheet {
+                position: relative !important;
+                bottom: auto !important;
+                left: auto !important;
+                right: auto !important;
+                width: 520px !important;
+                max-width: 90vw !important;
+                max-height: 85vh !important;
+                border-radius: 20px !important;
+                transform: none !important;
+                margin: auto;
+                box-shadow: 0 25px 60px -10px rgba(0,0,0,0.35) !important;
+                animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+
+            .modal-sheet.active {
+                transform: none !important;
+            }
+
+            /* Quando overlay está ativo, posicionar sheet como dialog */
+            .modal-overlay.active {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+
+            .modal-overlay.active + .modal-sheet {
+                transform: none !important;
+            }
+
+            .sheet-handle { display: none; }
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* ---- SECTION TITLES DESKTOP ---- */
+        @media (min-width: 768px) {
+            .section-title {
+                font-size: 1.2rem;
+            }
+        }
+
+        /* ---- MONTH SELECTOR DESKTOP ---- */
+        @media (min-width: 768px) {
+            .month-selector {
+                padding: 0;
+                margin-bottom: 24px;
+            }
+        }
+
+        /* ---- ACCOUNTS GRID DESKTOP ---- */
+        @media (min-width: 900px) {
+            .accounts-overview {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+            }
+            .accounts-overview .account-card { margin-bottom: 0; }
+        }
+
+        /* ---- GOALS GRID DESKTOP ---- */
+        @media (min-width: 900px) {
+            #goals-list {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+            }
+            #goals-list .goal-card { margin-bottom: 0; }
+        }
+
+        /* ---- CHART CONTAINERS DESKTOP ---- */
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 320px;
+                border-radius: 16px;
+                padding: 20px;
+            }
+        }
+
+        /* ---- QUICK ACTIONS DESKTOP ---- */
+        @media (min-width: 768px) {
+            .quick-actions {
+                flex-wrap: nowrap;
+            }
+            .quick-action {
+                padding: 16px 12px;
+                border-radius: 14px;
+                transition: transform 0.15s, box-shadow 0.15s;
+            }
+            .quick-action:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-md);
+            }
+        }
+
+        /* ---- ANALYSIS & REPORTS DESKTOP ---- */
+        @media (min-width: 900px) {
+            #expense-analysis-list,
+            #income-analysis-list {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+            }
+            #expense-analysis-list .analysis-card,
+            #income-analysis-list .analysis-card { margin-bottom: 0; }
+        }
+
+        /* ---- PROJECTION ANNUAL GRID DESKTOP ---- */
+        @media (min-width: 768px) {
+            .projection-months-grid {
+                grid-template-columns: repeat(6, 1fr);
+            }
+        }
+
+        /* ---- FORM CONTROLS DESKTOP ---- */
+        @media (min-width: 768px) {
+            .form-control {
+                padding: 12px 14px;
+            }
+            .btn-block {
+                padding: 14px;
+                border-radius: 12px;
+                font-size: 0.95rem;
+                transition: background 0.15s, transform 0.1s;
+            }
+            .btn-block:hover { filter: brightness(1.05); }
+            .btn-block:active { transform: scale(0.99); }
+        }
+
+        /* ---- TOAST DESKTOP ---- */
+        @media (min-width: 768px) {
+            .toast {
+                top: calc(var(--header-height) + 12px);
+                left: calc(var(--sidebar-width) + 50%);
+                transform: translateX(-50%) translateY(-80px);
+            }
+            .toast.show { transform: translateX(-50%) translateY(0); }
+        }
+
+        /* ---- SCROLL CUSTOMIZATION DESKTOP ---- */
+        @media (min-width: 768px) {
+            main::-webkit-scrollbar { width: 6px; }
+            main::-webkit-scrollbar-track { background: transparent; }
+            main::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+            main::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+            .modal-sheet::-webkit-scrollbar { width: 5px; }
+            .modal-sheet::-webkit-scrollbar-track { background: transparent; }
+            .modal-sheet::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
+        }
+
+        /* ---- SEARCH INPUT DESKTOP ---- */
+        @media (min-width: 768px) {
+            .search-input {
+                border-radius: 12px;
+                padding: 12px 12px 12px 42px;
+            }
+            .search-input:hover { border-color: #cbd5e1; }
+        }
+
+        /* ---- FILTER BUTTONS DESKTOP ---- */
+        @media (min-width: 768px) {
+            .filter-btn {
+                padding: 8px 18px;
+                border-radius: 20px;
+                transition: all 0.15s;
+            }
+            .filter-btn:hover:not(.active) { background: #f8fafc; border-color: #cbd5e1; color: var(--dark); }
+        }
+
+        /* ---- FINANCIAL SCORE DESKTOP ---- */
+        @media (min-width: 900px) {
+            .financial-score-card {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 24px;
+                text-align: left;
+            }
+            .score-ring { margin: 0; }
+        }
+
+        /* ---- TABLET TWEAKS ---- */
+        @media (min-width: 768px) and (max-width: 899px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* ---- DASHBOARD 2-COL DESKTOP ---- */
+        @media (min-width: 1024px) {
+            .dashboard-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 24px;
+            }
+            .dashboard-grid-full {
+                grid-column: 1 / -1;
+            }
+        }
+
+        /* ---- PROJECTION CARD DESKTOP ---- */
+        @media (min-width: 768px) {
+            .projection-card, .projection-annual-card {
+                border-radius: 16px;
+            }
+        }
+
+        /* ---- HOVER STATES DESKTOP ---- */
+        @media (min-width: 768px) {
+            .transaction-card:active { transform: none; }
+            .stat-card:active { transform: none; }
+            .category-card:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            }
+        }
+
+        /* ---- LOGIN SCREEN DESKTOP ---- */
+        @media (min-width: 768px) {
+            #login-screen {
+                background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #0f172a 100%);
+            }
+            .login-card {
+                padding: 36px 32px;
+                box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+                border: 1px solid rgba(255,255,255,0.08);
+            }
+            .login-logo { font-size: 3rem; }
+            .login-logo i { font-size: 2.6rem; }
+            .login-tagline { font-size: 1rem; }
+        }
+
+        /* ---- BADGE DESKTOP ---- */
+        @media (min-width: 768px) {
+            .pending-badge, .recurring-badge, .future-badge {
+                border-radius: 6px;
+            }
+        }
+
+        /* ---- GENERAL DESKTOP POLISH ---- */
+        @media (min-width: 768px) {
+            .alert-banner { border-radius: 14px; padding: 14px 18px; }
+            .analysis-card { border-radius: 14px; }
+            .savings-tip-card { border-radius: 14px; }
+            .financial-score-card { border-radius: 14px; }
+            .projection-annual-card { border-radius: 16px; padding: 24px; }
+        }
+
+        /* ---- DASHBOARD LAYOUT DESKTOP ---- */
+        @media (min-width: 1024px) {
+            .dashboard-left { }
+            .dashboard-right { }
+            #dashboard-grid-wrapper {
+                display: grid;
+                grid-template-columns: 1.2fr 1fr;
+                gap: 24px;
+                align-items: start;
+            }
+        }
+
+        /* ---- BACKGROUND PATTERN DESKTOP ---- */
+        @media (min-width: 768px) {
+            body {
+                background: #f0f4f8;
+            }
+        }
+
+        /* ---- HEADER TITLE (page name) ---- */
+        @media (min-width: 768px) {
+            .page-title {
+                font-size: 1.15rem;
+                font-weight: 700;
+                color: var(--dark);
+            }
+        }
+
+        /* ---- SECTION CARD (wrapping) ---- */
+        @media (min-width: 768px) {
+            .card-section {
+                background: white;
+                border-radius: 16px;
+                padding: 20px;
+                box-shadow: var(--shadow-sm);
+                margin-bottom: 20px;
+            }
+        }
+
+        /* ---- BUTTON HOVER ALL ---- */
+        @media (min-width: 768px) {
+            button { cursor: pointer; }
+            .month-btn:hover {
+                background: var(--primary);
+                color: white;
+                border-color: var(--primary);
+            }
+            .toggle-btn:hover:not(.active) { background: #f8fafc; }
+            .tab-btn:hover:not(.active) { color: var(--dark); }
+        }
+
+        /* ---- TRANSACTIONS LIST DESKTOP: limit width ---- */
+        @media (min-width: 768px) {
+            #transactions-list .transaction-card { margin-bottom: 10px; }
+        }
+
+        /* ---- IMPROVE TAB NAV DESKTOP ---- */
+        @media (min-width: 768px) {
+            .tab-nav {
+                border-radius: 12px;
+                background: #f8fafc;
+                border: 1px solid #e8edf2;
+                padding: 4px;
+                gap: 2px;
+                border-bottom: 1px solid #e8edf2;
+            }
+            .tab-btn {
+                border-radius: 8px;
+                border-bottom: none !important;
+                transition: all 0.15s;
+            }
+            .tab-btn.active {
+                background: white;
+                color: var(--primary);
+                box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+                border-bottom: none !important;
+            }
+        }
+
+        /* ---- BALANCE CARD DETAILS ---- */
+        @media (min-width: 768px) {
+            .balance-details {
+                display: flex;
+                gap: 0;
+            }
+            .balance-item {
+                flex: 1;
+                padding: 0 16px;
+                border-right: 1px solid rgba(255,255,255,0.15);
+            }
+            .balance-item:first-child { padding-left: 0; }
+            .balance-item:last-child { padding-right: 0; border-right: none; }
+            .balance-item .value { font-size: 1.2rem; }
+        }
+
+        /* ---- GOAL CARD DESKTOP ---- */
+        @media (min-width: 768px) {
+            .goal-progress { height: 10px; }
+        }
+
+        /* ---- ACCOUNT CARD DESKTOP ---- */
+        @media (min-width: 768px) {
+            .account-icon { width: 44px; height: 44px; border-radius: 12px; font-size: 1.1rem; }
+        }
+
+        /* ---- SCORE RING DESKTOP ---- */
+        @media (min-width: 768px) {
+            .score-ring { width: 120px; height: 120px; }
+            .score-ring::before { width: 88px; height: 88px; }
+            .score-number { font-size: 1.7rem; }
+        }
+
+        /* ---- TOGGLE BUTTONS DESKTOP ---- */
+        @media (min-width: 768px) {
+            .toggle-buttons { gap: 8px; }
+            .toggle-btn { border-radius: 10px; font-size: 0.875rem; }
+        }
+
+        /* ---- SIDEBAR SCROLLBAR ---- */
+        @media (min-width: 768px) {
+            .sidebar-nav::-webkit-scrollbar { width: 4px; }
+            .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        }
+
+        /* ---- SECTION TITLE UNDERLINE ---- */
+        @media (min-width: 768px) {
+            .section-title {
+                color: #0f172a;
+            }
+        }
+
+        /* ---- PROJECTION ANNUAL DESKTOP ---- */
+        @media (min-width: 768px) {
+            .projection-annual-card {
+                background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            }
+        }
+
+        /* ---- TYPE SELECTOR DESKTOP ---- */
+        @media (min-width: 768px) {
+            .type-option {
+                padding: 10px 12px;
+                border-radius: 10px;
+                font-size: 0.875rem;
+                transition: all 0.15s;
+            }
+            .type-option:hover:not(.active) { background: #f8fafc; border-color: #cbd5e1; }
+        }
+
     </style>
 </head>
 <body>
+
+    <!-- ===== TELA DE LOGIN ===== -->
+    <div id="login-screen">
+        <div class="login-logo">
+            <i class="fas fa-wallet"></i>
+            <span>Finança</span>Pro
+        </div>
+        <p class="login-tagline">Controle financeiro completo no seu bolso</p>
+
+        <div class="login-card">
+            <div class="login-tabs">
+                <button class="login-tab-btn active" onclick="Auth.switchTab('login', this)">Entrar</button>
+                <button class="login-tab-btn" onclick="Auth.switchTab('register', this)">Cadastrar</button>
+            </div>
+
+            <div id="login-error" class="login-error"></div>
+            <div id="login-success-msg" class="login-success"></div>
+
+            <!-- Formulário Login -->
+            <div id="tab-login">
+                <div class="login-form-group">
+                    <label class="login-label">E-mail ou usuário</label>
+                    <input type="text" id="l-username" class="login-input" placeholder="Digite seu e-mail ou usuário" autocomplete="username">
+                </div>
+                <div class="login-form-group">
+                    <label class="login-label">Senha</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="l-password" class="login-input" placeholder="Digite sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter') Auth.login()">
+                        <button class="toggle-pw" type="button" onclick="Auth.togglePassword('l-password', this)"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <button class="login-btn" onclick="Auth.login()" id="btn-login">Entrar</button>
+            </div>
+
+            <!-- Formulário Cadastro -->
+            <div id="tab-register" style="display:none;">
+                <div class="login-form-group">
+                    <label class="login-label">Nome completo</label>
+                    <input type="text" id="r-name" class="login-input" placeholder="Seu nome">
+                </div>
+                <div class="login-form-group">
+                    <label class="login-label">E-mail ou usuário</label>
+                    <input type="text" id="r-username" class="login-input" placeholder="E-mail ou nome de usuário" autocomplete="username">
+                </div>
+                <div class="login-form-group">
+                    <label class="login-label">Senha</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="r-password" class="login-input" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+                        <button class="toggle-pw" type="button" onclick="Auth.togglePassword('r-password', this)"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div class="login-form-group">
+                    <label class="login-label">Confirmar senha</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="r-confirm" class="login-input" placeholder="Repita a senha" autocomplete="new-password" onkeydown="if(event.key==='Enter') Auth.register()">
+                        <button class="toggle-pw" type="button" onclick="Auth.togglePassword('r-confirm', this)"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <button class="login-btn" onclick="Auth.register()" id="btn-register">Criar conta</button>
+            </div>
+        </div>
+        <p class="login-footer">Seus dados ficam salvos localmente no dispositivo.</p>
+    </div>
+
+
+    <!-- ===== SIDEBAR DESKTOP ===== -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <div class="sidebar-logo-icon"><i class="fas fa-wallet"></i></div>
+            <div class="sidebar-logo-text"><span>Finança</span>Pro</div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-label">Principal</div>
+            <a href="#" class="sidebar-item active" data-target="dashboard-view" onclick="UI.switchTab(this); return false;">
+                <i class="fas fa-home"></i> Início
+                <span class="nav-badge" id="sb-transactions-badge" style="display:none">!</span>
+            </a>
+            <a href="#" class="sidebar-item" data-target="transactions-view" onclick="UI.switchTab(this); return false;">
+                <i class="fas fa-exchange-alt"></i> Transações
+                <span class="nav-badge" id="sb-pending-badge" style="display:none">!</span>
+            </a>
+            <a href="#" class="sidebar-item" data-target="accounts-view" onclick="UI.switchTab(this); return false;">
+                <i class="fas fa-wallet"></i> Contas
+            </a>
+            <div class="sidebar-section-label">Planejamento</div>
+            <a href="#" class="sidebar-item" data-target="goals-view" onclick="UI.switchTab(this); return false;">
+                <i class="fas fa-bullseye"></i> Metas
+                <span class="nav-badge" id="sb-goals-badge" style="display:none">!</span>
+            </a>
+            <a href="#" class="sidebar-item" data-target="analysis-view" onclick="UI.switchTab(this); UI.renderAnalysis(); return false;">
+                <i class="fas fa-brain"></i> Análise IA
+            </a>
+            <a href="#" class="sidebar-item" data-target="reports-view" onclick="UI.switchTab(this); return false;">
+                <i class="fas fa-chart-bar"></i> Relatórios
+                <span class="nav-badge" id="sb-projection-badge" style="display:none">!</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="sidebar-user" onclick="UI.openSettings()">
+                <div class="sidebar-avatar" id="sidebar-avatar">U</div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name" id="sidebar-username">Usuário</div>
+                    <div class="sidebar-user-role">Conta pessoal</div>
+                </div>
+                <i class="fas fa-cog" style="color:#475569; font-size:0.85rem;"></i>
+            </div>
+        </div>
+    </aside>
+
 
     <header>
         <div class="brand">
             <i class="fas fa-wallet" style="color: var(--primary);"></i>
             <span>Finança</span>Pro
         </div>
-        <div class="header-actions">
+        <div class="page-title" id="page-title" style="display:none;">Início</div>
+        <div class="header-actions" style="align-items:center;">
+            <span class="user-greeting"><i class="fas fa-user-circle"></i> <strong id="header-username">Usuário</strong></span>
             <button class="icon-btn" onclick="FinanceApp.backup.exportData()"><i class="fas fa-cloud-download-alt"></i></button>
             <button class="icon-btn" onclick="UI.openSettings()"><i class="fas fa-cog"></i></button>
+            <button class="icon-btn" onclick="Auth.logout()" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </header>
 
@@ -2004,7 +3001,7 @@
         // --- INDEXEDDB MANAGER ---
         const DB = {
             name: 'FinancaProDB',
-            version: 5,
+            version: 6,
             db: null,
             
             init: async () => {
@@ -2047,6 +3044,11 @@
                         
                         if (!db.objectStoreNames.contains('settings')) {
                             db.createObjectStore('settings', { keyPath: 'id' });
+                        }
+
+                        if (!db.objectStoreNames.contains('users')) {
+                            const userStore = db.createObjectStore('users', { keyPath: 'username' });
+                            userStore.createIndex('username', 'username', { unique: true });
                         }
                     };
                 });
@@ -2268,6 +3270,252 @@
                     tx.oncomplete = () => resolve();
                     tx.onerror = () => reject(tx.error);
                 });
+            },
+
+            saveUser: async (user) => {
+                return new Promise((resolve, reject) => {
+                    const tx = DB.db.transaction(['users'], 'readwrite');
+                    const store = tx.objectStore('users');
+                    const request = store.put(user);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            getUser: async (username) => {
+                return new Promise((resolve, reject) => {
+                    const tx = DB.db.transaction(['users'], 'readonly');
+                    const store = tx.objectStore('users');
+                    const request = store.get(username.toLowerCase().trim());
+                    request.onsuccess = () => resolve(request.result || null);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            getAllUsers: async () => {
+                return new Promise((resolve, reject) => {
+                    const tx = DB.db.transaction(['users'], 'readonly');
+                    const store = tx.objectStore('users');
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+        };
+
+
+        // --- AUTH MANAGER ---
+        const Auth = {
+            currentUser: null,
+
+            hashPassword: async (password) => {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(password + 'financapro_salt_2024');
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            },
+
+            switchTab: (tab, el) => {
+                document.querySelectorAll('.login-tab-btn').forEach(b => b.classList.remove('active'));
+                if (el) el.classList.add('active');
+                document.getElementById('tab-login').style.display = tab === 'login' ? 'block' : 'none';
+                document.getElementById('tab-register').style.display = tab === 'register' ? 'block' : 'none';
+                Auth.hideMessages();
+            },
+
+            showError: (msg) => {
+                const el = document.getElementById('login-error');
+                el.textContent = msg;
+                el.classList.add('show');
+                document.getElementById('login-success-msg').classList.remove('show');
+            },
+
+            showSuccess: (msg) => {
+                const el = document.getElementById('login-success-msg');
+                el.textContent = msg;
+                el.classList.add('show');
+                document.getElementById('login-error').classList.remove('show');
+            },
+
+            hideMessages: () => {
+                document.getElementById('login-error').classList.remove('show');
+                document.getElementById('login-success-msg').classList.remove('show');
+            },
+
+            togglePassword: (inputId, btn) => {
+                const input = document.getElementById(inputId);
+                const icon = btn.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.className = 'fas fa-eye-slash';
+                } else {
+                    input.type = 'password';
+                    icon.className = 'fas fa-eye';
+                }
+            },
+
+            login: async () => {
+                const username = document.getElementById('l-username').value.trim();
+                const password = document.getElementById('l-password').value;
+
+                if (!username || !password) {
+                    Auth.showError('Preencha todos os campos.');
+                    return;
+                }
+
+                const btn = document.getElementById('btn-login');
+                btn.disabled = true;
+                btn.textContent = 'Entrando...';
+
+                try {
+                    const user = await DB.getUser(username.toLowerCase());
+                    if (!user) {
+                        Auth.showError('Usuário não encontrado. Crie uma conta primeiro.');
+                        return;
+                    }
+
+                    const hash = await Auth.hashPassword(password);
+                    if (hash !== user.passwordHash) {
+                        Auth.showError('Senha incorreta. Tente novamente.');
+                        return;
+                    }
+
+                    Auth.currentUser = user;
+                    sessionStorage.setItem('fp_user', user.username);
+                    Auth.enterApp(user);
+
+                } catch (err) {
+                    console.error('Erro no login:', err);
+                    Auth.showError('Erro ao fazer login. Tente novamente.');
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Entrar';
+                }
+            },
+
+            register: async () => {
+                const name = document.getElementById('r-name').value.trim();
+                const username = document.getElementById('r-username').value.trim().toLowerCase();
+                const password = document.getElementById('r-password').value;
+                const confirm = document.getElementById('r-confirm').value;
+
+                if (!name || !username || !password || !confirm) {
+                    Auth.showError('Preencha todos os campos.');
+                    return;
+                }
+
+                if (username.length < 3) {
+                    Auth.showError('Usuário deve ter pelo menos 3 caracteres.');
+                    return;
+                }
+
+                if (password.length < 6) {
+                    Auth.showError('A senha deve ter pelo menos 6 caracteres.');
+                    return;
+                }
+
+                if (password !== confirm) {
+                    Auth.showError('As senhas não coincidem.');
+                    return;
+                }
+
+                const btn = document.getElementById('btn-register');
+                btn.disabled = true;
+                btn.textContent = 'Criando conta...';
+
+                try {
+                    const existing = await DB.getUser(username);
+                    if (existing) {
+                        Auth.showError('Este usuário já existe. Escolha outro ou faça login.');
+                        return;
+                    }
+
+                    const passwordHash = await Auth.hashPassword(password);
+                    const user = {
+                        username,
+                        name,
+                        passwordHash,
+                        createdAt: new Date().toISOString()
+                    };
+
+                    await DB.saveUser(user);
+
+                    // Salvar nome nas configurações
+                    const settings = {
+                        id: 'user_settings',
+                        name,
+                        currency: 'BRL',
+                        closingDay: 1
+                    };
+                    await DB.saveSettings(settings);
+
+                    Auth.showSuccess('Conta criada com sucesso! Fazendo login...');
+
+                    setTimeout(() => {
+                        Auth.currentUser = user;
+                        sessionStorage.setItem('fp_user', user.username);
+                        Auth.enterApp(user);
+                    }, 800);
+
+                } catch (err) {
+                    console.error('Erro no cadastro:', err);
+                    Auth.showError('Erro ao criar conta. Tente novamente.');
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Criar conta';
+                }
+            },
+
+            enterApp: (user) => {
+                document.getElementById('login-screen').classList.add('hidden');
+                // Show page title on desktop
+                const pageTitleEl = document.getElementById('page-title');
+                if (pageTitleEl && window.innerWidth >= 768) {
+                    pageTitleEl.textContent = 'Início';
+                    pageTitleEl.style.display = 'block';
+                }
+                const displayName = user.name || user.username;
+                document.getElementById('header-username').textContent = displayName;
+                // Sidebar
+                const sidebarUsername = document.getElementById('sidebar-username');
+                const sidebarAvatar = document.getElementById('sidebar-avatar');
+                if (sidebarUsername) sidebarUsername.textContent = displayName;
+                if (sidebarAvatar) sidebarAvatar.textContent = displayName.charAt(0).toUpperCase();
+                // Atualiza nome nas configurações se necessário
+                if (FinanceApp.data.settings) {
+                    FinanceApp.data.settings.name = displayName;
+                }
+            },
+
+            logout: () => {
+                if (confirm('Deseja sair da sua conta?')) {
+                    sessionStorage.removeItem('fp_user');
+                    Auth.currentUser = null;
+                    // Limpa campos
+                    document.getElementById('l-username').value = '';
+                    document.getElementById('l-password').value = '';
+                    Auth.hideMessages();
+                    Auth.switchTab('login');
+                    document.getElementById('login-screen').classList.remove('hidden');
+                }
+            },
+
+            checkSession: async () => {
+                const savedUser = sessionStorage.getItem('fp_user');
+                if (savedUser) {
+                    try {
+                        const user = await DB.getUser(savedUser);
+                        if (user) {
+                            Auth.currentUser = user;
+                            Auth.enterApp(user);
+                            return true;
+                        }
+                    } catch (e) {
+                        console.warn('Sessão inválida:', e);
+                    }
+                }
+                return false;
             }
         };
 
@@ -2310,6 +3558,16 @@
                     });
 
                     UI.checkFuturePendingTransactions();
+
+                    // Wrap views in content-inner for desktop centering
+                    document.querySelectorAll('.view').forEach(view => {
+                        if (!view.querySelector('.view-content-inner')) {
+                            const inner = document.createElement('div');
+                            inner.className = 'view-content-inner';
+                            while (view.firstChild) inner.appendChild(view.firstChild);
+                            view.appendChild(inner);
+                        }
+                    });
 
                 } catch (error) {
                     console.error('Erro ao inicializar:', error);
@@ -2391,6 +3649,25 @@
             },
             
             switchTab: (el) => {
+                // Sincroniza sidebar e bottom-nav
+                if (el && el.dataset && el.dataset.target) {
+                    document.querySelectorAll('.sidebar-item, .nav-item').forEach(n => n.classList.remove('active'));
+                    document.querySelectorAll(`[data-target="${el.dataset.target}"]`).forEach(n => n.classList.add('active'));
+                    // Update page title in header
+                    const titleMap = {
+                        'dashboard-view': 'Início',
+                        'transactions-view': 'Transações',
+                        'goals-view': 'Metas',
+                        'analysis-view': 'Análise IA',
+                        'reports-view': 'Relatórios',
+                        'accounts-view': 'Contas'
+                    };
+                    const pageTitleEl = document.getElementById('page-title');
+                    if (pageTitleEl) {
+                        pageTitleEl.textContent = titleMap[el.dataset.target] || '';
+                        pageTitleEl.style.display = window.innerWidth >= 768 ? 'block' : 'none';
+                    }
+                }
                 document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
                 document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
                 
@@ -2627,6 +3904,15 @@
                     futureCount > 0 ? 'inline-block' : 'none';
                 document.getElementById('goals-badge').style.display = 
                     activeGoalsCount > 0 ? 'inline-block' : 'none';
+                // Sync sidebar badges
+                const sbTx = document.getElementById('sb-transactions-badge');
+                const sbPend = document.getElementById('sb-pending-badge');
+                const sbGoals = document.getElementById('sb-goals-badge');
+                const sbProj = document.getElementById('sb-projection-badge');
+                if (sbTx) sbTx.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+                if (sbPend) sbPend.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+                if (sbGoals) sbGoals.style.display = activeGoalsCount > 0 ? 'inline-block' : 'none';
+                if (sbProj) sbProj.style.display = futureCount > 0 ? 'inline-block' : 'none';
             },
             
             renderAccountsOverview: (accounts) => {
@@ -4516,8 +5802,27 @@
                 UI.closeModals();
                 const overlay = document.getElementById(`overlay-${type}`);
                 const sheet = document.getElementById(`sheet-${type}`);
-                if (overlay) overlay.classList.add('active');
-                if (sheet) {
+                if (!overlay || !sheet) return;
+
+                const isDesktop = window.innerWidth >= 768;
+
+                if (isDesktop) {
+                    // Move sheet inside overlay for centered dialog behavior
+                    if (!overlay.contains(sheet)) {
+                        overlay.appendChild(sheet);
+                    }
+                    overlay.style.display = 'flex';
+                    overlay.style.opacity = '1';
+                    overlay.classList.add('active');
+                    requestAnimationFrame(() => {
+                        sheet.classList.add('active');
+                    });
+                } else {
+                    // Mobile: original behavior
+                    if (sheet.parentElement !== overlay.parentElement && sheet.parentElement !== document.body) {
+                        overlay.parentElement.insertBefore(sheet, overlay.nextSibling);
+                    }
+                    overlay.classList.add('active');
                     requestAnimationFrame(() => {
                         sheet.classList.add('active');
                     });
@@ -4525,7 +5830,11 @@
             },
             
             closeModals: () => {
-                document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.modal-overlay').forEach(el => {
+                    el.classList.remove('active');
+                    el.style.display = '';
+                    el.style.opacity = '';
+                });
                 document.querySelectorAll('.modal-sheet').forEach(el => el.classList.remove('active'));
             },
             
@@ -4818,7 +6127,9 @@
             
             openSettings: () => {
                 const s = FinanceApp.data.settings;
-                document.getElementById('s-name').value = s.name || '';
+                // Prioriza nome do usuário logado
+                const displayName = (Auth.currentUser && Auth.currentUser.name) ? Auth.currentUser.name : (s.name || '');
+                document.getElementById('s-name').value = displayName;
                 document.getElementById('s-currency').value = s.currency || 'BRL';
                 document.getElementById('s-closing-day').value = s.closingDay || 1;
                 
@@ -4838,6 +6149,18 @@
             
             init: async () => {
                 await UI.init();
+                // Verificar sessão ativa após carregar o app
+                const hasSession = await Auth.checkSession();
+                if (!hasSession) {
+                    // Verificar se há usuários cadastrados
+                    try {
+                        const users = await DB.getAllUsers();
+                        if (users.length === 0) {
+                            // Primeiro uso: mostrar tab de cadastro
+                            Auth.switchTab('register', document.querySelectorAll('.login-tab-btn')[1]);
+                        }
+                    } catch(e) {}
+                }
             },
             
             changeMonth: (direction) => {
