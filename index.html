@@ -6855,6 +6855,107 @@
         });
 
 
+        // ===== AUTO-LOCK: trava após 1 minuto de inatividade global =====
+        const AutoLock = (() => {
+            const TIMEOUT_MS = 60 * 1000; // 1 minuto
+            let _timer = null;
+            let _lockedAt = null;   // timestamp em que a tela foi ocultada
+            let _running = false;
+
+            // Mostra login screen sem apagar a sessão de quem estava logado
+            function _lock() {
+                if (!Auth.currentUser) return; // já está na tela de login
+                _running = false;
+                const username = Auth.currentUser.username;
+                const name     = Auth.currentUser.name || username;
+
+                // Limpa a sessão (força re-autenticação)
+                sessionStorage.removeItem('fp_user');
+                Auth.currentUser = null;
+
+                // Pré-preenche o campo de usuário e mostra aviso
+                const loginScreen = document.getElementById('login-screen');
+                loginScreen.classList.remove('hidden');
+
+                // Garante que a aba "Entrar" está visível
+                Auth.switchTab('login', document.querySelectorAll('.login-tab-btn')[0]);
+
+                // Pré-preenche usuário
+                const uField = document.getElementById('l-username');
+                const pField = document.getElementById('l-password');
+                if (uField) uField.value = username;
+                if (pField) { pField.value = ''; pField.focus(); }
+
+                // Exibe mensagem de bloqueio
+                const errEl = document.getElementById('login-error');
+                if (errEl) {
+                    errEl.textContent = `\uD83D\uDD12 Sessão bloqueada por inatividade. Olá, ${name}! Digite sua senha para continuar.`;
+                    errEl.style.display = 'block';
+                    errEl.style.background = '#fffbeb';
+                    errEl.style.color = '#92400e';
+                    errEl.style.border = '1px solid #fcd34d';
+                }
+            }
+
+            function _reset() {
+                if (!_running) return;
+                clearTimeout(_timer);
+                _timer = setTimeout(_lock, TIMEOUT_MS);
+            }
+
+            // Eventos que indicam atividade do usuário
+            const EVENTS = ['touchstart','touchmove','click','keydown','mousedown','scroll','wheel'];
+
+            function start() {
+                if (_running) return;
+                _running = true;
+                EVENTS.forEach(ev => document.addEventListener(ev, _reset, { passive: true }));
+                // Page Visibility: detecta quando a tela apaga ou app vai para segundo plano
+                document.addEventListener('visibilitychange', _onVisibility);
+                _timer = setTimeout(_lock, TIMEOUT_MS);
+            }
+
+            function stop() {
+                _running = false;
+                clearTimeout(_timer);
+                EVENTS.forEach(ev => document.removeEventListener(ev, _reset));
+                document.removeEventListener('visibilitychange', _onVisibility);
+                _lockedAt = null;
+            }
+
+            function _onVisibility() {
+                if (document.visibilityState === 'hidden') {
+                    // Registra quando a tela foi ocultada
+                    _lockedAt = Date.now();
+                } else if (document.visibilityState === 'visible') {
+                    // Volta ao foco: verifica se já passou o tempo de inatividade
+                    if (_lockedAt !== null && (Date.now() - _lockedAt) >= TIMEOUT_MS) {
+                        clearTimeout(_timer);
+                        _lock();
+                    } else {
+                        _lockedAt = null;
+                        _reset(); // reinicia o timer normalmente
+                    }
+                }
+            }
+
+            return { start, stop };
+        })();
+
+        // Hookeia Auth.enterApp para iniciar AutoLock ao entrar no app
+        const _origEnterApp = Auth.enterApp.bind(Auth);
+        Auth.enterApp = (user) => {
+            _origEnterApp(user);
+            AutoLock.start();
+        };
+
+        // Hookeia Auth.logout para parar AutoLock ao sair
+        const _origLogout = Auth.logout.bind(Auth);
+        Auth.logout = () => {
+            AutoLock.stop();
+            _origLogout();
+        };
+
         // Inicializar o app
         FinanceApp.init();
     </script>
