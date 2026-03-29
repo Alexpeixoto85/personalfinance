@@ -1924,15 +1924,12 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Número de Repetições</label>
-                        <select id="t-recurring-count" class="form-control">
-                            <option value="0">Indeterminado</option>
-                            <option value="3">3 vezes</option>
-                            <option value="6">6 vezes</option>
-                            <option value="12">12 vezes</option>
-                            <option value="24">24 vezes</option>
-                            <option value="60">60 vezes</option>
-                        </select>
+                        <label class="form-label">Nº de Repetições</label>
+                        <input type="number" id="t-recurring-count" class="form-control"
+                            min="0" step="1" placeholder="0 = indeterminado"
+                            style="-moz-appearance:textfield;"
+                            oninput="this.value = this.value.replace(/[^0-9]/g,'')">
+                        <small style="color:var(--secondary);font-size:0.75rem;margin-top:4px;display:block;">0 ou vazio = indeterminado</small>
                     </div>
                 </div>
                 <div class="form-group">
