@@ -59,7 +59,7 @@
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            padding: var(--safe-top) 16px 10px;
+            padding: var(--safe-top) 12px 10px;
             height: var(--header-height);
             display: flex;
             align-items: center;
@@ -69,26 +69,60 @@
             z-index: 50;
             border-bottom: 1px solid rgba(0,0,0,0.05);
             box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            gap: 4px;
         }
 
         .brand {
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             font-weight: 800;
             color: var(--dark);
             letter-spacing: -0.5px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            flex-shrink: 0;
         }
         .brand span { color: var(--primary); }
-        
-        .header-actions { display: flex; gap: 12px; }
+
+        .header-actions {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+            flex-shrink: 0;
+        }
         .icon-btn {
-            background: none; border: none; font-size: 1.2rem;
-            color: var(--secondary); padding: 8px;
+            background: none; border: none; font-size: 1.1rem;
+            color: var(--secondary); padding: 6px;
             border-radius: 50%; transition: 0.2s;
+            flex-shrink: 0;
         }
         .icon-btn:active { background: #f1f5f9; color: var(--primary); transform: scale(0.95); }
+
+        /* Saudação: mostra apenas ícone em mobile, nome em telas maiores */
+        .user-greeting {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            overflow: hidden;
+            max-width: 90px;
+            flex-shrink: 1;
+        }
+        .user-greeting strong {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+            max-width: 65px;
+        }
+        @media (max-width: 380px) {
+            .user-greeting strong { display: none; }
+            .header-actions { gap: 0px; }
+            .icon-btn { padding: 5px; font-size: 1rem; }
+            .brand { font-size: 1rem; gap: 5px; }
+        }
 
         /* --- Main Content --- */
         main {
