@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#10b981">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -36,7 +36,7 @@
             --nav-height: calc(65px + var(--safe-bottom));
             --radius-lg: 16px;
             --radius-md: 12px;
-            --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
             --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
             --shadow-float: 0 10px 15px -3px rgb(0 0 0 / 0.1);
         }
@@ -1098,720 +1098,183 @@
         }
         .user-greeting strong { color: var(--dark); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        /* =========================================================
-           RESPONSIVE DESIGN — DESKTOP & TABLET
-           ========================================================= */
+        /* ===== DARK MODE ===== */
+        body.dark-mode {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --secondary: #94a3b8;
+            --dark: #f1f5f9;
+            --light: #1e293b;
+            --surface: #1e293b;
+            --border: #334155;
+            background-color: #0f172a;
+            color: #f1f5f9;
+        }
+        body.dark-mode header { background: rgba(15,23,42,0.95); }
+        body.dark-mode .bottom-nav { background: rgba(15,23,42,0.95); }
+        body.dark-mode .modal-sheet { background: #1e293b; }
+        body.dark-mode .form-control { background: #0f172a; color: #f1f5f9; border-color: #334155; }
+        body.dark-mode .form-control:focus { background: #1e293b; }
+        body.dark-mode .balance-card { background: linear-gradient(135deg, #059669 0%, #047857 100%); }
+        body.dark-mode .search-input { background: #1e293b; color: #f1f5f9; border-color: #334155; }
+        body.dark-mode .filter-btn { background: #1e293b; color: #94a3b8; border-color: #334155; }
+        body.dark-mode .stat-card { background: #1e293b; }
+        body.dark-mode .transaction-card { background: #1e293b; }
+        body.dark-mode .account-card { background: #1e293b; }
+        body.dark-mode .goal-card { background: #1e293b; }
+        body.dark-mode .category-card { background: #1e293b; }
+        body.dark-mode .chart-container { background: #1e293b; }
+        body.dark-mode .score-item { background: #0f172a; }
+        body.dark-mode .login-screen-wrapper { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+        body.dark-mode .toggle-btn { background: #1e293b; color: #94a3b8; border-color: #334155; }
+        body.dark-mode .tab-btn { color: #64748b; }
 
-        /* Variáveis desktop */
-        @media (min-width: 768px) {
-            :root {
-                --header-height: 64px;
-                --nav-height: 0px;
-                --sidebar-width: 240px;
-                --content-max: 1100px;
-                --radius-lg: 20px;
-                --radius-md: 14px;
-                --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.05);
-                --shadow-md: 0 4px 12px -1px rgb(0 0 0 / 0.1), 0 2px 6px -2px rgb(0 0 0 / 0.06);
-                --shadow-float: 0 20px 40px -8px rgb(0 0 0 / 0.15);
-                --safe-top: 0px;
-                --safe-bottom: 0px;
-            }
+        /* ===== CREDIT CARD MANAGER ===== */
+        .credit-card-visual {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-radius: 16px;
+            padding: 20px;
+            color: white;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .credit-card-visual.card-green { background: linear-gradient(135deg, #059669 0%, #047857 100%); }
+        .credit-card-visual.card-blue { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
+        .credit-card-visual.card-purple { background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); }
+        .credit-card-visual.card-red { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
+        .credit-card-visual::before {
+            content: '';
+            position: absolute;
+            top: -30px; right: -30px;
+            width: 120px; height: 120px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+        }
+        .credit-card-visual::after {
+            content: '';
+            position: absolute;
+            bottom: -40px; right: 20px;
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+        }
+        .card-chip { width: 36px; height: 26px; background: linear-gradient(135deg, #fbbf24, #f59e0b); border-radius: 5px; margin-bottom: 12px; }
+        .card-number { font-size: 0.9rem; letter-spacing: 3px; opacity: 0.8; margin-bottom: 8px; font-family: monospace; }
+        .card-name { font-weight: 700; font-size: 1.1rem; margin-bottom: 4px; }
+        .card-limit-row { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2); }
+        .card-limit-item { text-align: center; }
+        .card-limit-label { font-size: 0.7rem; opacity: 0.7; margin-bottom: 2px; }
+        .card-limit-value { font-size: 1rem; font-weight: 700; }
+        .card-limit-used { color: #fca5a5; }
+        .card-limit-avail { color: #6ee7b7; }
+        
+        .card-usage-bar {
+            height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; margin-top: 10px; overflow: hidden;
+        }
+        .card-usage-fill {
+            height: 100%; border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        .card-usage-fill.safe { background: #6ee7b7; }
+        .card-usage-fill.warning { background: #fbbf24; }
+        .card-usage-fill.danger { background: #fca5a5; }
+
+        /* ===== INVOICE/FATURA ===== */
+        .invoice-card {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-sm);
+            border-left: 4px solid var(--expense);
+        }
+        .invoice-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .invoice-title { font-weight: 700; font-size: 1rem; }
+        .invoice-amount { font-weight: 800; font-size: 1.2rem; color: var(--expense); }
+        .invoice-due { font-size: 0.8rem; color: var(--secondary); }
+        .invoice-due.urgent { color: var(--expense); font-weight: 600; }
+        .invoice-progress { height: 6px; background: #fee2e2; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+        .invoice-fill { height: 100%; background: var(--expense); border-radius: 3px; }
+
+        /* ===== BUDGET ALERT BARS ===== */
+        .budget-bar-container { margin-top: 8px; }
+        .budget-bar-track { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .budget-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+        .budget-bar-fill.ok { background: var(--income); }
+        .budget-bar-fill.warn { background: var(--pending); }
+        .budget-bar-fill.over { background: var(--expense); }
+        .budget-bar-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--secondary); margin-top: 4px; }
+
+        /* ===== NOTIFICATION BELL ===== */
+        .notif-badge {
+            position: absolute;
+            top: 2px; right: 2px;
+            width: 8px; height: 8px;
+            background: var(--expense);
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        .notif-panel {
+            position: fixed;
+            top: var(--header-height);
+            right: 8px;
+            width: 320px;
+            max-height: 400px;
+            overflow-y: auto;
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-float);
+            z-index: 200;
+            display: none;
+        }
+        .notif-panel.open { display: block; }
+        .notif-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex; gap: 10px; align-items: flex-start;
+        }
+        .notif-item:last-child { border-bottom: none; }
+        .notif-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.85rem; }
+        .notif-text { font-size: 0.85rem; }
+        .notif-text strong { display: block; font-size: 0.9rem; }
+        .notif-empty { padding: 20px; text-align: center; color: var(--secondary); font-size: 0.9rem; }
+
+        /* ===== DARK TOGGLE BUTTON ===== */
+        .dark-toggle {
+            background: none; border: none;
+            font-size: 1.1rem; color: var(--secondary);
+            padding: 8px; border-radius: 50%; transition: 0.2s; cursor: pointer;
+        }
+        .dark-toggle:active { background: #f1f5f9; }
+        body.dark-mode .dark-toggle:active { background: #334155; }
+
+        /* ===== CSV EXPORT BUTTON ===== */
+        .export-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 8px 14px; background: var(--investment);
+            color: white; border: none; border-radius: 8px;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer;
         }
 
-        /* ---- BODY DESKTOP ---- */
-        @media (min-width: 768px) {
-            body {
-                overflow: hidden;
-                height: 100vh;
-                background: #f0f4f8;
-            }
+        /* ===== CARD VIEW IN ACCOUNTS ===== */
+        #cards-view .credit-card-visual { cursor: pointer; }
+        
+        /* ===== QUICK STATS DASHBOARD ===== */
+        .savings-rate-ring {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            background: conic-gradient(var(--primary) 0deg, #e2e8f0 0deg);
+            position: relative;
         }
-
-        /* ---- HEADER DESKTOP ---- */
-        @media (min-width: 768px) {
-            header {
-                left: var(--sidebar-width);
-                padding: 0 28px;
-                height: var(--header-height);
-                background: rgba(255,255,255,0.98);
-                border-bottom: 1px solid #e8edf2;
-                box-shadow: 0 1px 0 rgba(0,0,0,0.04);
-            }
-
-            .brand { display: none; }
-
-            .icon-btn {
-                width: 38px; height: 38px;
-                display: flex; align-items: center; justify-content: center;
-                border-radius: 10px;
-                background: #f8fafc;
-                border: 1px solid #e8edf2;
-                font-size: 1rem;
-                transition: all 0.15s;
-            }
-            .icon-btn:hover {
-                background: #f0fdf4;
-                color: var(--primary);
-                border-color: var(--primary);
-            }
-            .icon-btn:active { transform: scale(0.95); }
-
-            .header-actions { gap: 8px; align-items: center !important; }
-            .user-greeting {
-                background: #f8fafc;
-                border: 1px solid #e8edf2;
-                border-radius: 10px;
-                padding: 6px 12px;
-                font-size: 0.82rem;
-            }
+        .savings-rate-ring::before {
+            content: ''; width: 42px; height: 42px;
+            background: white; border-radius: 50%; position: absolute;
         }
-
-        /* ---- SIDEBAR ---- */
-        @media (min-width: 768px) {
-            .sidebar {
-                position: fixed;
-                top: 0; left: 0;
-                width: var(--sidebar-width);
-                height: 100vh;
-                background: #0f172a;
-                display: flex;
-                flex-direction: column;
-                z-index: 60;
-                overflow: hidden;
-            }
-
-            .sidebar-logo {
-                padding: 20px 20px 16px;
-                border-bottom: 1px solid rgba(255,255,255,0.06);
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-            .sidebar-logo-icon {
-                width: 36px; height: 36px;
-                background: var(--primary);
-                border-radius: 10px;
-                display: flex; align-items: center; justify-content: center;
-                color: white;
-                font-size: 1rem;
-                flex-shrink: 0;
-            }
-            .sidebar-logo-text {
-                font-size: 1.1rem;
-                font-weight: 800;
-                color: white;
-                letter-spacing: -0.5px;
-            }
-            .sidebar-logo-text span { color: var(--primary); }
-
-            .sidebar-nav {
-                flex: 1;
-                padding: 12px 10px;
-                display: flex;
-                flex-direction: column;
-                gap: 2px;
-                overflow-y: auto;
-            }
-
-            .sidebar-item {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 11px 14px;
-                border-radius: 12px;
-                color: #94a3b8;
-                text-decoration: none;
-                font-size: 0.875rem;
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.15s;
-                position: relative;
-            }
-            .sidebar-item:hover {
-                background: rgba(255,255,255,0.06);
-                color: white;
-            }
-            .sidebar-item.active {
-                background: rgba(16, 185, 129, 0.15);
-                color: var(--primary);
-            }
-            .sidebar-item.active i { color: var(--primary); }
-            .sidebar-item i {
-                width: 20px;
-                text-align: center;
-                font-size: 1rem;
-                flex-shrink: 0;
-            }
-            .sidebar-item .nav-badge {
-                margin-left: auto;
-                background: var(--primary);
-                color: white;
-                font-size: 0.65rem;
-                padding: 2px 6px;
-                border-radius: 10px;
-                font-weight: 700;
-            }
-
-            .sidebar-section-label {
-                padding: 16px 14px 6px;
-                font-size: 0.7rem;
-                font-weight: 700;
-                color: #475569;
-                text-transform: uppercase;
-                letter-spacing: 0.08em;
-            }
-
-            .sidebar-footer {
-                padding: 12px 10px;
-                border-top: 1px solid rgba(255,255,255,0.06);
-            }
-
-            .sidebar-user {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                padding: 10px 14px;
-                border-radius: 12px;
-                cursor: pointer;
-                transition: background 0.15s;
-            }
-            .sidebar-user:hover { background: rgba(255,255,255,0.06); }
-            .sidebar-avatar {
-                width: 34px; height: 34px;
-                border-radius: 50%;
-                background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-                display: flex; align-items: center; justify-content: center;
-                color: white;
-                font-size: 0.85rem;
-                font-weight: 700;
-                flex-shrink: 0;
-            }
-            .sidebar-user-info { flex: 1; min-width: 0; }
-            .sidebar-user-name {
-                font-size: 0.82rem;
-                font-weight: 600;
-                color: white;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
-            .sidebar-user-role {
-                font-size: 0.72rem;
-                color: #64748b;
-            }
-        }
-
-        /* Ocultar sidebar no mobile */
-        @media (max-width: 767px) {
-            .sidebar { display: none; }
-        }
-
-        /* ---- BOTTOM NAV: OCULTAR NO DESKTOP ---- */
-        @media (min-width: 768px) {
-            .bottom-nav { display: none !important; }
-        }
-
-        /* ---- MAIN CONTENT DESKTOP ---- */
-        @media (min-width: 768px) {
-            main {
-                margin-left: var(--sidebar-width);
-                padding: calc(var(--header-height) + 24px) 32px 40px;
-                overflow-y: auto;
-                height: 100vh;
-            }
-        }
-
-        /* ---- CONTEÚDO CENTRALIZADO ---- */
-        @media (min-width: 768px) {
-            .view-content-inner {
-                max-width: var(--content-max);
-                margin: 0 auto;
-            }
-        }
-
-        /* ---- FAB DESKTOP ---- */
-        @media (min-width: 768px) {
-            .fab {
-                bottom: 32px;
-                right: 36px;
-                width: 52px; height: 52px;
-                font-size: 1.3rem;
-                box-shadow: 0 8px 24px rgba(16,185,129,0.4);
-            }
-            .fab:hover { background: var(--primary-dark); transform: scale(1.05); }
-            .fab:active { transform: scale(0.95) rotate(90deg); }
-        }
-
-        /* ---- BALANCE CARD DESKTOP ---- */
-        @media (min-width: 768px) {
-            .balance-card {
-                padding: 28px 32px;
-                border-radius: 20px;
-                background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
-                position: relative;
-                overflow: hidden;
-            }
-            .balance-card::before {
-                content: '';
-                position: absolute;
-                top: -40px; right: -40px;
-                width: 200px; height: 200px;
-                background: rgba(255,255,255,0.05);
-                border-radius: 50%;
-            }
-            .balance-card::after {
-                content: '';
-                position: absolute;
-                bottom: -60px; left: 20px;
-                width: 160px; height: 160px;
-                background: rgba(255,255,255,0.03);
-                border-radius: 50%;
-            }
-            .balance-value { font-size: 2.5rem; }
-        }
-
-        /* ---- STATS GRID DESKTOP ---- */
-        @media (min-width: 768px) {
-            .stats-grid {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 16px;
-            }
-            .stat-card {
-                padding: 20px;
-                border-radius: 16px;
-                transition: transform 0.2s, box-shadow 0.2s;
-            }
-            .stat-card:hover {
-                transform: translateY(-2px);
-                box-shadow: var(--shadow-md);
-            }
-            .stat-value { font-size: 1.6rem; }
-        }
-
-        /* ---- CARDS DESKTOP ---- */
-        @media (min-width: 768px) {
-            .transaction-card, .account-card, .category-card, .goal-card {
-                border-radius: 14px;
-                transition: transform 0.15s, box-shadow 0.15s;
-            }
-            .transaction-card:hover, .account-card:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-            }
-            .goal-card:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-            }
-        }
-
-        /* ---- MODAIS DESKTOP: DIALOG CENTRADO ---- */
-        @media (min-width: 768px) {
-            .modal-overlay {
-                align-items: center !important;
-                justify-content: center !important;
-                background: rgba(15, 23, 42, 0.6) !important;
-                backdrop-filter: blur(8px) !important;
-                -webkit-backdrop-filter: blur(8px) !important;
-            }
-
-            .modal-sheet {
-                position: relative !important;
-                bottom: auto !important;
-                left: auto !important;
-                right: auto !important;
-                width: 520px !important;
-                max-width: 90vw !important;
-                max-height: 85vh !important;
-                border-radius: 20px !important;
-                transform: none !important;
-                margin: auto;
-                box-shadow: 0 25px 60px -10px rgba(0,0,0,0.35) !important;
-                animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-
-            .modal-sheet.active {
-                transform: none !important;
-            }
-
-            /* Quando overlay está ativo, posicionar sheet como dialog */
-            .modal-overlay.active {
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-            }
-
-            .modal-overlay.active + .modal-sheet {
-                transform: none !important;
-            }
-
-            .sheet-handle { display: none; }
-        }
-
-        @keyframes modalIn {
-            from { opacity: 0; transform: scale(0.95) translateY(10px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-
-        /* ---- SECTION TITLES DESKTOP ---- */
-        @media (min-width: 768px) {
-            .section-title {
-                font-size: 1.2rem;
-            }
-        }
-
-        /* ---- MONTH SELECTOR DESKTOP ---- */
-        @media (min-width: 768px) {
-            .month-selector {
-                padding: 0;
-                margin-bottom: 24px;
-            }
-        }
-
-        /* ---- ACCOUNTS GRID DESKTOP ---- */
-        @media (min-width: 900px) {
-            .accounts-overview {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 16px;
-            }
-            .accounts-overview .account-card { margin-bottom: 0; }
-        }
-
-        /* ---- GOALS GRID DESKTOP ---- */
-        @media (min-width: 900px) {
-            #goals-list {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 16px;
-            }
-            #goals-list .goal-card { margin-bottom: 0; }
-        }
-
-        /* ---- CHART CONTAINERS DESKTOP ---- */
-        @media (min-width: 768px) {
-            .chart-container {
-                height: 320px;
-                border-radius: 16px;
-                padding: 20px;
-            }
-        }
-
-        /* ---- QUICK ACTIONS DESKTOP ---- */
-        @media (min-width: 768px) {
-            .quick-actions {
-                flex-wrap: nowrap;
-            }
-            .quick-action {
-                padding: 16px 12px;
-                border-radius: 14px;
-                transition: transform 0.15s, box-shadow 0.15s;
-            }
-            .quick-action:hover {
-                transform: translateY(-2px);
-                box-shadow: var(--shadow-md);
-            }
-        }
-
-        /* ---- ANALYSIS & REPORTS DESKTOP ---- */
-        @media (min-width: 900px) {
-            #expense-analysis-list,
-            #income-analysis-list {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 16px;
-            }
-            #expense-analysis-list .analysis-card,
-            #income-analysis-list .analysis-card { margin-bottom: 0; }
-        }
-
-        /* ---- PROJECTION ANNUAL GRID DESKTOP ---- */
-        @media (min-width: 768px) {
-            .projection-months-grid {
-                grid-template-columns: repeat(6, 1fr);
-            }
-        }
-
-        /* ---- FORM CONTROLS DESKTOP ---- */
-        @media (min-width: 768px) {
-            .form-control {
-                padding: 12px 14px;
-            }
-            .btn-block {
-                padding: 14px;
-                border-radius: 12px;
-                font-size: 0.95rem;
-                transition: background 0.15s, transform 0.1s;
-            }
-            .btn-block:hover { filter: brightness(1.05); }
-            .btn-block:active { transform: scale(0.99); }
-        }
-
-        /* ---- TOAST DESKTOP ---- */
-        @media (min-width: 768px) {
-            .toast {
-                top: calc(var(--header-height) + 12px);
-                left: calc(var(--sidebar-width) + 50%);
-                transform: translateX(-50%) translateY(-80px);
-            }
-            .toast.show { transform: translateX(-50%) translateY(0); }
-        }
-
-        /* ---- SCROLL CUSTOMIZATION DESKTOP ---- */
-        @media (min-width: 768px) {
-            main::-webkit-scrollbar { width: 6px; }
-            main::-webkit-scrollbar-track { background: transparent; }
-            main::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-            main::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-            .modal-sheet::-webkit-scrollbar { width: 5px; }
-            .modal-sheet::-webkit-scrollbar-track { background: transparent; }
-            .modal-sheet::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
-        }
-
-        /* ---- SEARCH INPUT DESKTOP ---- */
-        @media (min-width: 768px) {
-            .search-input {
-                border-radius: 12px;
-                padding: 12px 12px 12px 42px;
-            }
-            .search-input:hover { border-color: #cbd5e1; }
-        }
-
-        /* ---- FILTER BUTTONS DESKTOP ---- */
-        @media (min-width: 768px) {
-            .filter-btn {
-                padding: 8px 18px;
-                border-radius: 20px;
-                transition: all 0.15s;
-            }
-            .filter-btn:hover:not(.active) { background: #f8fafc; border-color: #cbd5e1; color: var(--dark); }
-        }
-
-        /* ---- FINANCIAL SCORE DESKTOP ---- */
-        @media (min-width: 900px) {
-            .financial-score-card {
-                display: grid;
-                grid-template-columns: auto 1fr;
-                gap: 24px;
-                text-align: left;
-            }
-            .score-ring { margin: 0; }
-        }
-
-        /* ---- TABLET TWEAKS ---- */
-        @media (min-width: 768px) and (max-width: 899px) {
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-
-        /* ---- DASHBOARD 2-COL DESKTOP ---- */
-        @media (min-width: 1024px) {
-            .dashboard-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 24px;
-            }
-            .dashboard-grid-full {
-                grid-column: 1 / -1;
-            }
-        }
-
-        /* ---- PROJECTION CARD DESKTOP ---- */
-        @media (min-width: 768px) {
-            .projection-card, .projection-annual-card {
-                border-radius: 16px;
-            }
-        }
-
-        /* ---- HOVER STATES DESKTOP ---- */
-        @media (min-width: 768px) {
-            .transaction-card:active { transform: none; }
-            .stat-card:active { transform: none; }
-            .category-card:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-            }
-        }
-
-        /* ---- LOGIN SCREEN DESKTOP ---- */
-        @media (min-width: 768px) {
-            #login-screen {
-                background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #0f172a 100%);
-            }
-            .login-card {
-                padding: 36px 32px;
-                box-shadow: 0 30px 60px rgba(0,0,0,0.4);
-                border: 1px solid rgba(255,255,255,0.08);
-            }
-            .login-logo { font-size: 3rem; }
-            .login-logo i { font-size: 2.6rem; }
-            .login-tagline { font-size: 1rem; }
-        }
-
-        /* ---- BADGE DESKTOP ---- */
-        @media (min-width: 768px) {
-            .pending-badge, .recurring-badge, .future-badge {
-                border-radius: 6px;
-            }
-        }
-
-        /* ---- GENERAL DESKTOP POLISH ---- */
-        @media (min-width: 768px) {
-            .alert-banner { border-radius: 14px; padding: 14px 18px; }
-            .analysis-card { border-radius: 14px; }
-            .savings-tip-card { border-radius: 14px; }
-            .financial-score-card { border-radius: 14px; }
-            .projection-annual-card { border-radius: 16px; padding: 24px; }
-        }
-
-        /* ---- DASHBOARD LAYOUT DESKTOP ---- */
-        @media (min-width: 1024px) {
-            .dashboard-left { }
-            .dashboard-right { }
-            #dashboard-grid-wrapper {
-                display: grid;
-                grid-template-columns: 1.2fr 1fr;
-                gap: 24px;
-                align-items: start;
-            }
-        }
-
-        /* ---- BACKGROUND PATTERN DESKTOP ---- */
-        @media (min-width: 768px) {
-            body {
-                background: #f0f4f8;
-            }
-        }
-
-        /* ---- HEADER TITLE (page name) ---- */
-        @media (min-width: 768px) {
-            .page-title {
-                font-size: 1.15rem;
-                font-weight: 700;
-                color: var(--dark);
-            }
-        }
-
-        /* ---- SECTION CARD (wrapping) ---- */
-        @media (min-width: 768px) {
-            .card-section {
-                background: white;
-                border-radius: 16px;
-                padding: 20px;
-                box-shadow: var(--shadow-sm);
-                margin-bottom: 20px;
-            }
-        }
-
-        /* ---- BUTTON HOVER ALL ---- */
-        @media (min-width: 768px) {
-            button { cursor: pointer; }
-            .month-btn:hover {
-                background: var(--primary);
-                color: white;
-                border-color: var(--primary);
-            }
-            .toggle-btn:hover:not(.active) { background: #f8fafc; }
-            .tab-btn:hover:not(.active) { color: var(--dark); }
-        }
-
-        /* ---- TRANSACTIONS LIST DESKTOP: limit width ---- */
-        @media (min-width: 768px) {
-            #transactions-list .transaction-card { margin-bottom: 10px; }
-        }
-
-        /* ---- IMPROVE TAB NAV DESKTOP ---- */
-        @media (min-width: 768px) {
-            .tab-nav {
-                border-radius: 12px;
-                background: #f8fafc;
-                border: 1px solid #e8edf2;
-                padding: 4px;
-                gap: 2px;
-                border-bottom: 1px solid #e8edf2;
-            }
-            .tab-btn {
-                border-radius: 8px;
-                border-bottom: none !important;
-                transition: all 0.15s;
-            }
-            .tab-btn.active {
-                background: white;
-                color: var(--primary);
-                box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-                border-bottom: none !important;
-            }
-        }
-
-        /* ---- BALANCE CARD DETAILS ---- */
-        @media (min-width: 768px) {
-            .balance-details {
-                display: flex;
-                gap: 0;
-            }
-            .balance-item {
-                flex: 1;
-                padding: 0 16px;
-                border-right: 1px solid rgba(255,255,255,0.15);
-            }
-            .balance-item:first-child { padding-left: 0; }
-            .balance-item:last-child { padding-right: 0; border-right: none; }
-            .balance-item .value { font-size: 1.2rem; }
-        }
-
-        /* ---- GOAL CARD DESKTOP ---- */
-        @media (min-width: 768px) {
-            .goal-progress { height: 10px; }
-        }
-
-        /* ---- ACCOUNT CARD DESKTOP ---- */
-        @media (min-width: 768px) {
-            .account-icon { width: 44px; height: 44px; border-radius: 12px; font-size: 1.1rem; }
-        }
-
-        /* ---- SCORE RING DESKTOP ---- */
-        @media (min-width: 768px) {
-            .score-ring { width: 120px; height: 120px; }
-            .score-ring::before { width: 88px; height: 88px; }
-            .score-number { font-size: 1.7rem; }
-        }
-
-        /* ---- TOGGLE BUTTONS DESKTOP ---- */
-        @media (min-width: 768px) {
-            .toggle-buttons { gap: 8px; }
-            .toggle-btn { border-radius: 10px; font-size: 0.875rem; }
-        }
-
-        /* ---- SIDEBAR SCROLLBAR ---- */
-        @media (min-width: 768px) {
-            .sidebar-nav::-webkit-scrollbar { width: 4px; }
-            .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-        }
-
-        /* ---- SECTION TITLE UNDERLINE ---- */
-        @media (min-width: 768px) {
-            .section-title {
-                color: #0f172a;
-            }
-        }
-
-        /* ---- PROJECTION ANNUAL DESKTOP ---- */
-        @media (min-width: 768px) {
-            .projection-annual-card {
-                background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            }
-        }
-
-        /* ---- TYPE SELECTOR DESKTOP ---- */
-        @media (min-width: 768px) {
-            .type-option {
-                padding: 10px 12px;
-                border-radius: 10px;
-                font-size: 0.875rem;
-                transition: all 0.15s;
-            }
-            .type-option:hover:not(.active) { background: #f8fafc; border-color: #cbd5e1; }
-        }
+        body.dark-mode .savings-rate-ring::before { background: #1e293b; }
+        .savings-rate-num { position: relative; z-index: 1; font-size: 0.7rem; font-weight: 800; color: var(--dark); }
 
     </style>
 </head>
@@ -1881,64 +1344,33 @@
     </div>
 
 
-    <!-- ===== SIDEBAR DESKTOP ===== -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo">
-            <div class="sidebar-logo-icon"><i class="fas fa-wallet"></i></div>
-            <div class="sidebar-logo-text"><span>Finança</span>Pro</div>
-        </div>
-        <nav class="sidebar-nav">
-            <div class="sidebar-section-label">Principal</div>
-            <a href="#" class="sidebar-item active" data-target="dashboard-view" onclick="UI.switchTab(this); return false;">
-                <i class="fas fa-home"></i> Início
-                <span class="nav-badge" id="sb-transactions-badge" style="display:none">!</span>
-            </a>
-            <a href="#" class="sidebar-item" data-target="transactions-view" onclick="UI.switchTab(this); return false;">
-                <i class="fas fa-exchange-alt"></i> Transações
-                <span class="nav-badge" id="sb-pending-badge" style="display:none">!</span>
-            </a>
-            <a href="#" class="sidebar-item" data-target="accounts-view" onclick="UI.switchTab(this); return false;">
-                <i class="fas fa-wallet"></i> Contas
-            </a>
-            <div class="sidebar-section-label">Planejamento</div>
-            <a href="#" class="sidebar-item" data-target="goals-view" onclick="UI.switchTab(this); return false;">
-                <i class="fas fa-bullseye"></i> Metas
-                <span class="nav-badge" id="sb-goals-badge" style="display:none">!</span>
-            </a>
-            <a href="#" class="sidebar-item" data-target="analysis-view" onclick="UI.switchTab(this); UI.renderAnalysis(); return false;">
-                <i class="fas fa-brain"></i> Análise IA
-            </a>
-            <a href="#" class="sidebar-item" data-target="reports-view" onclick="UI.switchTab(this); return false;">
-                <i class="fas fa-chart-bar"></i> Relatórios
-                <span class="nav-badge" id="sb-projection-badge" style="display:none">!</span>
-            </a>
-        </nav>
-        <div class="sidebar-footer">
-            <div class="sidebar-user" onclick="UI.openSettings()">
-                <div class="sidebar-avatar" id="sidebar-avatar">U</div>
-                <div class="sidebar-user-info">
-                    <div class="sidebar-user-name" id="sidebar-username">Usuário</div>
-                    <div class="sidebar-user-role">Conta pessoal</div>
-                </div>
-                <i class="fas fa-cog" style="color:#475569; font-size:0.85rem;"></i>
-            </div>
-        </div>
-    </aside>
-
-
     <header>
         <div class="brand">
             <i class="fas fa-wallet" style="color: var(--primary);"></i>
             <span>Finança</span>Pro
         </div>
-        <div class="page-title" id="page-title" style="display:none;">Início</div>
         <div class="header-actions" style="align-items:center;">
             <span class="user-greeting"><i class="fas fa-user-circle"></i> <strong id="header-username">Usuário</strong></span>
+            <div style="position:relative;">
+                <button class="icon-btn" id="notif-btn" onclick="UI.toggleNotifications()" title="Alertas"><i class="fas fa-bell"></i></button>
+                <span id="notif-badge" class="notif-badge" style="display:none;"></span>
+            </div>
+            <button class="dark-toggle" id="dark-toggle-btn" onclick="UI.toggleDarkMode()" title="Alternar tema"><i class="fas fa-moon"></i></button>
             <button class="icon-btn" onclick="FinanceApp.backup.exportData()"><i class="fas fa-cloud-download-alt"></i></button>
             <button class="icon-btn" onclick="UI.openSettings()"><i class="fas fa-cog"></i></button>
             <button class="icon-btn" onclick="Auth.logout()" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </header>
+
+
+    <!-- Notification Panel -->
+    <div id="notif-panel" class="notif-panel">
+        <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; display:flex; justify-content:space-between; align-items:center;">
+            <span>🔔 Alertas</span>
+            <button onclick="UI.closeNotifications()" style="background:none;border:none;color:var(--secondary);cursor:pointer;font-size:1.1rem;">✕</button>
+        </div>
+        <div id="notif-list"></div>
+    </div>
 
     <div id="toast" class="toast">
         <i class="fas fa-check-circle"></i> <span>Ação realizada!</span>
@@ -2092,6 +1524,7 @@
                 <input type="text" class="search-input" placeholder="Buscar transações..." oninput="UI.filterTransactions()">
             </div>
             
+            <div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><button class="export-btn" onclick="UI.exportTransactionsCSV()"><i class="fas fa-download"></i> Exportar CSV</button></div>
             <div class="toggle-buttons">
                 <button class="toggle-btn active" onclick="UI.setTransactionViewMode('all', this)">Todas</button>
                 <button class="toggle-btn" onclick="UI.setTransactionViewMode('pending', this)">Pendentes</button>
@@ -2303,6 +1736,23 @@
                 <div id="dj-analysis-container"></div>
             </div>
         </div>
+
+        <!-- Cartões de Crédito View -->
+        <div id="cards-view" class="view">
+            <div class="section-title">
+                Meus Cartões
+                <button class="icon-btn" style="background: var(--accent); color: white; border-radius: 8px;" onclick="UI.openNewCard()">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div id="cards-list"></div>
+
+            <div class="section-title" style="margin-top: 8px;">
+                Faturas do Mês
+                <button class="export-btn" onclick="UI.exportCardsCSV()"><i class="fas fa-download"></i> CSV</button>
+            </div>
+            <div id="invoices-list"></div>
+        </div>
     </main>
 
     <button class="fab" onclick="UI.openNewTransaction('expense')" id="main-fab">
@@ -2327,6 +1777,9 @@
         </a>
         <a href="#" class="nav-item" data-target="accounts-view" onclick="UI.switchTab(this); return false;">
             <i class="fas fa-wallet"></i> <span>Contas</span>
+        </a>
+        <a href="#" class="nav-item" data-target="cards-view" onclick="UI.switchTab(this); UI.renderCards(); return false;">
+            <i class="fas fa-credit-card"></i> <span>Cartões</span>
         </a>
     </nav>
 
@@ -2730,6 +2183,70 @@
                 <input type="file" id="import-file" style="display: none;" accept=".json" onchange="FinanceApp.backup.importData(this)">
                 <button type="submit" class="btn-block" style="background: var(--primary); margin: 0;">Salvar Configurações</button>
             </div>
+        </form>
+    </div>
+
+
+    <!-- Modal de Cartão de Crédito -->
+    <div class="modal-overlay" id="overlay-card"></div>
+    <div class="modal-sheet" id="sheet-card">
+        <div class="sheet-handle"></div>
+        <h3 class="section-title" id="title-card">Novo Cartão</h3>
+        <form id="form-card" onsubmit="FinanceApp.card.save(event)">
+            <input type="hidden" id="card-id">
+            <div class="form-group">
+                <label class="form-label">Nome do Cartão</label>
+                <input type="text" id="card-name" class="form-control" placeholder="Ex: Nubank, Inter..." required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Limite Total (R$)</label>
+                    <input type="text" id="card-limit" class="form-control" placeholder="0,00" required oninput="Utils.maskMoney(this)">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Dia Fechamento</label>
+                    <select id="card-closing" class="form-control">
+                        <option value="1">Dia 1</option><option value="5">Dia 5</option>
+                        <option value="10">Dia 10</option><option value="15">Dia 15</option>
+                        <option value="20">Dia 20</option><option value="25">Dia 25</option>
+                        <option value="28">Dia 28</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Dia Vencimento</label>
+                    <select id="card-due" class="form-control">
+                        <option value="1">Dia 1</option><option value="5">Dia 5</option>
+                        <option value="10">Dia 10</option><option value="15">Dia 15</option>
+                        <option value="20">Dia 20</option><option value="25">Dia 25</option>
+                        <option value="28">Dia 28</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Cor</label>
+                    <select id="card-color" class="form-control">
+                        <option value="">Padrão (escuro)</option>
+                        <option value="card-green">Verde</option>
+                        <option value="card-blue">Azul</option>
+                        <option value="card-purple">Roxo</option>
+                        <option value="card-red">Vermelho</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Bandeira</label>
+                <select id="card-brand" class="form-control">
+                    <option value="Visa">Visa</option>
+                    <option value="Mastercard">Mastercard</option>
+                    <option value="Elo">Elo</option>
+                    <option value="Amex">American Express</option>
+                    <option value="Hipercard">Hipercard</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-block">Salvar Cartão</button>
+            <button type="button" class="btn-block" style="background: var(--light); color: var(--secondary); margin-top: 8px;" onclick="UI.closeModals()">Cancelar</button>
+            <button type="button" id="delete-card-btn" class="btn-block" style="background: var(--expense); color: white; margin-top: 8px; display: none;" onclick="FinanceApp.card.deleteCard()">Excluir Cartão</button>
         </form>
     </div>
 
@@ -3469,22 +2986,10 @@
 
             enterApp: (user) => {
                 document.getElementById('login-screen').classList.add('hidden');
-                // Show page title on desktop
-                const pageTitleEl = document.getElementById('page-title');
-                if (pageTitleEl && window.innerWidth >= 768) {
-                    pageTitleEl.textContent = 'Início';
-                    pageTitleEl.style.display = 'block';
-                }
-                const displayName = user.name || user.username;
-                document.getElementById('header-username').textContent = displayName;
-                // Sidebar
-                const sidebarUsername = document.getElementById('sidebar-username');
-                const sidebarAvatar = document.getElementById('sidebar-avatar');
-                if (sidebarUsername) sidebarUsername.textContent = displayName;
-                if (sidebarAvatar) sidebarAvatar.textContent = displayName.charAt(0).toUpperCase();
+                document.getElementById('header-username').textContent = user.name || user.username;
                 // Atualiza nome nas configurações se necessário
                 if (FinanceApp.data.settings) {
-                    FinanceApp.data.settings.name = displayName;
+                    FinanceApp.data.settings.name = user.name || user.username;
                 }
             },
 
@@ -3558,16 +3063,6 @@
                     });
 
                     UI.checkFuturePendingTransactions();
-
-                    // Wrap views in content-inner for desktop centering
-                    document.querySelectorAll('.view').forEach(view => {
-                        if (!view.querySelector('.view-content-inner')) {
-                            const inner = document.createElement('div');
-                            inner.className = 'view-content-inner';
-                            while (view.firstChild) inner.appendChild(view.firstChild);
-                            view.appendChild(inner);
-                        }
-                    });
 
                 } catch (error) {
                     console.error('Erro ao inicializar:', error);
@@ -3649,25 +3144,6 @@
             },
             
             switchTab: (el) => {
-                // Sincroniza sidebar e bottom-nav
-                if (el && el.dataset && el.dataset.target) {
-                    document.querySelectorAll('.sidebar-item, .nav-item').forEach(n => n.classList.remove('active'));
-                    document.querySelectorAll(`[data-target="${el.dataset.target}"]`).forEach(n => n.classList.add('active'));
-                    // Update page title in header
-                    const titleMap = {
-                        'dashboard-view': 'Início',
-                        'transactions-view': 'Transações',
-                        'goals-view': 'Metas',
-                        'analysis-view': 'Análise IA',
-                        'reports-view': 'Relatórios',
-                        'accounts-view': 'Contas'
-                    };
-                    const pageTitleEl = document.getElementById('page-title');
-                    if (pageTitleEl) {
-                        pageTitleEl.textContent = titleMap[el.dataset.target] || '';
-                        pageTitleEl.style.display = window.innerWidth >= 768 ? 'block' : 'none';
-                    }
-                }
                 document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
                 document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
                 
@@ -3904,15 +3380,6 @@
                     futureCount > 0 ? 'inline-block' : 'none';
                 document.getElementById('goals-badge').style.display = 
                     activeGoalsCount > 0 ? 'inline-block' : 'none';
-                // Sync sidebar badges
-                const sbTx = document.getElementById('sb-transactions-badge');
-                const sbPend = document.getElementById('sb-pending-badge');
-                const sbGoals = document.getElementById('sb-goals-badge');
-                const sbProj = document.getElementById('sb-projection-badge');
-                if (sbTx) sbTx.style.display = pendingCount > 0 ? 'inline-block' : 'none';
-                if (sbPend) sbPend.style.display = pendingCount > 0 ? 'inline-block' : 'none';
-                if (sbGoals) sbGoals.style.display = activeGoalsCount > 0 ? 'inline-block' : 'none';
-                if (sbProj) sbProj.style.display = futureCount > 0 ? 'inline-block' : 'none';
             },
             
             renderAccountsOverview: (accounts) => {
@@ -5802,27 +5269,8 @@
                 UI.closeModals();
                 const overlay = document.getElementById(`overlay-${type}`);
                 const sheet = document.getElementById(`sheet-${type}`);
-                if (!overlay || !sheet) return;
-
-                const isDesktop = window.innerWidth >= 768;
-
-                if (isDesktop) {
-                    // Move sheet inside overlay for centered dialog behavior
-                    if (!overlay.contains(sheet)) {
-                        overlay.appendChild(sheet);
-                    }
-                    overlay.style.display = 'flex';
-                    overlay.style.opacity = '1';
-                    overlay.classList.add('active');
-                    requestAnimationFrame(() => {
-                        sheet.classList.add('active');
-                    });
-                } else {
-                    // Mobile: original behavior
-                    if (sheet.parentElement !== overlay.parentElement && sheet.parentElement !== document.body) {
-                        overlay.parentElement.insertBefore(sheet, overlay.nextSibling);
-                    }
-                    overlay.classList.add('active');
+                if (overlay) overlay.classList.add('active');
+                if (sheet) {
                     requestAnimationFrame(() => {
                         sheet.classList.add('active');
                     });
@@ -5830,11 +5278,7 @@
             },
             
             closeModals: () => {
-                document.querySelectorAll('.modal-overlay').forEach(el => {
-                    el.classList.remove('active');
-                    el.style.display = '';
-                    el.style.opacity = '';
-                });
+                document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active'));
                 document.querySelectorAll('.modal-sheet').forEach(el => el.classList.remove('active'));
             },
             
@@ -6866,12 +6310,436 @@
             }
         };
 
+
+        // ===== EXTEND UI WITH NEW METHODS =====
+        
+        // Dark Mode
+        UI.toggleDarkMode = () => {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('fp_dark_mode', isDark ? '1' : '0');
+            const btn = document.getElementById('dark-toggle-btn');
+            if (btn) btn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        };
+        
+        UI.loadDarkMode = () => {
+            const saved = localStorage.getItem('fp_dark_mode');
+            if (saved === '1') {
+                document.body.classList.add('dark-mode');
+                const btn = document.getElementById('dark-toggle-btn');
+                if (btn) btn.innerHTML = '<i class="fas fa-sun"></i>';
+            }
+        };
+
+        // Notifications Panel
+        UI.toggleNotifications = () => {
+            const panel = document.getElementById('notif-panel');
+            panel.classList.toggle('open');
+            if (panel.classList.contains('open')) Notifications.render();
+        };
+        
+        UI.closeNotifications = () => {
+            document.getElementById('notif-panel').classList.remove('open');
+        };
+
+        // Open Card Modal
+        UI.openNewCard = () => {
+            document.getElementById('form-card').reset();
+            document.getElementById('card-id').value = '';
+            document.getElementById('title-card').textContent = 'Novo Cartão';
+            document.getElementById('delete-card-btn').style.display = 'none';
+            UI.openModal('card');
+        };
+
+        UI.editCard = (id) => {
+            const cards = CardDB.getAll();
+            const card = cards.find(c => c.id === id);
+            if (!card) return;
+            document.getElementById('card-id').value = card.id;
+            document.getElementById('card-name').value = card.name;
+            const li = document.getElementById('card-limit');
+            li.value = Utils.formatNumberToCurrencyInput(card.limit);
+            Utils.maskMoney(li);
+            document.getElementById('card-closing').value = card.closing || '5';
+            document.getElementById('card-due').value = card.due || '10';
+            document.getElementById('card-color').value = card.color || '';
+            document.getElementById('card-brand').value = card.brand || 'Visa';
+            document.getElementById('title-card').textContent = 'Editar Cartão';
+            document.getElementById('delete-card-btn').style.display = 'block';
+            UI.openModal('card');
+        };
+
+        // Render Cards View
+        UI.renderCards = () => {
+            const cards = CardDB.getAll();
+            const cardsList = document.getElementById('cards-list');
+            const invoicesList = document.getElementById('invoices-list');
+            if (!cardsList) return;
+
+            const today = new Date();
+            const month = today.getMonth();
+            const year = today.getFullYear();
+
+            if (cards.length === 0) {
+                cardsList.innerHTML = `<div class="empty-state"><i class="fas fa-credit-card"></i><p>Nenhum cartão cadastrado!</p><p style="font-size:0.85rem;color:var(--secondary);">Adicione seu cartão para controlar faturas e limites.</p></div>`;
+                invoicesList.innerHTML = '';
+                return;
+            }
+
+            cardsList.innerHTML = cards.map(card => {
+                const spent = Notifications.getCardSpent(card, month, year);
+                const pct = card.limit > 0 ? Math.min((spent / card.limit) * 100, 100) : 0;
+                const avail = Math.max(card.limit - spent, 0);
+                const fillClass = pct >= 90 ? 'danger' : pct >= 70 ? 'warning' : 'safe';
+                const last4 = card.id.slice(-4).toUpperCase();
+                return `
+                <div class="credit-card-visual ${card.color || ''}" onclick="UI.editCard('${card.id}')">
+                    <div class="card-chip"></div>
+                    <div class="card-number">•••• •••• •••• ${last4}</div>
+                    <div class="card-name">${card.name} <span style="font-size:0.75rem;opacity:0.7;">${card.brand || ''}</span></div>
+                    <div class="card-usage-bar">
+                        <div class="card-usage-fill ${fillClass}" style="width: ${pct}%"></div>
+                    </div>
+                    <div class="card-limit-row">
+                        <div class="card-limit-item">
+                            <div class="card-limit-label">Usado</div>
+                            <div class="card-limit-value card-limit-used">${Utils.formatCurrencyShort(spent)}</div>
+                        </div>
+                        <div class="card-limit-item">
+                            <div class="card-limit-label">Disponível</div>
+                            <div class="card-limit-value card-limit-avail">${Utils.formatCurrencyShort(avail)}</div>
+                        </div>
+                        <div class="card-limit-item">
+                            <div class="card-limit-label">Limite</div>
+                            <div class="card-limit-value">${Utils.formatCurrencyShort(card.limit)}</div>
+                        </div>
+                    </div>
+                    <div style="font-size:0.7rem;opacity:0.6;margin-top:6px;">Fecha dia ${card.closing} · Vence dia ${card.due}</div>
+                </div>`;
+            }).join('');
+
+            // Render invoices
+            invoicesList.innerHTML = cards.map(card => {
+                const spent = Notifications.getCardSpent(card, month, year);
+                const dueDay = parseInt(card.due) || 10;
+                const dueDate = new Date(year, month, dueDay);
+                const diff = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+                const urgentClass = diff <= 3 ? 'urgent' : '';
+                const pct = card.limit > 0 ? Math.min((spent / card.limit) * 100, 100) : 0;
+                const dueDateStr = `${String(dueDay).padStart(2,'0')}/${String(month+1).padStart(2,'0')}/${year}`;
+                return `
+                <div class="invoice-card">
+                    <div class="invoice-header">
+                        <div>
+                            <div class="invoice-title">${card.name}</div>
+                            <div class="invoice-due ${urgentClass}">
+                                <i class="fas fa-calendar"></i> Vence ${dueDateStr}
+                                ${diff >= 0 ? `(${diff} dias)` : '<span style="color:var(--expense)">VENCIDA</span>'}
+                            </div>
+                        </div>
+                        <div class="invoice-amount">${Utils.formatCurrency(spent)}</div>
+                    </div>
+                    <div class="invoice-progress">
+                        <div class="invoice-fill" style="width:${pct}%"></div>
+                    </div>
+                    <div style="font-size:0.75rem;color:var(--secondary);margin-top:4px;">${pct.toFixed(1)}% do limite utilizado</div>
+                </div>`;
+            }).join('') || '<div class="empty-state"><i class="fas fa-receipt"></i><p>Nenhuma fatura este mês!</p></div>';
+        };
+
+        // Export Cards CSV
+        UI.exportCardsCSV = () => {
+            const cards = CardDB.getAll();
+            const today = new Date();
+            const rows = [['Cartão', 'Limite', 'Gasto no Mês', 'Disponível', 'Vencimento']];
+            cards.forEach(c => {
+                const spent = Notifications.getCardSpent(c, today.getMonth(), today.getFullYear());
+                rows.push([c.name, c.limit.toFixed(2), spent.toFixed(2), (c.limit - spent).toFixed(2), `Dia ${c.due}`]);
+            });
+            const csv = rows.map(r => r.join(';')).join('\n');
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `faturas_${Utils.getToday()}.csv`;
+            a.click();
+            Utils.toast('CSV exportado!');
+        };
+
+        // Export Transactions CSV
+        UI.exportTransactionsCSV = () => {
+            const txs = FinanceApp.data.transactions;
+            const categories = FinanceApp.data.categories;
+            const accounts = FinanceApp.data.accounts;
+            const rows = [['Data', 'Descrição', 'Tipo', 'Valor', 'Categoria', 'Conta', 'Status', 'Método Pagamento']];
+            txs.sort((a,b) => b.date.localeCompare(a.date)).forEach(t => {
+                const cat = categories.find(c => c.id === t.category);
+                const acc = accounts.find(a => a.id === t.account);
+                rows.push([
+                    Utils.formatDate(t.date),
+                    t.description,
+                    t.type,
+                    t.amount.toFixed(2).replace('.', ','),
+                    cat ? cat.name : '-',
+                    acc ? acc.name : '-',
+                    t.status,
+                    t.paymentMethod || '-'
+                ]);
+            });
+            const csv = rows.map(r => r.map(v => `"${v}"`).join(';')).join('\n');
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `transacoes_${Utils.getToday()}.csv`;
+            a.click();
+            Utils.toast('Transações exportadas em CSV!');
+        };
+
+        // ===== CARD FINANCE APP METHODS =====
+        FinanceApp.card = {
+            save: (e) => {
+                e.preventDefault();
+                const id = document.getElementById('card-id').value || Utils.id();
+                const card = {
+                    id,
+                    name: document.getElementById('card-name').value,
+                    limit: Utils.parseCurrency(document.getElementById('card-limit').value),
+                    closing: document.getElementById('card-closing').value,
+                    due: document.getElementById('card-due').value,
+                    color: document.getElementById('card-color').value,
+                    brand: document.getElementById('card-brand').value,
+                    createdAt: new Date().toISOString()
+                };
+                CardDB.save(card);
+                Utils.toast('Cartão salvo!');
+                UI.closeModals();
+                UI.renderCards();
+                Notifications.render();
+            },
+            deleteCard: () => {
+                const id = document.getElementById('card-id').value;
+                if (!id) return;
+                if (confirm('Tem certeza que deseja excluir este cartão?')) {
+                    CardDB.delete(id);
+                    Utils.toast('Cartão excluído!');
+                    UI.closeModals();
+                    UI.renderCards();
+                }
+            }
+        };
+
+        // ===== PATCH CATEGORY RENDER TO SHOW BUDGET BARS =====
+        const _origRenderCategories = UI.renderCategories.bind(UI);
+        UI.renderCategories = () => {
+            _origRenderCategories();
+            // Enhance expense categories with budget bars
+            const expenseList = document.getElementById('categories-list');
+            if (!expenseList) return;
+            const today = new Date();
+            const monthRange = Utils.getMonthRange(today.getMonth(), today.getFullYear());
+            const monthTx = FinanceApp.data.transactions.filter(t =>
+                t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'cleared' && t.type === 'expense'
+            );
+            FinanceApp.data.categories.filter(c => c.type === 'expense' && c.budget > 0).forEach(cat => {
+                const spent = monthTx.filter(t => t.category === cat.id).reduce((s, t) => s + t.amount, 0);
+                const pct = Math.min((spent / cat.budget) * 100, 100);
+                const fillClass = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : 'ok';
+                // Find the matching card and append
+                const allCards = expenseList.querySelectorAll('.category-card');
+                allCards.forEach(card => {
+                    const nameEl = card.querySelector('.category-name');
+                    if (nameEl && nameEl.textContent === cat.name && !card.querySelector('.budget-bar-container')) {
+                        const bar = document.createElement('div');
+                        bar.className = 'budget-bar-container';
+                        bar.style.width = '100%';
+                        bar.innerHTML = `
+                            <div class="budget-bar-track">
+                                <div class="budget-bar-fill ${fillClass}" style="width:${pct}%"></div>
+                            </div>
+                            <div class="budget-bar-label">
+                                <span>${Utils.formatCurrency(spent)}</span>
+                                <span>${pct.toFixed(0)}% de ${Utils.formatCurrency(cat.budget)}</span>
+                            </div>`;
+                        card.style.flexDirection = 'column';
+                        card.style.gap = '8px';
+                        const row = document.createElement('div');
+                        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;width:100%';
+                        while (card.firstChild) row.appendChild(card.firstChild);
+                        card.appendChild(row);
+                        card.appendChild(bar);
+                    }
+                });
+            });
+        };
+
+        // ===== CREDIT CARD MANAGER (in DB) =====
+        // Extend DB with card operations
+        const CardDB = {
+            getAll: () => {
+                const data = localStorage.getItem('fp_cards_' + (Auth.currentUser ? Auth.currentUser.username : 'default'));
+                return data ? JSON.parse(data) : [];
+            },
+            save: (card) => {
+                const cards = CardDB.getAll();
+                const idx = cards.findIndex(c => c.id === card.id);
+                if (idx >= 0) cards[idx] = card; else cards.push(card);
+                localStorage.setItem('fp_cards_' + (Auth.currentUser ? Auth.currentUser.username : 'default'), JSON.stringify(cards));
+            },
+            delete: (id) => {
+                const cards = CardDB.getAll().filter(c => c.id !== id);
+                localStorage.setItem('fp_cards_' + (Auth.currentUser ? Auth.currentUser.username : 'default'), JSON.stringify(cards));
+            }
+        };
+
+        // ===== NOTIFICATIONS ENGINE =====
+        const Notifications = {
+            getAlerts: () => {
+                const alerts = [];
+                const today = new Date();
+                const todayStr = Utils.getToday();
+                const { transactions, accounts, categories } = FinanceApp.data;
+
+                // 1. Pending transactions due today or overdue
+                const overdue = transactions.filter(t => t.status === 'pending' && t.date <= todayStr);
+                if (overdue.length > 0) {
+                    overdue.slice(0, 3).forEach(t => {
+                        alerts.push({
+                            type: 'danger',
+                            icon: 'fas fa-clock',
+                            title: `Pendente: ${t.description}`,
+                            text: `${Utils.formatCurrency(t.amount)} — vence ${Utils.formatDate(t.date)}`
+                        });
+                    });
+                }
+
+                // 2. Budget overrun
+                const monthRange = Utils.getMonthRange(today.getMonth(), today.getFullYear());
+                const monthTx = transactions.filter(t => t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'cleared' && t.type === 'expense');
+                categories.filter(c => c.type === 'expense' && c.budget > 0).forEach(cat => {
+                    const spent = monthTx.filter(t => t.category === cat.id).reduce((s, t) => s + t.amount, 0);
+                    const pct = spent / cat.budget;
+                    if (pct >= 1) {
+                        alerts.push({ type: 'danger', icon: 'fas fa-exclamation-triangle', title: `Orçamento estourado: ${cat.name}`, text: `Gastou ${Utils.formatCurrency(spent)} de ${Utils.formatCurrency(cat.budget)}` });
+                    } else if (pct >= 0.8) {
+                        alerts.push({ type: 'warning', icon: 'fas fa-exclamation-circle', title: `80% do orçamento: ${cat.name}`, text: `Gastou ${Utils.formatCurrency(spent)} de ${Utils.formatCurrency(cat.budget)}` });
+                    }
+                });
+
+                // 3. Card invoice due soon
+                const cards = CardDB.getAll();
+                cards.forEach(card => {
+                    const dueDay = parseInt(card.due) || 10;
+                    const dueDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
+                    const diff = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+                    if (diff >= 0 && diff <= 5) {
+                        const spent = Notifications.getCardSpent(card, today.getMonth(), today.getFullYear());
+                        alerts.push({ type: diff <= 2 ? 'danger' : 'warning', icon: 'fas fa-credit-card', title: `Fatura vence em ${diff} dia(s): ${card.name}`, text: `Valor: ${Utils.formatCurrency(spent)}` });
+                    }
+                });
+
+                return alerts;
+            },
+            getCardSpent: (card, month, year) => {
+                const range = Utils.getMonthRange(month, year);
+                return (FinanceApp.data.transactions || [])
+                    .filter(t => t.paymentMethod === 'cartao_credito' && t.date >= range.start && t.date <= range.end)
+                    .reduce((s, t) => s + t.amount, 0);
+            },
+            render: () => {
+                const alerts = Notifications.getAlerts();
+                const badge = document.getElementById('notif-badge');
+                const list = document.getElementById('notif-list');
+                if (!badge || !list) return;
+
+                badge.style.display = alerts.length > 0 ? 'block' : 'none';
+
+                if (alerts.length === 0) {
+                    list.innerHTML = '<div class="notif-empty"><i class="fas fa-check-circle" style="color:var(--income);"></i><br>Nenhum alerta no momento!</div>';
+                    return;
+                }
+
+                list.innerHTML = alerts.map(a => `
+                    <div class="notif-item">
+                        <div class="notif-icon ${a.type === 'danger' ? 'bg-red' : 'bg-yellow'}">
+                            <i class="${a.icon}"></i>
+                        </div>
+                        <div class="notif-text">
+                            <strong>${a.title}</strong>
+                            ${a.text}
+                        </div>
+                    </div>
+                `).join('');
+            }
+        };
+
+
+        // ===== PATCH DASHBOARD to show card summary + notifications =====
+        const _origRenderDashboard = UI.renderDashboard.bind(UI);
+        UI.renderDashboard = () => {
+            _origRenderDashboard();
+            Notifications.render();
+            // Add card summary to dashboard if cards exist
+            const cards = CardDB.getAll();
+            if (cards.length > 0) {
+                const today = new Date();
+                const totalUsed = cards.reduce((s, c) => s + Notifications.getCardSpent(c, today.getMonth(), today.getFullYear()), 0);
+                const totalLimit = cards.reduce((s, c) => s + c.limit, 0);
+                // Find or create card summary widget
+                let summaryEl = document.getElementById('dashboard-card-summary');
+                if (!summaryEl) {
+                    summaryEl = document.createElement('div');
+                    summaryEl.id = 'dashboard-card-summary';
+                    const dashView = document.getElementById('dashboard-view');
+                    const firstSection = dashView.querySelector('.section-title');
+                    if (firstSection) dashView.insertBefore(summaryEl, firstSection);
+                }
+                const pct = totalLimit > 0 ? Math.min((totalUsed / totalLimit) * 100, 100) : 0;
+                summaryEl.innerHTML = `
+                    <div style="background:linear-gradient(135deg,#1e293b,#0f172a);border-radius:12px;padding:14px 16px;margin-bottom:16px;color:white;cursor:pointer;" onclick="document.querySelector('[data-target=cards-view]').click();UI.renderCards();">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <div style="font-size:0.85rem;opacity:0.8;"><i class="fas fa-credit-card"></i> Cartões de Crédito</div>
+                            <div style="font-size:0.75rem;opacity:0.6;">${cards.length} cartão${cards.length > 1 ? 'ões' : ''}</div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-size:1.2rem;font-weight:800;color:#fca5a5;">${Utils.formatCurrency(totalUsed)}</div>
+                                <div style="font-size:0.75rem;opacity:0.6;">Fatura total (aprox.)</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:1rem;font-weight:700;color:#6ee7b7;">${Utils.formatCurrency(totalLimit - totalUsed)}</div>
+                                <div style="font-size:0.75rem;opacity:0.6;">Disponível</div>
+                            </div>
+                        </div>
+                        <div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin-top:8px;overflow:hidden;">
+                            <div style="height:100%;width:${pct}%;background:${pct>90?'#fca5a5':pct>70?'#fbbf24':'#6ee7b7'};border-radius:2px;"></div>
+                        </div>
+                    </div>`;
+            }
+        };
+
+        // Load dark mode on start
+        document.addEventListener('DOMContentLoaded', () => {
+            UI.loadDarkMode();
+        });
+        UI.loadDarkMode();
+
+        // Close notifications when clicking outside
+        document.addEventListener('click', (e) => {
+            const panel = document.getElementById('notif-panel');
+            const btn = document.getElementById('notif-btn');
+            if (panel && panel.classList.contains('open') && !panel.contains(e.target) && e.target !== btn && !btn?.contains(e.target)) {
+                panel.classList.remove('open');
+            }
+        });
+
         // Event listeners para modais (fechar ao clicar fora)
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) UI.closeModals();
             });
         });
+
 
         // Inicializar o app
         FinanceApp.init();
