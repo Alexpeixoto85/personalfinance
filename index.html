@@ -2250,6 +2250,28 @@
         </form>
     </div>
 
+    <!-- Modal: Excluir transação recorrente -->
+    <div class="modal-overlay" id="overlay-recurring-delete"></div>
+    <div class="modal-sheet" id="sheet-recurring-delete">
+        <div class="sheet-handle"></div>
+        <div style="text-align:center; margin-bottom:20px;">
+            <div style="width:52px;height:52px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                <i class="fas fa-repeat" style="color:var(--expense);font-size:1.3rem;"></i>
+            </div>
+            <h3 style="font-size:1.1rem;font-weight:700;color:var(--dark);margin-bottom:6px;">Transação Recorrente</h3>
+            <p style="font-size:0.9rem;color:var(--secondary);">O que deseja excluir?</p>
+        </div>
+        <button class="btn-block" id="btn-delete-only-this" style="background:var(--surface);color:var(--dark);border:1px solid var(--border);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px;">
+            <i class="fas fa-calendar-day" style="color:var(--pending);"></i>
+            <span><strong>Somente esta</strong><br><small style="font-weight:400;color:var(--secondary);">Remove apenas esta ocorrência</small></span>
+        </button>
+        <button class="btn-block" id="btn-delete-from-here" style="background:#fef2f2;color:var(--expense);border:1px solid #fecaca;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px;">
+            <i class="fas fa-calendar-times" style="color:var(--expense);"></i>
+            <span><strong>Esta e as próximas</strong><br><small style="font-weight:400;color:var(--secondary);">Remove esta e todas as futuras</small></span>
+        </button>
+        <button class="btn-block" onclick="UI.closeModals()" style="background:var(--light);color:var(--secondary);margin-top:4px;">Cancelar</button>
+    </div>
+
     <script>
         // --- UTILITÁRIOS ---
         const Utils = {
@@ -2601,6 +2623,37 @@
                     
                     request.onsuccess = () => resolve();
                     request.onerror = () => reject(request.error);
+                });
+            },
+
+            // Exclui uma transação + todas as futuras da mesma série recorrente (data >= fromDate)
+            // e também o mestre se existir
+            deleteTransactionsFrom: async (transaction) => {
+                return new Promise((resolve, reject) => {
+                    const tx = DB.db.transaction(['transactions'], 'readwrite');
+                    const store = tx.objectStore('transactions');
+                    const getAll = store.getAll();
+                    getAll.onsuccess = () => {
+                        const all = getAll.result;
+                        const parentId = transaction.recurringParent || transaction.id;
+                        const fromDate = transaction.date;
+                        // IDs a excluir: o próprio, filhos futuros (>= fromDate) e o mestre
+                        const toDelete = all
+                            .filter(t =>
+                                t.id === transaction.id ||
+                                (t.recurringParent === parentId && t.date >= fromDate) ||
+                                t.id === parentId
+                            )
+                            .map(t => t.id);
+                        let pending = toDelete.length;
+                        if (pending === 0) { resolve(toDelete); return; }
+                        toDelete.forEach(id => {
+                            const req = store.delete(id);
+                            req.onsuccess = () => { if (--pending === 0) resolve(toDelete); };
+                            req.onerror = () => reject(req.error);
+                        });
+                    };
+                    getAll.onerror = () => reject(getAll.error);
                 });
             },
             
@@ -5805,29 +5858,90 @@
                 deleteTransaction: async () => {
                     const id = document.getElementById('t-id').value;
                     if (!id) return;
-                    
-                    if (confirm('Tem certeza que deseja excluir esta transação?')) {
-                        try {
-                            const transaction = FinanceApp.data.transactions.find(t => t.id === id);
-                            
-                            if (transaction && transaction.status === 'cleared') {
-                                await FinanceApp.account.reverseBalance(transaction);
+
+                    const transaction = FinanceApp.data.transactions.find(t => t.id === id);
+                    if (!transaction) return;
+
+                    // É recorrente (filho ou mestre com filhos)?
+                    const isRecurringChild = !!transaction.recurringParent;
+                    const isRecurringMaster = transaction.recurring && !transaction.recurringParent;
+                    const hasChildren = FinanceApp.data.transactions.some(t => t.recurringParent === transaction.id);
+
+                    if (isRecurringChild || (isRecurringMaster && hasChildren)) {
+                        // Abre o modal de escolha
+                        const overlay = document.getElementById('overlay-recurring-delete');
+                        const sheet  = document.getElementById('sheet-recurring-delete');
+                        overlay.classList.add('active');
+                        sheet.classList.add('active');
+
+                        // Helper interno para executar a exclusão
+                        const _doDelete = async (mode) => {
+                            try {
+                                if (mode === 'only-this') {
+                                    if (transaction.status === 'cleared') {
+                                        await FinanceApp.account.reverseBalance(transaction);
+                                    }
+                                    await DB.deleteTransaction(id);
+                                    FinanceApp.data.transactions = FinanceApp.data.transactions.filter(t => t.id !== id);
+                                    Utils.toast('Ocorrência excluída!');
+                                } else {
+                                    // Reverse balance de todas as 'cleared' que serão removidas
+                                    const parentId = transaction.recurringParent || transaction.id;
+                                    const fromDate  = transaction.date;
+                                    const toReverse = FinanceApp.data.transactions.filter(t =>
+                                        t.status === 'cleared' && (
+                                            t.id === id ||
+                                            (t.recurringParent === parentId && t.date >= fromDate) ||
+                                            t.id === parentId
+                                        )
+                                    );
+                                    for (const t of toReverse) {
+                                        await FinanceApp.account.reverseBalance(t);
+                                    }
+                                    const deletedIds = await DB.deleteTransactionsFrom(transaction);
+                                    FinanceApp.data.transactions = FinanceApp.data.transactions.filter(t => !deletedIds.includes(t.id));
+                                    Utils.toast('Recorrências excluídas!');
+                                }
+                                UI.closeModals();
+                                UI.renderDashboard();
+                                UI.renderTransactions();
+                                UI.renderAccounts();
+                                UI.renderReports();
+                            } catch (error) {
+                                console.error('Erro ao excluir transação:', error);
+                                Utils.toast('Erro ao excluir transação', 'error');
                             }
-                            
-                            await DB.deleteTransaction(id);
-                            
-                            FinanceApp.data.transactions = FinanceApp.data.transactions.filter(t => t.id !== id);
-                            
-                            Utils.toast('Transação excluída!');
-                            UI.closeModals();
-                            UI.renderDashboard();
-                            UI.renderTransactions();
-                            UI.renderAccounts();
-                            UI.renderReports();
-                            
-                        } catch (error) {
-                            console.error('Erro ao excluir transação:', error);
-                            Utils.toast('Erro ao excluir transação', 'error');
+                        };
+
+                        // Botões do modal — substitui listeners para evitar duplicatas
+                        const btnOnly = document.getElementById('btn-delete-only-this');
+                        const btnFrom = document.getElementById('btn-delete-from-here');
+                        const newBtnOnly = btnOnly.cloneNode(true);
+                        const newBtnFrom = btnFrom.cloneNode(true);
+                        btnOnly.parentNode.replaceChild(newBtnOnly, btnOnly);
+                        btnFrom.parentNode.replaceChild(newBtnFrom, btnFrom);
+                        newBtnOnly.addEventListener('click', () => _doDelete('only-this'));
+                        newBtnFrom.addEventListener('click', () => _doDelete('from-here'));
+
+                    } else {
+                        // Transação simples — fluxo original com confirm
+                        if (confirm('Tem certeza que deseja excluir esta transação?')) {
+                            try {
+                                if (transaction.status === 'cleared') {
+                                    await FinanceApp.account.reverseBalance(transaction);
+                                }
+                                await DB.deleteTransaction(id);
+                                FinanceApp.data.transactions = FinanceApp.data.transactions.filter(t => t.id !== id);
+                                Utils.toast('Transação excluída!');
+                                UI.closeModals();
+                                UI.renderDashboard();
+                                UI.renderTransactions();
+                                UI.renderAccounts();
+                                UI.renderReports();
+                            } catch (error) {
+                                console.error('Erro ao excluir transação:', error);
+                                Utils.toast('Erro ao excluir transação', 'error');
+                            }
                         }
                     }
                 }
