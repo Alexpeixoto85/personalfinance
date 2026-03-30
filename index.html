@@ -1708,6 +1708,23 @@
                     <canvas id="projectionChart"></canvas>
                 </div>
 
+                <!-- ====== PROJEÇÃO DE SALDO FUTURO (novo recurso) ====== -->
+                <div class="section-title" style="margin-top:8px;">
+                    📊 Projeção de Saldo Futuro
+                    <span style="font-size:0.75rem;font-weight:500;color:var(--secondary);">Baseado nos últimos 6 meses</span>
+                </div>
+
+                <!-- Painel de médias (resumo dos 6 meses anteriores) -->
+                <div id="future-balance-summary" style="margin-bottom:16px;"></div>
+
+                <!-- Gráfico de linha: saldo acumulado projetado -->
+                <div class="chart-container" style="height:260px; margin-bottom:16px;">
+                    <canvas id="futureBalanceChart"></canvas>
+                </div>
+
+                <!-- Cards mês a mês -->
+                <div id="future-balance-months"></div>
+
                 <div class="section-title">Calendário Financeiro (próx. 30 dias)</div>
                 <div id="financial-timeline"></div>
 
@@ -4615,6 +4632,9 @@
                     }
                 });
 
+                // ── Projeção de Saldo Futuro ──
+                UI.renderFutureBalanceProjection();
+
                 // ── Timeline (próx. 30 dias) ──
                 const today = Utils.getToday();
                 const futureDate = Utils.getFutureDate(30);
@@ -4729,6 +4749,190 @@
                 }
                 const avg = monthlyTotals.length > 0 ? monthlyTotals.reduce((s, m) => s + m.income, 0) / monthlyTotals.length : 0;
                 return { avg, monthlyTotals };
+            },
+
+            // ═══════════════════════════════════════════════════════
+            // PROJEÇÃO DE SALDO FUTURO (baseada na média dos últimos 6 meses)
+            // ═══════════════════════════════════════════════════════
+            renderFutureBalanceProjection: () => {
+                const summaryEl = document.getElementById('future-balance-summary');
+                const monthsEl  = document.getElementById('future-balance-months');
+                const chartEl   = document.getElementById('futureBalanceChart');
+                if (!summaryEl || !monthsEl || !chartEl) return;
+
+                const { transactions, accounts } = FinanceApp.data;
+                const now = new Date();
+                const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
+                const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+                const monthShort = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+                // ── Calcula médias dos últimos 6 meses ──
+                const history = [];
+                for (let i = 6; i >= 1; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    const range = Utils.getMonthRange(d.getMonth(), d.getFullYear());
+                    const txs = transactions.filter(t => t.date >= range.start && t.date <= range.end && t.status === 'cleared');
+                    const income  = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                    const expense = txs.filter(t => t.type === 'expense' || t.type === 'investment').reduce((s, t) => s + t.amount, 0);
+                    history.push({ month: d.getMonth(), year: d.getFullYear(), income, expense, net: income - expense });
+                }
+
+                const monthsWithData = history.filter(h => h.income > 0 || h.expense > 0);
+                const avgIncome  = monthsWithData.length > 0 ? monthsWithData.reduce((s, h) => s + h.income,  0) / monthsWithData.length : 0;
+                const avgExpense = monthsWithData.length > 0 ? monthsWithData.reduce((s, h) => s + h.expense, 0) / monthsWithData.length : 0;
+                const avgNet     = avgIncome - avgExpense;
+
+                // ── Painel de resumo ──
+                const savingsRate = avgIncome > 0 ? ((avgNet / avgIncome) * 100).toFixed(1) : 0;
+                const rateColor = avgNet >= 0 ? '#10b981' : '#ef4444';
+
+                summaryEl.innerHTML = `
+                    <div style="background:linear-gradient(135deg,#1e293b,#0f172a);border-radius:14px;padding:16px;color:white;margin-bottom:4px;">
+                        <div style="font-size:0.78rem;opacity:0.7;margin-bottom:10px;">📅 Média mensal — últimos ${monthsWithData.length} meses com movimento</div>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+                            <div style="background:rgba(16,185,129,0.15);border-radius:10px;padding:10px;text-align:center;">
+                                <div style="font-size:0.68rem;opacity:0.7;margin-bottom:4px;">💰 Receita Média</div>
+                                <div style="font-size:1rem;font-weight:800;color:#6ee7b7;">${Utils.formatCurrency(avgIncome)}</div>
+                            </div>
+                            <div style="background:rgba(239,68,68,0.15);border-radius:10px;padding:10px;text-align:center;">
+                                <div style="font-size:0.68rem;opacity:0.7;margin-bottom:4px;">💸 Despesa Média</div>
+                                <div style="font-size:1rem;font-weight:800;color:#fca5a5;">${Utils.formatCurrency(avgExpense)}</div>
+                            </div>
+                            <div style="background:rgba(139,92,246,0.15);border-radius:10px;padding:10px;text-align:center;">
+                                <div style="font-size:0.68rem;opacity:0.7;margin-bottom:4px;">📊 Resultado Médio</div>
+                                <div style="font-size:1rem;font-weight:800;color:${avgNet>=0?'#6ee7b7':'#fca5a5'};">${avgNet>=0?'+':''}${Utils.formatCurrency(avgNet)}</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.06);border-radius:8px;padding:8px 12px;">
+                            <div style="font-size:0.8rem;opacity:0.85;">Saldo atual: <strong>${Utils.formatCurrency(totalBalance)}</strong></div>
+                            <div style="font-size:0.8rem;opacity:0.85;">Taxa de poupança média: <strong style="color:${rateColor}">${savingsRate}%</strong></div>
+                        </div>
+                        ${monthsWithData.length < 3 ? `<div style="margin-top:10px;background:rgba(245,158,11,0.2);border-radius:8px;padding:8px;font-size:0.78rem;color:#fde68a;">⚠️ Poucos dados históricos (${monthsWithData.length} mês/meses). A projeção ficará mais precisa com mais lançamentos.</div>` : ''}
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(${Math.min(history.length,6)},1fr);gap:6px;margin-bottom:4px;">
+                        ${history.map(h => `
+                            <div style="background:var(--surface);border-radius:8px;padding:8px;text-align:center;box-shadow:var(--shadow-sm);">
+                                <div style="font-size:0.65rem;color:var(--secondary);margin-bottom:4px;">${monthShort[h.month]}/${String(h.year).slice(-2)}</div>
+                                <div style="font-size:0.72rem;font-weight:700;color:${h.net>=0?'var(--income)':'var(--expense)'};">${h.net>=0?'+':''}${Utils.formatCurrencyShort(h.net)}</div>
+                            </div>`).join('')}
+                    </div>`;
+
+                // ── Projeta os próximos 6 meses ──
+                const projLabels = [], projBalances = [], projIncomes = [], projExpenses = [];
+                let runningBal = totalBalance;
+                const projMonths = [];
+
+                for (let i = 1; i <= 6; i++) {
+                    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                    const range = Utils.getMonthRange(d.getMonth(), d.getFullYear());
+                    // Usa dados reais se já existirem (agendados/pendentes), senão usa a média
+                    const txsMonth = transactions.filter(t => t.date >= range.start && t.date <= range.end);
+                    const realIncome  = txsMonth.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                    const realExpense = txsMonth.filter(t => t.type === 'expense' || t.type === 'investment').reduce((s, t) => s + t.amount, 0);
+                    const projIncome  = realIncome  > 0 ? realIncome  : avgIncome;
+                    const projExpense = realExpense > 0 ? realExpense : avgExpense;
+                    const net = projIncome - projExpense;
+                    runningBal += net;
+                    const label = monthShort[d.getMonth()] + '/' + String(d.getFullYear()).slice(-2);
+                    projLabels.push(label);
+                    projBalances.push(parseFloat(runningBal.toFixed(2)));
+                    projIncomes.push(projIncome);
+                    projExpenses.push(projExpense);
+                    projMonths.push({ label, month: d.getMonth(), year: d.getFullYear(), projIncome, projExpense, net, runningBal, hasReal: realIncome > 0 || realExpense > 0 });
+                }
+
+                // ── Gráfico de saldo acumulado ──
+                if (UI.chartInstances.futureBalanceChart) UI.chartInstances.futureBalanceChart.destroy();
+                UI.chartInstances.futureBalanceChart = new Chart(chartEl.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: projLabels,
+                        datasets: [
+                            {
+                                label: 'Saldo Projetado',
+                                data: projBalances,
+                                borderColor: '#8b5cf6',
+                                backgroundColor: 'rgba(139,92,246,0.15)',
+                                fill: true,
+                                tension: 0.4,
+                                pointBackgroundColor: projBalances.map(v => v >= 0 ? '#10b981' : '#ef4444'),
+                                pointRadius: 6,
+                                pointHoverRadius: 8,
+                                borderWidth: 2.5
+                            },
+                            {
+                                label: 'Receita Proj.',
+                                data: projIncomes,
+                                borderColor: '#10b981',
+                                backgroundColor: 'transparent',
+                                borderDash: [5, 4],
+                                tension: 0.4,
+                                pointRadius: 3,
+                                borderWidth: 1.5
+                            },
+                            {
+                                label: 'Despesa Proj.',
+                                data: projExpenses,
+                                borderColor: '#ef4444',
+                                backgroundColor: 'transparent',
+                                borderDash: [5, 4],
+                                tension: 0.4,
+                                pointRadius: 3,
+                                borderWidth: 1.5
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => `${ctx.dataset.label}: ${Utils.formatCurrency(ctx.raw)}`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                grid: { color: '#e2e8f0', borderDash: [2,4] },
+                                ticks: { callback: v => Utils.formatCurrencyShort(v), font: { size: 10 } }
+                            },
+                            x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                        }
+                    }
+                });
+
+                // ── Cards mês a mês ──
+                monthsEl.innerHTML = projMonths.map((p, idx) => {
+                    const pct = p.projIncome > 0 ? Math.min((p.projExpense / p.projIncome) * 100, 100) : 0;
+                    const barColor = pct < 70 ? 'var(--income)' : pct < 90 ? 'var(--pending)' : 'var(--expense)';
+                    const isPositive = p.net >= 0;
+                    const isBelowStart = p.runningBal < totalBalance;
+                    return `
+                    <div class="projection-card" style="border-left:4px solid ${isPositive ? 'var(--income)' : 'var(--expense)'}; margin-bottom:10px;">
+                        <div class="projection-header">
+                            <div>
+                                <div class="projection-title">📅 ${monthNames[p.month]} ${p.year}${p.hasReal ? ' <span style="font-size:0.7rem;background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:8px;font-weight:600;">Dados reais</span>' : ''}</div>
+                                <div style="font-size:0.75rem;color:var(--secondary);margin-top:2px;">
+                                    Saldo ao fim do mês: <strong style="color:${p.runningBal>=0?'var(--income)':'var(--expense)'};">${Utils.formatCurrency(p.runningBal)}</strong>
+                                    ${isBelowStart ? '<span style="font-size:0.7rem;margin-left:4px;color:#dc2626;">▼ abaixo do atual</span>' : '<span style="font-size:0.7rem;margin-left:4px;color:#059669;">▲ acima do atual</span>'}
+                                </div>
+                            </div>
+                            <div class="projection-value ${isPositive ? 'projection-positive' : 'projection-negative'}">
+                                ${isPositive ? '+' : ''}${Utils.formatCurrency(p.net)}
+                            </div>
+                        </div>
+                        <div style="height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-bottom:8px;">
+                            <div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width 0.4s;"></div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--secondary);">
+                            <span>💰 Receita: <strong style="color:var(--income)">${Utils.formatCurrency(p.projIncome)}</strong></span>
+                            <span>💸 Despesa: <strong style="color:var(--expense)">${Utils.formatCurrency(p.projExpense)}</strong></span>
+                            <span>${pct.toFixed(0)}% comprometido</span>
+                        </div>
+                    </div>`;
+                }).join('');
             },
 
             renderDashboardDJProjection: (transactions) => {
