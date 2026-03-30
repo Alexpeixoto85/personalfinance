@@ -1245,10 +1245,20 @@
         .notif-badge {
             position: absolute;
             top: 2px; right: 2px;
-            width: 8px; height: 8px;
             background: var(--expense);
+            color: white;
             border-radius: 50%;
+            min-width: 18px;
+            height: 18px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 3px;
+            pointer-events: none;
             border: 2px solid white;
+            line-height: 1;
         }
         .notif-panel {
             position: fixed;
@@ -6943,26 +6953,23 @@
 
         // ===== NOTIFICATIONS ENGINE =====
         const Notifications = {
-            getAlerts: () => {
+            // Retorna APENAS transações vencidas e do dia (para o badge do sino)
+            getUrgentTransactions: () => {
+                const todayStr = Utils.getToday();
+                const { transactions } = FinanceApp.data;
+                return transactions.filter(t =>
+                    (t.status === 'pending' || t.status === 'scheduled') &&
+                    t.date <= todayStr
+                ).sort((a, b) => a.date.localeCompare(b.date));
+            },
+
+            // Retorna outros alertas (orçamento, cartão) — não entram no badge
+            getOtherAlerts: () => {
                 const alerts = [];
                 const today = new Date();
-                const todayStr = Utils.getToday();
-                const { transactions, accounts, categories } = FinanceApp.data;
+                const { transactions, categories } = FinanceApp.data;
 
-                // 1. Pending transactions due today or overdue
-                const overdue = transactions.filter(t => t.status === 'pending' && t.date <= todayStr);
-                if (overdue.length > 0) {
-                    overdue.slice(0, 3).forEach(t => {
-                        alerts.push({
-                            type: 'danger',
-                            icon: 'fas fa-clock',
-                            title: `Pendente: ${t.description}`,
-                            text: `${Utils.formatCurrency(t.amount)} — vence ${Utils.formatDate(t.date)}`
-                        });
-                    });
-                }
-
-                // 2. Budget overrun
+                // Budget overrun
                 const monthRange = Utils.getMonthRange(today.getMonth(), today.getFullYear());
                 const monthTx = transactions.filter(t => t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'cleared' && t.type === 'expense');
                 categories.filter(c => c.type === 'expense' && c.budget > 0).forEach(cat => {
@@ -6975,7 +6982,7 @@
                     }
                 });
 
-                // 3. Card invoice due soon
+                // Card invoice due soon
                 const cards = CardDB.getAll();
                 cards.forEach(card => {
                     const dueDay = parseInt(card.due) || 10;
@@ -6989,36 +6996,120 @@
 
                 return alerts;
             },
+
+            // Mantém compatibilidade com código existente
+            getAlerts: () => {
+                const txAlerts = Notifications.getUrgentTransactions().map(t => ({
+                    type: 'danger', icon: 'fas fa-clock',
+                    title: `Pendente: ${t.description}`,
+                    text: `${Utils.formatCurrency(t.amount)} — ${Utils.formatDate(t.date)}`
+                }));
+                return [...txAlerts, ...Notifications.getOtherAlerts()];
+            },
+
             getCardSpent: (card, month, year) => {
                 const range = Utils.getMonthRange(month, year);
                 return (FinanceApp.data.transactions || [])
                     .filter(t => t.paymentMethod === 'cartao_credito' && t.date >= range.start && t.date <= range.end)
                     .reduce((s, t) => s + t.amount, 0);
             },
+
             render: () => {
-                const alerts = Notifications.getAlerts();
+                const todayStr = Utils.getToday();
+                const urgentTxs = Notifications.getUrgentTransactions();
+                const otherAlerts = Notifications.getOtherAlerts();
                 const badge = document.getElementById('notif-badge');
                 const list = document.getElementById('notif-list');
                 if (!badge || !list) return;
 
-                badge.style.display = alerts.length > 0 ? 'block' : 'none';
+                // Badge mostra APENAS contagem de transações vencidas/hoje
+                const badgeCount = urgentTxs.length;
+                if (badgeCount > 0) {
+                    badge.style.display = 'flex';
+                    badge.textContent = badgeCount > 9 ? '9+' : badgeCount;
+                } else {
+                    badge.style.display = 'none';
+                    badge.textContent = '';
+                }
 
-                if (alerts.length === 0) {
+                // Monta o painel
+                if (urgentTxs.length === 0 && otherAlerts.length === 0) {
                     list.innerHTML = '<div class="notif-empty"><i class="fas fa-check-circle" style="color:var(--income);"></i><br>Nenhum alerta no momento!</div>';
                     return;
                 }
 
-                list.innerHTML = alerts.map(a => `
-                    <div class="notif-item">
-                        <div class="notif-icon ${a.type === 'danger' ? 'bg-red' : 'bg-yellow'}">
-                            <i class="${a.icon}"></i>
-                        </div>
-                        <div class="notif-text">
-                            <strong>${a.title}</strong>
-                            ${a.text}
-                        </div>
-                    </div>
-                `).join('');
+                let html = '';
+
+                // ── Seção: Transações vencidas / do dia ──
+                if (urgentTxs.length > 0) {
+                    const overdueList  = urgentTxs.filter(t => t.date < todayStr);
+                    const todayList    = urgentTxs.filter(t => t.date === todayStr);
+
+                    html += `<div style="padding:8px 14px 4px;font-size:0.7rem;font-weight:700;color:var(--secondary);text-transform:uppercase;letter-spacing:.5px;">
+                        🔴 Transações Pendentes (${urgentTxs.length})
+                    </div>`;
+
+                    // vencidas (antes de hoje)
+                    overdueList.forEach(t => {
+                        const typeIcon = t.type === 'income' ? 'fas fa-arrow-down' : t.type === 'expense' ? 'fas fa-arrow-up' : 'fas fa-sync-alt';
+                        const typeColor = t.type === 'income' ? 'var(--income)' : 'var(--expense)';
+                        const daysAgo = Math.round((new Date(todayStr) - new Date(t.date)) / 86400000);
+                        const daysLabel = daysAgo === 1 ? 'ontem' : `${daysAgo} dias atrás`;
+                        html += `
+                        <div class="notif-item" style="border-left:3px solid var(--expense);cursor:pointer;" onclick="UI.editTransaction('${t.id}');UI.closeNotifications();">
+                            <div class="notif-icon bg-red"><i class="${typeIcon}" style="color:${typeColor}"></i></div>
+                            <div class="notif-text" style="flex:1;">
+                                <strong style="color:var(--dark)">${t.description}</strong>
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+                                    <span style="font-size:0.78rem;color:var(--expense);font-weight:700;">${Utils.formatCurrency(t.amount)}</span>
+                                    <span style="font-size:0.72rem;background:#fee2e2;color:#dc2626;padding:2px 6px;border-radius:8px;font-weight:600;">⚠️ Vencida ${daysLabel}</span>
+                                </div>
+                                <div style="font-size:0.72rem;color:var(--secondary);margin-top:2px;">
+                                    ${Utils.formatDate(t.date)} · Toque para editar
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+
+                    // do dia
+                    todayList.forEach(t => {
+                        const typeIcon = t.type === 'income' ? 'fas fa-arrow-down' : t.type === 'expense' ? 'fas fa-arrow-up' : 'fas fa-sync-alt';
+                        const typeColor = t.type === 'income' ? 'var(--income)' : 'var(--expense)';
+                        html += `
+                        <div class="notif-item" style="border-left:3px solid var(--pending);cursor:pointer;" onclick="UI.editTransaction('${t.id}');UI.closeNotifications();">
+                            <div class="notif-icon bg-yellow"><i class="${typeIcon}" style="color:${typeColor}"></i></div>
+                            <div class="notif-text" style="flex:1;">
+                                <strong style="color:var(--dark)">${t.description}</strong>
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+                                    <span style="font-size:0.78rem;color:${typeColor};font-weight:700;">${t.type === 'income' ? '+' : '-'}${Utils.formatCurrency(t.amount)}</span>
+                                    <span style="font-size:0.72rem;background:#fef3c7;color:#b45309;padding:2px 6px;border-radius:8px;font-weight:600;">📅 Vence hoje</span>
+                                </div>
+                                <div style="font-size:0.72rem;color:var(--secondary);margin-top:2px;">
+                                    Hoje · Toque para editar
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+                }
+
+                // ── Seção: Outros alertas (orçamento, cartão) ──
+                if (otherAlerts.length > 0) {
+                    html += `<div style="padding:8px 14px 4px;font-size:0.7rem;font-weight:700;color:var(--secondary);text-transform:uppercase;letter-spacing:.5px;border-top:1px solid var(--border);margin-top:4px;">
+                        ⚠️ Outros Alertas (${otherAlerts.length})
+                    </div>`;
+                    html += otherAlerts.map(a => `
+                        <div class="notif-item">
+                            <div class="notif-icon ${a.type === 'danger' ? 'bg-red' : 'bg-yellow'}">
+                                <i class="${a.icon}"></i>
+                            </div>
+                            <div class="notif-text">
+                                <strong>${a.title}</strong>
+                                ${a.text}
+                            </div>
+                        </div>`).join('');
+                }
+
+                list.innerHTML = html;
             }
         };
 
