@@ -1568,7 +1568,10 @@
                 <input type="text" class="search-input" placeholder="Buscar transações..." oninput="UI.filterTransactions()">
             </div>
             
-            <div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><button class="export-btn" onclick="UI.exportTransactionsCSV()"><i class="fas fa-download"></i> Exportar CSV</button></div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px;">
+                <button class="export-btn" onclick="UI.exportTransactionsPDF()" style="background:var(--expense);"><i class="fas fa-file-pdf"></i> PDF</button>
+                <button class="export-btn" onclick="UI.exportTransactionsCSV()"><i class="fas fa-file-csv"></i> CSV</button>
+            </div>
             <div class="toggle-buttons">
                 <button class="toggle-btn active" onclick="UI.setTransactionViewMode('all', this)">Todas</button>
                 <button class="toggle-btn" onclick="UI.setTransactionViewMode('pending', this)">Pendentes</button>
@@ -6853,6 +6856,236 @@
             a.download = `transacoes_${Utils.getToday()}.csv`;
             a.click();
             Utils.toast('Transações exportadas em CSV!');
+        };
+
+        UI.exportTransactionsPDF = () => {
+            const categories = FinanceApp.data.categories;
+            const accounts = FinanceApp.data.accounts;
+            const searchTerm = document.querySelector('#transactions-view .search-input').value.toLowerCase();
+            const monthRange = Utils.getMonthRange(UI.transactionMonth, UI.transactionYear);
+
+            let filtered = FinanceApp.data.transactions.filter(t =>
+                t.date >= monthRange.start && t.date <= monthRange.end
+            );
+            if (UI.transactionViewMode === 'pending') {
+                filtered = filtered.filter(t => t.status === 'pending');
+            } else if (UI.transactionViewMode === 'cleared') {
+                filtered = filtered.filter(t => t.status === 'cleared');
+            }
+            if (UI.transactionFilter !== 'all') {
+                if (UI.transactionFilter === 'recurring') {
+                    filtered = filtered.filter(t => t.recurring || t.recurringParent);
+                } else if (UI.transactionFilter === 'scheduled') {
+                    filtered = filtered.filter(t => t.status === 'scheduled');
+                } else {
+                    filtered = filtered.filter(t => t.type === UI.transactionFilter);
+                }
+            }
+            if (searchTerm) {
+                filtered = filtered.filter(t =>
+                    t.description.toLowerCase().includes(searchTerm) ||
+                    (t.notes && t.notes.toLowerCase().includes(searchTerm))
+                );
+            }
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (filtered.length === 0) {
+                Utils.toast('Nenhuma transação para exportar!');
+                return;
+            }
+
+            const typeLabels = { income: 'Receita', expense: 'Despesa', investment: 'Investimento', transfer: 'Transferência' };
+            const statusLabels = { cleared: 'Efetivada', pending: 'Pendente', scheduled: 'Agendada' };
+            const typeColors = { income: '#10b981', expense: '#ef4444', investment: '#3b82f6', transfer: '#8b5cf6', pending: '#f59e0b' };
+            const filterLabels = { all: 'Todas', income: 'Receitas', expense: 'Despesas', investment: 'Investimentos', transfer: 'Transferências', recurring: 'Recorrentes', scheduled: 'Agendadas' };
+            const viewModeLabels = { all: 'Todas', pending: 'Pendentes', cleared: 'Efetivadas' };
+
+            const monthName = Utils.getMonthYear(new Date(UI.transactionYear, UI.transactionMonth)).name || `${UI.transactionMonth + 1}/${UI.transactionYear}`;
+
+            const totalIncome = filtered.filter(t => t.type === 'income' && t.status === 'cleared').reduce((s, t) => s + t.amount, 0);
+            const totalExpense = filtered.filter(t => (t.type === 'expense' || t.type === 'investment') && t.status === 'cleared').reduce((s, t) => s + t.amount, 0);
+            const totalPending = filtered.filter(t => t.status === 'pending').reduce((s, t) => {
+                if (t.type === 'income') return s + t.amount;
+                if (t.type === 'expense' || t.type === 'investment') return s - t.amount;
+                return s;
+            }, 0);
+            const balance = totalIncome - totalExpense;
+
+            const grouped = {};
+            filtered.forEach(t => {
+                if (!grouped[t.date]) grouped[t.date] = [];
+                grouped[t.date].push(t);
+            });
+
+            let rowsHtml = '';
+            Object.keys(grouped).sort().reverse().forEach(date => {
+                const dateFormatted = Utils.formatDate(date);
+                const dayItems = grouped[date];
+                const dayTotal = dayItems.reduce((s, t) => {
+                    if (t.type === 'income') return s + t.amount;
+                    if (t.type === 'expense' || t.type === 'investment') return s - t.amount;
+                    return s;
+                }, 0);
+                rowsHtml += `
+                    <tr>
+                        <td colspan="6" style="background:#f8fafc;padding:8px 12px;font-weight:700;font-size:0.82rem;color:#475569;border-top:2px solid #e2e8f0;letter-spacing:0.02em;">
+                            ${dateFormatted}
+                            <span style="float:right;color:${dayTotal >= 0 ? '#10b981' : '#ef4444'};font-weight:700;">
+                                ${dayTotal >= 0 ? '+' : ''}${Utils.formatCurrency(dayTotal)}
+                            </span>
+                        </td>
+                    </tr>`;
+                dayItems.forEach(t => {
+                    const cat = categories.find(c => c.id === t.category);
+                    const acc = accounts.find(a => a.id === t.account);
+                    const color = typeColors[t.type] || '#64748b';
+                    const sign = t.type === 'income' ? '+' : t.type === 'expense' || t.type === 'investment' ? '-' : '';
+                    const statusColor = t.status === 'cleared' ? '#10b981' : t.status === 'pending' ? '#f59e0b' : '#8b5cf6';
+                    rowsHtml += `
+                        <tr>
+                            <td style="padding:8px 12px;font-size:0.82rem;color:#0f172a;max-width:150px;">
+                                <div style="font-weight:600;">${t.description}</div>
+                                ${t.notes ? `<div style="color:#94a3b8;font-size:0.75rem;margin-top:2px;">${t.notes}</div>` : ''}
+                            </td>
+                            <td style="padding:8px 12px;font-size:0.78rem;">
+                                <span style="background:${color}20;color:${color};padding:2px 8px;border-radius:999px;font-weight:600;white-space:nowrap;">${typeLabels[t.type] || t.type}</span>
+                            </td>
+                            <td style="padding:8px 12px;font-size:0.78rem;color:#64748b;">${cat ? cat.name : '-'}</td>
+                            <td style="padding:8px 12px;font-size:0.78rem;color:#64748b;">${acc ? acc.name : '-'}</td>
+                            <td style="padding:8px 12px;font-size:0.78rem;">
+                                <span style="background:${statusColor}20;color:${statusColor};padding:2px 8px;border-radius:999px;font-weight:600;">${statusLabels[t.status] || t.status}</span>
+                            </td>
+                            <td style="padding:8px 12px;font-size:0.85rem;font-weight:700;color:${color};text-align:right;white-space:nowrap;">
+                                ${sign}${Utils.formatCurrency(t.amount)}
+                            </td>
+                        </tr>`;
+                });
+            });
+
+            const activeFilters = [];
+            if (UI.transactionFilter !== 'all') activeFilters.push(`Tipo: ${filterLabels[UI.transactionFilter] || UI.transactionFilter}`);
+            if (UI.transactionViewMode !== 'all') activeFilters.push(`Status: ${viewModeLabels[UI.transactionViewMode] || UI.transactionViewMode}`);
+            if (searchTerm) activeFilters.push(`Busca: "${searchTerm}"`);
+
+            const html = `<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; color: #0f172a; }
+  .page { max-width: 900px; margin: 0 auto; padding: 32px 24px; background: white; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+  .brand { font-size: 1.5rem; font-weight: 800; color: #0f172a; }
+  .brand span { color: #10b981; }
+  .header-meta { text-align: right; color: #64748b; font-size: 0.82rem; line-height: 1.6; }
+  .title-section { margin-bottom: 24px; }
+  .title-section h2 { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+  .filters-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .filter-tag { background: #f1f5f9; color: #475569; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; border: 1px solid #e2e8f0; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
+  .summary-card { background: #f8fafc; border-radius: 10px; padding: 14px 16px; border: 1px solid #e2e8f0; }
+  .summary-label { font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .summary-value { font-size: 1.1rem; font-weight: 800; }
+  .income-val { color: #10b981; }
+  .expense-val { color: #ef4444; }
+  .balance-val { color: #3b82f6; }
+  .pending-val { color: #f59e0b; }
+  .count-val { color: #64748b; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
+  thead tr { background: #0f172a; }
+  thead th { padding: 10px 12px; text-align: left; font-size: 0.75rem; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 0.06em; }
+  thead th:last-child { text-align: right; }
+  tbody tr:hover { background: #f8fafc; }
+  tbody tr td { border-bottom: 1px solid #f1f5f9; }
+  .footer { text-align: center; color: #94a3b8; font-size: 0.75rem; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+  @media print {
+    body { background: white; }
+    .page { padding: 16px; }
+    .no-print { display: none; }
+    @page { margin: 10mm; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="brand">Finanç<span>a</span>Pro</div>
+    <div class="header-meta">
+      <strong>Extrato de Transações</strong><br>
+      ${monthName}<br>
+      Gerado em ${new Date().toLocaleString('pt-BR')}
+    </div>
+  </div>
+
+  <div class="title-section">
+    <h2>Transações — ${monthName}</h2>
+    <div class="filters-bar">
+      ${activeFilters.length > 0
+          ? activeFilters.map(f => `<span class="filter-tag">${f}</span>`).join('')
+          : '<span class="filter-tag">Sem filtros adicionais</span>'}
+    </div>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="summary-label">Receitas</div>
+      <div class="summary-value income-val">${Utils.formatCurrency(totalIncome)}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Despesas</div>
+      <div class="summary-value expense-val">${Utils.formatCurrency(totalExpense)}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Saldo</div>
+      <div class="summary-value balance-val">${Utils.formatCurrency(balance)}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Pendências</div>
+      <div class="summary-value pending-val">${Utils.formatCurrency(Math.abs(totalPending))}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Descrição</th>
+        <th>Tipo</th>
+        <th>Categoria</th>
+        <th>Conta</th>
+        <th>Status</th>
+        <th style="text-align:right">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    FinançaPro • ${filtered.length} transação(ões) • ${monthName} • Exportado em ${new Date().toLocaleDateString('pt-BR')}
+  </div>
+
+  <div class="no-print" style="text-align:center;margin-top:24px;">
+    <button onclick="window.print()" style="background:#10b981;color:white;border:none;padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;margin-right:12px;">
+      🖨️ Imprimir / Salvar PDF
+    </button>
+    <button onclick="window.close()" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;">
+      ✕ Fechar
+    </button>
+  </div>
+</div>
+<` + `script>
+  window.onload = function() {};
+</` + `script>
+</body>
+</html>`;
+
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const win = window.open(url, '_blank');
+            if (!win) Utils.toast('Permita pop-ups para exportar o PDF!');
+            else Utils.toast('Relatório aberto! Use "Imprimir → Salvar como PDF".');
         };
 
         // ===== CARD FINANCE APP METHODS =====
