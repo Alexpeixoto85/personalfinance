@@ -1935,6 +1935,39 @@
                 <textarea id="t-notes" class="form-control" placeholder="Detalhes adicionais..."></textarea>
             </div>
 
+            <!-- Parcelamento -->
+            <div class="form-group" id="t-installment-toggle-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="t-installment" onchange="UI.toggleInstallmentGroup(this.checked)">
+                    Parcelado
+                </label>
+            </div>
+
+            <div id="t-installment-group" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px; margin-bottom: 12px;">
+                <div style="font-size:0.8rem;font-weight:700;color:#059669;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+                    <i class="fas fa-layer-group"></i> Configuração do Parcelamento
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Valor Total (R$)</label>
+                        <input type="text" id="t-installment-total" class="form-control" placeholder="0,00"
+                            oninput="Utils.maskMoney(this); UI.recalcInstallment()">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nº de Parcelas</label>
+                        <input type="number" id="t-installment-count" class="form-control" min="2" max="360" step="1"
+                            placeholder="Ex: 12" style="-moz-appearance:textfield;"
+                            oninput="this.value=this.value.replace(/[^0-9]/g,''); UI.recalcInstallment()">
+                    </div>
+                </div>
+                <div id="t-installment-preview" style="font-size:0.82rem; color:#065f46; background:#d1fae5; border-radius:7px; padding:8px 10px; display:none;">
+                    <i class="fas fa-info-circle"></i> <span id="t-installment-preview-text"></span>
+                </div>
+                <small style="color:var(--secondary);font-size:0.75rem;margin-top:6px;display:block;">
+                    O valor da parcela será preenchido automaticamente. A data inicial é a do campo "Data" acima.
+                </small>
+            </div>
+
             <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
                     <input type="checkbox" id="t-recurring" onchange="document.getElementById('t-recurring-group').style.display = this.checked ? 'block' : 'none'">
@@ -3698,6 +3731,7 @@
                                 <i class="fas fa-tag"></i> ${categoryName}
                                 ${transaction.recurringParent ? '<span class="recurring-badge">Recorrente</span>' : ''}
                                 ${transaction.recurring ? '<span class="recurring-badge">Mestre</span>' : ''}
+                                ${transaction.installmentGroup ? `<span style="background:#dbeafe;color:#1e40af;font-size:0.7rem;padding:2px 6px;border-radius:10px;margin-left:4px;font-weight:700;"><i class="fas fa-layer-group" style="font-size:0.65rem;"></i> ${transaction.installmentIndex}/${transaction.installmentTotal}</span>` : ''}
                                 ${statusBadge}
                             </div>
                             <div class="transaction-date">${Utils.formatDate(transaction.date)}</div>
@@ -5604,6 +5638,10 @@
                     document.getElementById('t-category').removeAttribute('required');
                     document.getElementById('t-account').setAttribute('required', 'true');
                     document.getElementById('t-transfer-to').setAttribute('required', 'true');
+                    // Ocultar parcelamento em transferências
+                    document.getElementById('t-installment-toggle-group').style.display = 'none';
+                    document.getElementById('t-installment').checked = false;
+                    document.getElementById('t-installment-group').style.display = 'none';
                     
                     UI.updateAccountSelects();
                 } else {
@@ -5613,6 +5651,8 @@
                     document.getElementById('t-category').setAttribute('required', 'true');
                     document.getElementById('t-account').setAttribute('required', 'true');
                     document.getElementById('t-transfer-to').removeAttribute('required');
+                    // Mostrar parcelamento para outros tipos
+                    document.getElementById('t-installment-toggle-group').style.display = 'block';
                     
                     UI.updateCategorySelect(type);
                     UI.updateAccountSelect();
@@ -5661,6 +5701,9 @@
                 document.getElementById('delete-transaction-btn').style.display = 'none';
                 document.getElementById('toggle-status-btn').style.display = 'none';
                 document.getElementById('t-recurring-group').style.display = 'none';
+                document.getElementById('t-installment').checked = false;
+                document.getElementById('t-installment-group').style.display = 'none';
+                document.getElementById('t-installment-preview').style.display = 'none';
                 
                 UI.setTransactionType(type);
                 
@@ -5774,6 +5817,43 @@
                 UI.openModal('transfer');
             },
             
+            toggleInstallmentGroup: (checked) => {
+                document.getElementById('t-installment-group').style.display = checked ? 'block' : 'none';
+                if (checked) {
+                    const recCheck = document.getElementById('t-recurring');
+                    if (recCheck.checked) {
+                        recCheck.checked = false;
+                        document.getElementById('t-recurring-group').style.display = 'none';
+                    }
+                    const amountVal = document.getElementById('t-amount').value;
+                    if (amountVal && amountVal !== '0,00') {
+                        document.getElementById('t-installment-total').value = amountVal;
+                        UI.recalcInstallment();
+                    }
+                } else {
+                    document.getElementById('t-installment-preview').style.display = 'none';
+                }
+            },
+
+            recalcInstallment: () => {
+                const totalRaw = document.getElementById('t-installment-total').value;
+                const count = parseInt(document.getElementById('t-installment-count').value) || 0;
+                const total = Utils.parseCurrency(totalRaw);
+                const preview = document.getElementById('t-installment-preview');
+                const previewText = document.getElementById('t-installment-preview-text');
+                if (total > 0 && count >= 2) {
+                    const parcel = Math.round((total / count) * 100) / 100;
+                    const lastParcel = Math.round((total - parcel * (count - 1)) * 100) / 100;
+                    previewText.textContent = `${count}x de ${Utils.formatCurrency(parcel)}${lastParcel !== parcel ? ` (última: ${Utils.formatCurrency(lastParcel)})` : ''} = ${Utils.formatCurrency(total)}`;
+                    preview.style.display = 'block';
+                    const amountField = document.getElementById('t-amount');
+                    amountField.value = Utils.formatNumberToCurrencyInput(parcel);
+                    Utils.maskMoney(amountField);
+                } else {
+                    preview.style.display = 'none';
+                }
+            },
+
             setCategoryType: (type, el) => {
                 document.getElementById('c-type').value = type;
                 document.querySelectorAll('#sheet-category .type-option').forEach(opt => opt.classList.remove('active'));
@@ -5953,7 +6033,23 @@
                     const recurringFrequency = recurring ? document.getElementById('t-recurring-frequency').value : null;
                     const recurringCount = recurring ? parseInt(document.getElementById('t-recurring-count').value) : 0;
                     const recurringEndDate = recurring ? document.getElementById('t-recurring-end-date').value || null : null;
-                    
+
+                    // --- Parcelamento ---
+                    const isInstallment = document.getElementById('t-installment').checked;
+                    const installmentTotal = isInstallment ? Utils.parseCurrency(document.getElementById('t-installment-total').value) : 0;
+                    const installmentCount = isInstallment ? parseInt(document.getElementById('t-installment-count').value) || 0 : 0;
+
+                    if (isInstallment) {
+                        if (installmentTotal <= 0) {
+                            Utils.toast('Informe o valor total do parcelamento', 'error');
+                            return;
+                        }
+                        if (installmentCount < 2) {
+                            Utils.toast('Informe pelo menos 2 parcelas', 'error');
+                            return;
+                        }
+                    }
+
                     if (!account) {
                         Utils.toast('Selecione uma conta', 'error');
                         return;
@@ -5994,6 +6090,65 @@
                     };
                     
                     try {
+                        // ══════════════════════════════════════════════
+                        // FLUXO DE PARCELAMENTO
+                        // ══════════════════════════════════════════════
+                        if (isInstallment && !document.getElementById('t-id').value) {
+                            // Calcula valor de cada parcela (distribui centavos na última)
+                            const baseParcel = Math.floor((installmentTotal / installmentCount) * 100) / 100;
+                            const lastParcel = Math.round((installmentTotal - baseParcel * (installmentCount - 1)) * 100) / 100;
+                            const groupId = Utils.id(); // agrupa todas as parcelas
+                            let currentDate = new Date(date + 'T00:00:00');
+
+                            for (let i = 0; i < installmentCount; i++) {
+                                const parcNum = i + 1;
+                                const parcAmount = parcNum === installmentCount ? lastParcel : baseParcel;
+                                const dateStr = currentDate.toISOString().split('T')[0];
+                                // Status: 1ª parcela = status escolhido, demais = pending
+                                const parcStatus = parcNum === 1 ? status : 'pending';
+
+                                const parcTransaction = {
+                                    ...transaction,
+                                    id: Utils.id(),
+                                    amount: parcAmount,
+                                    date: dateStr,
+                                    description: `${description} ${parcNum}/${installmentCount}`,
+                                    status: parcStatus,
+                                    installmentGroup: groupId,
+                                    installmentIndex: parcNum,
+                                    installmentTotal: installmentCount,
+                                    installmentTotalValue: installmentTotal,
+                                    recurring: false,
+                                    recurringFrequency: null,
+                                    recurringCount: 0,
+                                    recurringEndDate: null
+                                };
+
+                                await DB.saveTransaction(parcTransaction);
+                                FinanceApp.data.transactions.push(parcTransaction);
+
+                                if (parcStatus === 'cleared') {
+                                    await FinanceApp.account.updateBalance(parcTransaction);
+                                }
+
+                                // Avança 1 mês para a próxima parcela
+                                currentDate = new Date(currentDate);
+                                currentDate.setMonth(currentDate.getMonth() + 1);
+                            }
+
+                            Utils.toast(`${installmentCount} parcelas cadastradas com sucesso!`);
+                            UI.closeModals();
+                            UI.renderDashboard();
+                            UI.renderTransactions();
+                            UI.renderAccounts();
+                            UI.renderReports();
+                            return;
+                        }
+
+                        // ══════════════════════════════════════════════
+                        // FLUXO NORMAL (sem parcelamento)
+                        // ══════════════════════════════════════════════
+
                         // Salva a transação mestre
                         await DB.saveTransaction(transaction);
 
