@@ -1656,6 +1656,7 @@
                 <button class="tab-btn" onclick="UI.setReportTab('projection', this)">Projeção</button>
                 <button class="tab-btn" onclick="UI.setReportTab('accounts', this)">Contas</button>
                 <button class="tab-btn" onclick="UI.setReportTab('categories', this)">Categorias</button>
+                <button class="tab-btn" onclick="UI.setReportTab('ir', this)">📋 IR</button>
             </div>
             
             <div id="report-overview" class="report-tab active">
@@ -1761,6 +1762,49 @@
                 <div class="section-title">Evolução por Categoria</div>
                 <div class="chart-container">
                     <canvas id="categoryTrendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- ABA EXTRATO IR -->
+            <div id="report-ir" class="report-tab" style="display: none;">
+                <!-- Cabeçalho IR -->
+                <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2040 100%); border-radius: 16px; padding: 20px; margin-bottom: 16px; color: white;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <i class="fas fa-landmark" style="font-size:1.4rem; color:#93c5fd;"></i>
+                        <div>
+                            <div style="font-size:1.1rem; font-weight:800;">Extrato para Imposto de Renda</div>
+                            <div style="font-size:0.8rem; opacity:0.7;">Dados organizados para declaração IRPF</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seletor Período -->
+                <div style="background: var(--surface); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm);">
+                    <div style="font-weight: 700; margin-bottom: 12px; color: var(--dark);">📅 Período do Extrato</div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                        <button class="ir-period-btn active" onclick="UI.setIRPeriod('monthly', this)" style="flex:1; padding:10px; border:1px solid var(--border); border-radius:8px; background: var(--primary); color:white; font-weight:600; cursor:pointer; min-width:100px;">📆 Mensal</button>
+                        <button class="ir-period-btn" onclick="UI.setIRPeriod('annual', this)" style="flex:1; padding:10px; border:1px solid var(--border); border-radius:8px; background: var(--surface); color: var(--secondary); font-weight:600; cursor:pointer; min-width:100px;">📅 Anual</button>
+                    </div>
+                    <div id="ir-monthly-selector" style="display:flex; align-items:center; gap:8px; justify-content:center;">
+                        <button onclick="UI.changeIRMonth(-1)" style="width:36px; height:36px; border-radius:50%; border:1px solid var(--border); background:var(--surface); cursor:pointer; color:var(--secondary);"><i class="fas fa-chevron-left"></i></button>
+                        <div id="ir-month-label" style="font-weight:700; min-width:160px; text-align:center; color:var(--dark);"></div>
+                        <button onclick="UI.changeIRMonth(1)" style="width:36px; height:36px; border-radius:50%; border:1px solid var(--border); background:var(--surface); cursor:pointer; color:var(--secondary);"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div id="ir-annual-selector" style="display:none; align-items:center; gap:8px; justify-content:center;">
+                        <button onclick="UI.changeIRYear(-1)" style="width:36px; height:36px; border-radius:50%; border:1px solid var(--border); background:var(--surface); cursor:pointer; color:var(--secondary);"><i class="fas fa-chevron-left"></i></button>
+                        <div id="ir-year-label" style="font-weight:700; min-width:120px; text-align:center; color:var(--dark); font-size:1.2rem;"></div>
+                        <button onclick="UI.changeIRYear(1)" style="width:36px; height:36px; border-radius:50%; border:1px solid var(--border); background:var(--surface); cursor:pointer; color:var(--secondary);"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- Botão Download PDF -->
+                <button onclick="UI.downloadIRPDF()" style="width:100%; padding:14px; background:linear-gradient(135deg, #1e3a5f, #0f2040); color:white; border:none; border-radius:12px; font-size:1rem; font-weight:700; cursor:pointer; margin-bottom:16px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="fas fa-file-pdf"></i> Baixar Extrato em PDF
+                </button>
+
+                <!-- Conteúdo do Extrato -->
+                <div id="ir-extrato-content">
+                    <!-- Preenchido via JS -->
                 </div>
             </div>
         </div>
@@ -7672,6 +7716,593 @@
 
         // Inicializar o app
         FinanceApp.init();
+
+        // ===== MÓDULO EXTRATO IR =====
+        (() => {
+            // Estado IR
+            UI.irPeriod = 'monthly';
+            UI.irMonth = new Date().getMonth();
+            UI.irYear = new Date().getFullYear();
+
+            const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+            // Formatar moeda
+            function fmt(v) {
+                return 'R$ ' + Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            // Atualiza labels de seletores
+            function updateLabels() {
+                const ml = document.getElementById('ir-month-label');
+                const yl = document.getElementById('ir-year-label');
+                if (ml) ml.textContent = MESES[UI.irMonth] + ' / ' + UI.irYear;
+                if (yl) yl.textContent = UI.irYear;
+            }
+
+            UI.setIRPeriod = (period, el) => {
+                UI.irPeriod = period;
+                document.querySelectorAll('.ir-period-btn').forEach(b => {
+                    b.style.background = 'var(--surface)';
+                    b.style.color = 'var(--secondary)';
+                    b.style.borderColor = 'var(--border)';
+                });
+                el.style.background = 'var(--primary)';
+                el.style.color = 'white';
+                el.style.borderColor = 'var(--primary)';
+
+                const ms = document.getElementById('ir-monthly-selector');
+                const as = document.getElementById('ir-annual-selector');
+                if (period === 'monthly') { ms.style.display = 'flex'; as.style.display = 'none'; }
+                else { ms.style.display = 'none'; as.style.display = 'flex'; }
+                updateLabels();
+                UI.renderIRExtrato();
+            };
+
+            UI.changeIRMonth = (delta) => {
+                UI.irMonth += delta;
+                if (UI.irMonth < 0) { UI.irMonth = 11; UI.irYear--; }
+                if (UI.irMonth > 11) { UI.irMonth = 0; UI.irYear++; }
+                updateLabels();
+                UI.renderIRExtrato();
+            };
+
+            UI.changeIRYear = (delta) => {
+                UI.irYear += delta;
+                updateLabels();
+                UI.renderIRExtrato();
+            };
+
+            // Coletar dados do período
+            function getPeriodTransactions() {
+                const txs = FinanceApp.data.transactions || [];
+                if (UI.irPeriod === 'monthly') {
+                    const prefix = `${UI.irYear}-${String(UI.irMonth + 1).padStart(2,'0')}`;
+                    return txs.filter(t => t.date && t.date.startsWith(prefix));
+                } else {
+                    const prefix = `${UI.irYear}`;
+                    return txs.filter(t => t.date && t.date.startsWith(prefix));
+                }
+            }
+
+            // Sumarizar por categoria
+            function sumByCategory(txs, type) {
+                const map = {};
+                txs.filter(t => t.type === type).forEach(t => {
+                    const cat = t.category || 'Sem Categoria';
+                    if (!map[cat]) map[cat] = 0;
+                    map[cat] += t.amount || 0;
+                });
+                return Object.entries(map).sort((a,b) => b[1]-a[1]);
+            }
+
+            // Sumarizar por conta
+            function sumByAccount(txs, type) {
+                const map = {};
+                txs.filter(t => t.type === type).forEach(t => {
+                    const acc = t.account || 'Conta não especificada';
+                    if (!map[acc]) map[acc] = 0;
+                    map[acc] += t.amount || 0;
+                });
+                return Object.entries(map).sort((a,b) => b[1]-a[1]);
+            }
+
+            // Resumo mensal (para extrato anual)
+            function getMonthlyBreakdown(year) {
+                const txs = (FinanceApp.data.transactions || []).filter(t => t.date && t.date.startsWith(`${year}`));
+                const months = Array.from({length:12}, (_,i) => {
+                    const prefix = `${year}-${String(i+1).padStart(2,'0')}`;
+                    const m = txs.filter(t => t.date.startsWith(prefix));
+                    const income = m.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0);
+                    const expense = m.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0);
+                    const investment = m.filter(t => t.type === 'investment').reduce((s,t) => s+t.amount, 0);
+                    return { name: MESES[i], income, expense, investment, balance: income - expense };
+                });
+                return months;
+            }
+
+            // Render principal
+            UI.renderIRExtrato = () => {
+                updateLabels();
+                const txs = getPeriodTransactions();
+                const accounts = FinanceApp.data.accounts || [];
+                const settings = FinanceApp.data.settings || {};
+
+                const totalIncome = txs.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0);
+                const totalExpense = txs.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0);
+                const totalInvestment = txs.filter(t => t.type === 'investment').reduce((s,t) => s+t.amount, 0);
+                const totalTransfer = txs.filter(t => t.type === 'transfer').reduce((s,t) => s+t.amount, 0);
+                const netBalance = totalIncome - totalExpense;
+                const savingsRate = totalIncome > 0 ? ((netBalance / totalIncome) * 100).toFixed(1) : 0;
+
+                const periodLabel = UI.irPeriod === 'monthly'
+                    ? `${MESES[UI.irMonth]} / ${UI.irYear}`
+                    : `Ano ${UI.irYear}`;
+
+                const incByCat = sumByCategory(txs, 'income');
+                const expByCat = sumByCategory(txs, 'expense');
+                const invByCat = sumByCategory(txs, 'investment');
+                const incByAcc = sumByAccount(txs, 'income');
+                const expByAcc = sumByAccount(txs, 'expense');
+
+                // Bens e direitos: saldo de todas as contas
+                const totalAssets = accounts.reduce((s,a) => s + (a.balance || 0), 0);
+
+                // Construir HTML
+                let html = '';
+
+                // === RESUMO GERAL ===
+                html += `
+                <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
+                    <div style="font-weight:800;font-size:1rem;margin-bottom:14px;color:var(--dark);display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-calculator" style="color:#3b82f6;"></i> Resumo do Período — ${periodLabel}
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div style="background:#d1fae5;border-radius:10px;padding:12px;">
+                            <div style="font-size:0.75rem;color:#065f46;font-weight:600;">RECEITAS TOTAIS</div>
+                            <div style="font-size:1.2rem;font-weight:800;color:#059669;">${fmt(totalIncome)}</div>
+                        </div>
+                        <div style="background:#fee2e2;border-radius:10px;padding:12px;">
+                            <div style="font-size:0.75rem;color:#991b1b;font-weight:600;">DESPESAS TOTAIS</div>
+                            <div style="font-size:1.2rem;font-weight:800;color:#dc2626;">${fmt(totalExpense)}</div>
+                        </div>
+                        <div style="background:#dbeafe;border-radius:10px;padding:12px;">
+                            <div style="font-size:0.75rem;color:#1e40af;font-weight:600;">INVESTIMENTOS</div>
+                            <div style="font-size:1.2rem;font-weight:800;color:#2563eb;">${fmt(totalInvestment)}</div>
+                        </div>
+                        <div style="background:${netBalance>=0?'#d1fae5':'#fee2e2'};border-radius:10px;padding:12px;">
+                            <div style="font-size:0.75rem;color:${netBalance>=0?'#065f46':'#991b1b'};font-weight:600;">SALDO LÍQUIDO</div>
+                            <div style="font-size:1.2rem;font-weight:800;color:${netBalance>=0?'#059669':'#dc2626'};">${netBalance<0?'-':''}${fmt(netBalance)}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:10px;padding:10px;background:#f0fdf4;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:0.85rem;color:var(--secondary);">Taxa de Poupança</span>
+                        <span style="font-weight:700;color:var(--primary);font-size:1rem;">${savingsRate}%</span>
+                    </div>
+                    ${totalTransfer > 0 ? `<div style="margin-top:8px;padding:10px;background:#f3e8ff;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:0.85rem;color:#6b21a8;">Transferências (informativo)</span>
+                        <span style="font-weight:700;color:#7c3aed;">${fmt(totalTransfer)}</span>
+                    </div>` : ''}
+                </div>`;
+
+                // === RECEITAS DETALHADAS ===
+                html += `
+                <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
+                    <div style="font-weight:800;font-size:1rem;margin-bottom:14px;color:var(--dark);display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-arrow-up" style="color:#10b981;"></i> Rendimentos Recebidos
+                        <span style="margin-left:auto;font-size:0.85rem;color:#10b981;font-weight:700;">${fmt(totalIncome)}</span>
+                    </div>
+                    ${incByCat.length === 0 ? '<div style="color:var(--secondary);font-size:0.9rem;">Nenhuma receita no período.</div>' : ''}
+                    ${incByCat.map(([cat, val]) => `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+                            <div style="font-size:0.9rem;color:var(--dark);">${cat}</div>
+                            <div style="font-weight:700;color:#10b981;">${fmt(val)}</div>
+                        </div>`).join('')}
+                    ${incByAcc.length > 0 ? `
+                    <div style="margin-top:12px;padding:10px;background:#f0fdf4;border-radius:8px;">
+                        <div style="font-size:0.8rem;font-weight:700;color:#065f46;margin-bottom:8px;">Por Conta de Origem</div>
+                        ${incByAcc.map(([acc, val]) => `
+                            <div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:4px 0;">
+                                <span style="color:var(--secondary);">${acc}</span>
+                                <span style="font-weight:600;color:#059669;">${fmt(val)}</span>
+                            </div>`).join('')}
+                    </div>` : ''}
+                </div>`;
+
+                // === DESPESAS DEDUTÍVEIS / DETALHADAS ===
+                const DEDUTIVEIS = ['saúde','educação','médico','hospital','plano de saúde','odontológico','faculdade','escola','pensão','previdência'];
+                const expTxs = txs.filter(t => t.type === 'expense');
+                const dedutiveis = expTxs.filter(t => DEDUTIVEIS.some(d => (t.category||'').toLowerCase().includes(d) || (t.description||'').toLowerCase().includes(d)));
+                const totalDedutiveis = dedutiveis.reduce((s,t) => s+t.amount, 0);
+
+                html += `
+                <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
+                    <div style="font-weight:800;font-size:1rem;margin-bottom:14px;color:var(--dark);display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-arrow-down" style="color:#ef4444;"></i> Despesas por Categoria
+                        <span style="margin-left:auto;font-size:0.85rem;color:#ef4444;font-weight:700;">${fmt(totalExpense)}</span>
+                    </div>
+                    ${expByCat.length === 0 ? '<div style="color:var(--secondary);font-size:0.9rem;">Nenhuma despesa no período.</div>' : ''}
+                    ${expByCat.map(([cat, val]) => {
+                        const pct = totalExpense > 0 ? ((val/totalExpense)*100).toFixed(1) : 0;
+                        const isDed = DEDUTIVEIS.some(d => cat.toLowerCase().includes(d));
+                        return `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+                            <div>
+                                <div style="font-size:0.9rem;color:var(--dark);">${cat} ${isDed ? '<span style="background:#dbeafe;color:#1e40af;font-size:0.65rem;padding:1px 5px;border-radius:4px;margin-left:4px;">DEDUTÍVEL</span>' : ''}</div>
+                                <div style="font-size:0.75rem;color:var(--secondary);">${pct}% do total</div>
+                            </div>
+                            <div style="font-weight:700;color:#ef4444;">${fmt(val)}</div>
+                        </div>`;
+                    }).join('')}
+                    ${totalDedutiveis > 0 ? `
+                    <div style="margin-top:12px;padding:12px;background:#dbeafe;border-radius:8px;border-left:4px solid #3b82f6;">
+                        <div style="font-size:0.8rem;font-weight:700;color:#1e40af;margin-bottom:4px;">💡 Possíveis Deduções IRPF</div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div style="font-size:0.85rem;color:#1e40af;">Despesas potencialmente dedutíveis</div>
+                            <div style="font-weight:800;color:#2563eb;font-size:1rem;">${fmt(totalDedutiveis)}</div>
+                        </div>
+                        <div style="font-size:0.75rem;color:#3b82f6;margin-top:4px;">* Confirme com contador. Inclui saúde, educação e previdência.</div>
+                    </div>` : ''}
+                </div>`;
+
+                // === DESPESAS POTENCIALMENTE DEDUTÍVEIS LISTADAS ===
+                if (dedutiveis.length > 0) {
+                    html += `
+                    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
+                        <div style="font-weight:800;font-size:1rem;margin-bottom:14px;color:#1e40af;display:flex;align-items:center;gap:8px;">
+                            <i class="fas fa-file-medical" style="color:#3b82f6;"></i> Despesas Dedutíveis Detalhadas
+                        </div>
+                        ${dedutiveis.map(t => `
+                            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+                                <div>
+                                    <div style="font-size:0.9rem;font-weight:600;color:var(--dark);">${t.description || 'Sem descrição'}</div>
+                                    <div style="font-size:0.75rem;color:var(--secondary);">${t.date || ''} • ${t.category || ''}</div>
+                                </div>
+                                <div style="font-weight:700;color:#2563eb;">${fmt(t.amount)}</div>
+                            </div>`).join('')}
+                    </div>`;
+                }
+
+                // === INVESTIMENTOS ===
+                if (totalInvestment > 0) {
+                    const invTxs = txs.filter(t => t.type === 'investment');
+                    html += `
+                    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
+                        <div style="font-weight:800;font-size:1rem;margin-bottom:14px;color:var(--dark);display:flex;align-items:center;gap:8px;">
+                            <i class="fas fa-chart-line" style="color:#3b82f6;"></i> Investimentos e Aplicações
+                            <span style="margin-left:auto;font-size:0.85rem;color:#3b82f6;font-weight:700;">${fmt(totalInvestment)}</span>
+                        </div>
+                        ${invByCat.map(([cat, val]) => `
+                            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+                                <span style="color:var(--dark);">${cat}</span>
+                                <span style="font-weight:700;color:#3b82f6;">${fmt(val)}</span>
+                            </div>`).join('')}
+                        <div style="margin-top:10px;font-size:0.8rem;color:var(--secondary);">
+                            <i class="fas fa-info-circle"></i> Informe os investimentos na ficha "Bens e Direitos" e rendimentos de aplicações financeiras na ficha "Rendimentos Sujeitos à Tributação Exclusiva".
+                        </div>
+                    </div>`;
+                }
+
+                // === BENS E DIREITOS (Saldos das contas) ===
+                html += `
+                <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
+                    <div style="font-weight:800;font-size:1rem;margin-bottom:14px;color:var(--dark);display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-university" style="color:#8b5cf6;"></i> Bens e Direitos — Saldos das Contas
+                    </div>
+                    ${accounts.length === 0 ? '<div style="color:var(--secondary);">Nenhuma conta cadastrada.</div>' : ''}
+                    ${accounts.map(acc => `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+                            <div>
+                                <div style="font-size:0.9rem;font-weight:600;color:var(--dark);">${acc.name || 'Conta'}</div>
+                                <div style="font-size:0.75rem;color:var(--secondary);">${acc.type || ''} ${acc.institution ? '• ' + acc.institution : ''} ${acc.number ? '• Ag/Cc: ' + acc.number : ''}</div>
+                            </div>
+                            <div style="font-weight:700;color:${(acc.balance||0)>=0?'#059669':'#dc2626'};">${(acc.balance||0)<0?'-':''}${fmt(acc.balance||0)}</div>
+                        </div>`).join('')}
+                    <div style="display:flex;justify-content:space-between;padding:12px 0;font-weight:800;font-size:1rem;border-top:2px solid var(--border);margin-top:4px;">
+                        <span>Patrimônio Total</span>
+                        <span style="color:${totalAssets>=0?'#059669':'#dc2626'};">${totalAssets<0?'-':''}${fmt(totalAssets)}</span>
+                    </div>
+                    <div style="font-size:0.8rem;color:var(--secondary);margin-top:4px;"><i class="fas fa-info-circle"></i> Informe os saldos em "Bens e Direitos" (código 61 - conta corrente, 41 - poupança) na declaração.</div>
+                </div>`;
+
+                // === RESUMO MENSAL ANUAL (só no modo anual) ===
+                if (UI.irPeriod === 'annual') {
+                    const breakdown = getMonthlyBreakdown(UI.irYear);
+                    const annualIncome = breakdown.reduce((s,m) => s+m.income, 0);
+                    const annualExpense = breakdown.reduce((s,m) => s+m.expense, 0);
+                    const annualInvestment = breakdown.reduce((s,m) => s+m.investment, 0);
+
+                    html += `
+                    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
+                        <div style="font-weight:800;font-size:1rem;margin-bottom:14px;color:var(--dark);display:flex;align-items:center;gap:8px;">
+                            <i class="fas fa-calendar-alt" style="color:#f59e0b;"></i> Demonstrativo Mensal — ${UI.irYear}
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                                <thead>
+                                    <tr style="background:#f1f5f9;">
+                                        <th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--secondary);">Mês</th>
+                                        <th style="padding:8px 6px;text-align:right;font-weight:700;color:#10b981;">Receitas</th>
+                                        <th style="padding:8px 6px;text-align:right;font-weight:700;color:#ef4444;">Despesas</th>
+                                        <th style="padding:8px 6px;text-align:right;font-weight:700;color:#3b82f6;">Invest.</th>
+                                        <th style="padding:8px 6px;text-align:right;font-weight:700;color:var(--dark);">Saldo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${breakdown.map((m,i) => {
+                                        const hasData = m.income>0||m.expense>0||m.investment>0;
+                                        return `<tr style="border-bottom:1px solid var(--border);${!hasData?'opacity:0.4;':''}">
+                                            <td style="padding:8px 6px;font-weight:600;color:var(--dark);">${m.name.substring(0,3)}</td>
+                                            <td style="padding:8px 6px;text-align:right;color:#10b981;">${m.income>0?fmt(m.income):'-'}</td>
+                                            <td style="padding:8px 6px;text-align:right;color:#ef4444;">${m.expense>0?fmt(m.expense):'-'}</td>
+                                            <td style="padding:8px 6px;text-align:right;color:#3b82f6;">${m.investment>0?fmt(m.investment):'-'}</td>
+                                            <td style="padding:8px 6px;text-align:right;font-weight:700;color:${m.balance>=0?'#059669':'#dc2626'};">${m.balance!==0?(m.balance<0?'-':'')+fmt(m.balance):'-'}</td>
+                                        </tr>`;
+                                    }).join('')}
+                                    <tr style="background:#f1f5f9;font-weight:800;">
+                                        <td style="padding:10px 6px;">TOTAL</td>
+                                        <td style="padding:10px 6px;text-align:right;color:#10b981;">${fmt(annualIncome)}</td>
+                                        <td style="padding:10px 6px;text-align:right;color:#ef4444;">${fmt(annualExpense)}</td>
+                                        <td style="padding:10px 6px;text-align:right;color:#3b82f6;">${fmt(annualInvestment)}</td>
+                                        <td style="padding:10px 6px;text-align:right;color:${(annualIncome-annualExpense)>=0?'#059669':'#dc2626'};">${(annualIncome-annualExpense)<0?'-':''}${fmt(annualIncome-annualExpense)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>`;
+                }
+
+                // === AVISO LEGAL ===
+                html += `
+                <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:14px;margin-bottom:16px;">
+                    <div style="font-weight:700;color:#92400e;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                        <i class="fas fa-exclamation-triangle"></i> Aviso Importante
+                    </div>
+                    <div style="font-size:0.82rem;color:#92400e;line-height:1.5;">
+                        Este extrato é gerado automaticamente com base nos dados cadastrados no FinançaPro. 
+                        Os valores são meramente informativos. Para fins de declaração de IRPF, consulte sempre 
+                        um contador ou utilize os informes de rendimentos emitidos pelas instituições financeiras.
+                        As categorias "dedutíveis" são sugestões baseadas no nome e não substituem análise profissional.
+                    </div>
+                </div>`;
+
+                // === LISTA COMPLETA DE TRANSAÇÕES ===
+                const sortedTxs = [...txs].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+                html += `
+                <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
+                    <div style="font-weight:800;font-size:1rem;margin-bottom:14px;color:var(--dark);display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-list" style="color:var(--secondary);"></i> Todas as Transações do Período
+                        <span style="margin-left:auto;font-size:0.8rem;color:var(--secondary);">${sortedTxs.length} lançamentos</span>
+                    </div>
+                    ${sortedTxs.length === 0 ? '<div style="color:var(--secondary);font-size:0.9rem;">Nenhuma transação no período.</div>' : ''}
+                    ${sortedTxs.slice(0,200).map(t => {
+                        const colors = {income:'#10b981',expense:'#ef4444',investment:'#3b82f6',transfer:'#8b5cf6',pending:'#f59e0b'};
+                        const icons = {income:'arrow-up',expense:'arrow-down',investment:'chart-line',transfer:'exchange-alt'};
+                        const color = colors[t.type] || '#64748b';
+                        const icon = icons[t.type] || 'circle';
+                        return `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <div style="width:28px;height:28px;border-radius:7px;background:${color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-${icon}" style="font-size:0.75rem;color:${color};"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:0.85rem;font-weight:600;color:var(--dark);">${t.description || 'Sem descrição'}</div>
+                                    <div style="font-size:0.72rem;color:var(--secondary);">${t.date||''} • ${t.category||''} ${t.status==='pending'?'• <span style="color:#f59e0b;">Pendente</span>':''}</div>
+                                </div>
+                            </div>
+                            <div style="font-weight:700;color:${color};white-space:nowrap;margin-left:8px;">${t.type==='expense'?'-':''}${fmt(t.amount||0)}</div>
+                        </div>`;
+                    }).join('')}
+                    ${sortedTxs.length > 200 ? `<div style="text-align:center;padding:10px;color:var(--secondary);font-size:0.85rem;">... e mais ${sortedTxs.length - 200} transações (exportar PDF para ver todas)</div>` : ''}
+                </div>`;
+
+                const container = document.getElementById('ir-extrato-content');
+                if (container) container.innerHTML = html;
+            };
+
+            // ===== DOWNLOAD PDF =====
+            UI.downloadIRPDF = async () => {
+                const txs = getPeriodTransactions();
+                const accounts = FinanceApp.data.accounts || [];
+                const settings = FinanceApp.data.settings || {};
+                const periodLabel = UI.irPeriod === 'monthly'
+                    ? `${MESES[UI.irMonth]}_${UI.irYear}`
+                    : `Ano_${UI.irYear}`;
+                const periodTitle = UI.irPeriod === 'monthly'
+                    ? `${MESES[UI.irMonth]} / ${UI.irYear}`
+                    : `Ano-Calendário ${UI.irYear}`;
+
+                const totalIncome = txs.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0);
+                const totalExpense = txs.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0);
+                const totalInvestment = txs.filter(t => t.type === 'investment').reduce((s,t) => s+t.amount, 0);
+                const netBalance = totalIncome - totalExpense;
+                const savingsRate = totalIncome > 0 ? ((netBalance/totalIncome)*100).toFixed(1) : 0;
+                const totalAssets = accounts.reduce((s,a) => s + (a.balance||0), 0);
+
+                const DEDUTIVEIS = ['saúde','educação','médico','hospital','plano de saúde','odontológico','faculdade','escola','pensão','previdência'];
+                const expTxs = txs.filter(t => t.type === 'expense');
+                const dedutiveis = expTxs.filter(t => DEDUTIVEIS.some(d => (t.category||'').toLowerCase().includes(d) || (t.description||'').toLowerCase().includes(d)));
+                const totalDedutiveis = dedutiveis.reduce((s,t) => s+t.amount, 0);
+
+                const incByCat = sumByCategory(txs, 'income');
+                const expByCat = sumByCategory(txs, 'expense');
+                const invByCat = sumByCategory(txs, 'investment');
+
+                const sortedTxs = [...txs].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+                // Gerar HTML do PDF
+                const userName = settings.name || 'Contribuinte';
+                const now = new Date().toLocaleString('pt-BR');
+
+                let breakdown = '';
+                if (UI.irPeriod === 'annual') {
+                    const bd = getMonthlyBreakdown(UI.irYear);
+                    const ai = bd.reduce((s,m)=>s+m.income,0);
+                    const ae = bd.reduce((s,m)=>s+m.expense,0);
+                    const ainv = bd.reduce((s,m)=>s+m.investment,0);
+                    breakdown = `
+                    <div class="section-title">Demonstrativo Mensal</div>
+                    <table>
+                        <thead><tr><th>Mês</th><th>Receitas</th><th>Despesas</th><th>Investimentos</th><th>Saldo</th></tr></thead>
+                        <tbody>
+                        ${bd.map(m => `<tr>
+                            <td>${m.name}</td>
+                            <td class="green">${m.income>0?fmt(m.income):'-'}</td>
+                            <td class="red">${m.expense>0?fmt(m.expense):'-'}</td>
+                            <td class="blue">${m.investment>0?fmt(m.investment):'-'}</td>
+                            <td class="${m.balance>=0?'green':'red'}">${m.balance!==0?(m.balance<0?'-':'')+fmt(m.balance):'-'}</td>
+                        </tr>`).join('')}
+                        <tr class="total-row"><td>TOTAL ANUAL</td><td class="green">${fmt(ai)}</td><td class="red">${fmt(ae)}</td><td class="blue">${fmt(ainv)}</td><td class="${(ai-ae)>=0?'green':'red'}">${(ai-ae)<0?'-':''}${fmt(ai-ae)}</td></tr>
+                        </tbody>
+                    </table>`;
+                }
+
+                const pdfHTML = `<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8">
+                <title>Extrato IR - ${periodLabel}</title>
+                <style>
+                    * { margin:0; padding:0; box-sizing:border-box; }
+                    body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1a1a2e; background: white; }
+                    .header { background: #1e3a5f; color: white; padding: 24px 32px; }
+                    .header h1 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+                    .header .subtitle { font-size: 12px; opacity: 0.8; }
+                    .header .meta { display: flex; justify-content: space-between; margin-top: 12px; font-size: 11px; opacity: 0.9; }
+                    .content { padding: 24px 32px; }
+                    .section-title { font-size: 13px; font-weight: 800; color: #1e3a5f; border-bottom: 2px solid #1e3a5f; padding-bottom: 4px; margin: 20px 0 12px; }
+                    .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+                    .summary-box { border-radius: 8px; padding: 12px; }
+                    .summary-box .label { font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+                    .summary-box .value { font-size: 14px; font-weight: 800; }
+                    .box-green { background: #d1fae5; } .box-green .label { color: #065f46; } .box-green .value { color: #059669; }
+                    .box-red { background: #fee2e2; } .box-red .label { color: #991b1b; } .box-red .value { color: #dc2626; }
+                    .box-blue { background: #dbeafe; } .box-blue .label { color: #1e40af; } .box-blue .value { color: #2563eb; }
+                    .box-gray { background: #f1f5f9; } .box-gray .label { color: #475569; } .box-gray .value { color: #1e293b; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+                    th { background: #f1f5f9; padding: 8px 6px; text-align: left; font-weight: 700; font-size: 10px; color: #475569; }
+                    td { padding: 7px 6px; border-bottom: 1px solid #e2e8f0; font-size: 10px; }
+                    .total-row td { font-weight: 800; background: #f1f5f9; font-size: 11px; }
+                    .green { color: #059669; font-weight: 700; }
+                    .red { color: #dc2626; font-weight: 700; }
+                    .blue { color: #2563eb; font-weight: 700; }
+                    .purple { color: #7c3aed; font-weight: 700; }
+                    .badge-ded { background: #dbeafe; color: #1e40af; font-size: 8px; padding: 1px 5px; border-radius: 3px; margin-left: 4px; font-weight: 700; }
+                    .aviso { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px; margin: 16px 0; font-size: 10px; color: #92400e; }
+                    .deducao-box { background: #dbeafe; border-left: 3px solid #3b82f6; border-radius: 6px; padding: 10px; margin: 10px 0; }
+                    .deducao-box .label { font-size: 10px; font-weight: 700; color: #1e40af; }
+                    .deducao-box .value { font-size: 14px; font-weight: 800; color: #2563eb; }
+                    .footer { border-top: 1px solid #e2e8f0; padding: 16px 32px; font-size: 9px; color: #94a3b8; text-align: center; }
+                    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+                </style></head><body>
+                <div class="header">
+                    <h1>📋 Extrato para Declaração de Imposto de Renda</h1>
+                    <div class="subtitle">FinançaPro — Controle Financeiro Completo</div>
+                    <div class="meta">
+                        <span>Contribuinte: <strong>${userName}</strong></span>
+                        <span>Período: <strong>${periodTitle}</strong></span>
+                        <span>Gerado em: <strong>${now}</strong></span>
+                    </div>
+                </div>
+                <div class="content">
+                    <div class="section-title">Resumo do Período</div>
+                    <div class="summary-grid">
+                        <div class="summary-box box-green"><div class="label">Receitas Totais</div><div class="value">${fmt(totalIncome)}</div></div>
+                        <div class="summary-box box-red"><div class="label">Despesas Totais</div><div class="value">${fmt(totalExpense)}</div></div>
+                        <div class="summary-box box-blue"><div class="label">Investimentos</div><div class="value">${fmt(totalInvestment)}</div></div>
+                        <div class="summary-box ${netBalance>=0?'box-green':'box-red'}"><div class="label">Saldo Líquido</div><div class="value">${netBalance<0?'-':''}${fmt(netBalance)}</div></div>
+                    </div>
+                    <div style="font-size:11px;color:#475569;margin-bottom:16px;">Taxa de Poupança: <strong>${savingsRate}%</strong></div>
+
+                    <div class="section-title">Rendimentos Recebidos</div>
+                    <table><thead><tr><th>Categoria</th><th>Valor</th><th>%</th></tr></thead><tbody>
+                    ${incByCat.map(([cat,val]) => `<tr><td>${cat}</td><td class="green">${fmt(val)}</td><td>${totalIncome>0?((val/totalIncome)*100).toFixed(1):0}%</td></tr>`).join('')}
+                    <tr class="total-row"><td>TOTAL RECEITAS</td><td class="green">${fmt(totalIncome)}</td><td>100%</td></tr>
+                    </tbody></table>
+
+                    <div class="section-title">Despesas por Categoria</div>
+                    <table><thead><tr><th>Categoria</th><th>Valor</th><th>%</th></tr></thead><tbody>
+                    ${expByCat.map(([cat,val]) => {
+                        const isDed = DEDUTIVEIS.some(d => cat.toLowerCase().includes(d));
+                        const pct = totalExpense>0?((val/totalExpense)*100).toFixed(1):0;
+                        return `<tr><td>${cat}${isDed?'<span class="badge-ded">DEDUTÍVEL</span>':''}</td><td class="red">${fmt(val)}</td><td>${pct}%</td></tr>`;
+                    }).join('')}
+                    <tr class="total-row"><td>TOTAL DESPESAS</td><td class="red">${fmt(totalExpense)}</td><td>100%</td></tr>
+                    </tbody></table>
+
+                    ${totalDedutiveis > 0 ? `
+                    <div class="deducao-box">
+                        <div class="label">💡 Total de Possíveis Deduções (Saúde, Educação, Previdência)</div>
+                        <div class="value">${fmt(totalDedutiveis)}</div>
+                        <div style="font-size:9px;color:#3b82f6;margin-top:4px;">* Confirme com contador. Este valor é estimado com base nas categorias cadastradas.</div>
+                    </div>` : ''}
+
+                    ${dedutiveis.length > 0 ? `
+                    <div class="section-title">Despesas Dedutíveis — Detalhamento</div>
+                    <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody>
+                    ${dedutiveis.map(t => `<tr><td>${t.date||''}</td><td>${t.description||''}</td><td>${t.category||''}</td><td class="blue">${fmt(t.amount||0)}</td></tr>`).join('')}
+                    <tr class="total-row"><td colspan="3">TOTAL DEDUTÍVEIS</td><td class="blue">${fmt(totalDedutiveis)}</td></tr>
+                    </tbody></table>` : ''}
+
+                    ${totalInvestment > 0 ? `
+                    <div class="section-title">Investimentos e Aplicações Financeiras</div>
+                    <table><thead><tr><th>Categoria</th><th>Valor</th></tr></thead><tbody>
+                    ${invByCat.map(([cat,val]) => `<tr><td>${cat}</td><td class="blue">${fmt(val)}</td></tr>`).join('')}
+                    <tr class="total-row"><td>TOTAL INVESTIMENTOS</td><td class="blue">${fmt(totalInvestment)}</td></tr>
+                    </tbody></table>
+                    <div style="font-size:10px;color:#475569;margin-bottom:12px;">Informe na ficha "Bens e Direitos" e em "Rendimentos Sujeitos à Tributação Exclusiva/Definitiva".</div>` : ''}
+
+                    <div class="section-title">Bens e Direitos — Saldos das Contas Bancárias</div>
+                    <table><thead><tr><th>Conta</th><th>Tipo</th><th>Instituição</th><th>Nº Conta</th><th>Saldo</th></tr></thead><tbody>
+                    ${accounts.map(acc => `<tr><td>${acc.name||''}</td><td>${acc.type||''}</td><td>${acc.institution||'-'}</td><td>${acc.number||'-'}</td><td class="${(acc.balance||0)>=0?'green':'red'}">${(acc.balance||0)<0?'-':''}${fmt(acc.balance||0)}</td></tr>`).join('')}
+                    <tr class="total-row"><td colspan="4">PATRIMÔNIO TOTAL</td><td class="${totalAssets>=0?'green':'red'}">${totalAssets<0?'-':''}${fmt(totalAssets)}</td></tr>
+                    </tbody></table>
+                    <div style="font-size:10px;color:#475569;margin-bottom:12px;">Código 61 (conta corrente), 41 (poupança). Informe o saldo em 31/12 do ano-calendário.</div>
+
+                    ${breakdown}
+
+                    <div class="section-title">Extrato Completo de Transações (${sortedTxs.length} lançamentos)</div>
+                    <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Conta</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>
+                    ${sortedTxs.map(t => {
+                        const typeLabel = {income:'Receita',expense:'Despesa',investment:'Investimento',transfer:'Transferência',pending:'Pendente'}[t.type]||t.type;
+                        const colorClass = {income:'green',expense:'red',investment:'blue',transfer:'purple'}[t.type]||'';
+                        const prefix = t.type==='expense'?'-':'';
+                        return `<tr><td>${t.date||''}</td><td>${t.description||''}</td><td>${t.category||''}</td><td>${t.account||''}</td><td class="${colorClass}">${typeLabel}</td><td class="${colorClass}">${prefix}${fmt(t.amount||0)}</td></tr>`;
+                    }).join('')}
+                    </tbody></table>
+
+                    <div class="aviso">
+                        <strong>⚠️ Aviso Legal:</strong> Este extrato é gerado automaticamente com base nos dados cadastrados no FinançaPro e tem caráter meramente informativo.
+                        Para fins de declaração de IRPF, consulte sempre um contador ou auditor fiscal e utilize os informes de rendimentos emitidos pelas instituições financeiras.
+                        As despesas sinalizadas como "dedutíveis" são sugestões baseadas em palavras-chave e não substituem análise profissional qualificada.
+                    </div>
+                </div>
+                <div class="footer">FinançaPro — Extrato IR • ${periodTitle} • Gerado em ${now} • Este documento não tem validade legal junto à Receita Federal</div>
+                </body></html>`;
+
+                // Abrir janela de impressão
+                const win = window.open('', '_blank', 'width=900,height=700');
+                if (!win) { Utils.toast('Permita pop-ups para baixar o PDF'); return; }
+                win.document.write(pdfHTML);
+                win.document.close();
+                win.focus();
+                setTimeout(() => { win.print(); }, 600);
+            };
+
+            // Hook no setReportTab para renderizar extrato IR
+            const _origSetReportTab = UI.setReportTab.bind(UI);
+            UI.setReportTab = (tab, el) => {
+                _origSetReportTab(tab, el);
+                if (tab === 'ir') {
+                    // Ativar tab IR manualmente (pois o sistema original não conhece 'ir')
+                    document.querySelectorAll('#reports-view .tab-btn').forEach(b => b.classList.remove('active'));
+                    if (el) el.classList.add('active');
+                    document.querySelectorAll('.report-tab').forEach(t => t.style.display = 'none');
+                    const irTab = document.getElementById('report-ir');
+                    if (irTab) irTab.style.display = 'block';
+                    updateLabels();
+                    UI.renderIRExtrato();
+                }
+            };
+
+        })(); // fim módulo IR
     </script>
 </body>
 </html>
