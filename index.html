@@ -1437,23 +1437,29 @@
             </div>
 
             <div class="balance-card">
-                <div class="balance-label" id="balance-card-label">Saldo Total</div>
-                <div class="balance-value" id="current-balance">R$ 0,00</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div class="balance-label" id="balance-card-label">Saldo Total</div>
+                    <button id="btn-toggle-saldo" onclick="FinancaPro.toggleSaldos()" title="Ocultar/mostrar saldos"
+                        style="background:rgba(255,255,255,0.18);border:none;color:white;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;flex-shrink:0;">
+                        <i class="fas fa-eye-slash" id="icone-olho"></i>
+                    </button>
+                </div>
+                <div class="balance-value balance-sensivel" id="current-balance">R$ 0,00</div>
                 <div style="font-size:0.8rem; opacity:0.85; margin-bottom:8px; display:none;" id="projected-month-line">
                     Saldo projetado do mês: <strong id="projected-month-balance">R$ 0,00</strong>
                 </div>
                 <div class="balance-details">
                     <div class="balance-item">
                         <div class="label">Receitas</div>
-                        <div class="value income-value" id="month-income">R$ 0,00</div>
+                        <div class="value income-value balance-sensivel" id="month-income">R$ 0,00</div>
                     </div>
                     <div class="balance-item">
                         <div class="label">Despesas</div>
-                        <div class="value expense-value" id="month-expense">R$ 0,00</div>
+                        <div class="value expense-value balance-sensivel" id="month-expense">R$ 0,00</div>
                     </div>
                     <div class="balance-item">
                         <div class="label">Pendentes</div>
-                        <div class="value pending-value" id="month-pending">R$ 0,00</div>
+                        <div class="value pending-value balance-sensivel" id="month-pending">R$ 0,00</div>
                     </div>
                 </div>
             </div>
@@ -1861,6 +1867,51 @@
             </div>
             <div id="invoices-list"></div>
         </div>
+
+        <!-- ===== EDUCAÇÃO FINANCEIRA VIEW ===== -->
+        <div id="education-view" class="view">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <div>
+                    <div style="font-size:1.15rem;font-weight:800;color:var(--dark);">📚 Educação Financeira</div>
+                    <div style="font-size:0.78rem;color:var(--secondary);margin-top:2px;">Conteúdos para turbinar suas finanças</div>
+                </div>
+                <button onclick="FinancaPro.renderEducation()" style="background:var(--primary);color:white;border:none;border-radius:8px;padding:8px 12px;font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;">
+                    <i class="fas fa-sync-alt"></i> Atualizar
+                </button>
+            </div>
+
+            <!-- Busca de Conteúdo IA -->
+            <div style="background:linear-gradient(135deg,#1e293b,#0f2040);border-radius:14px;padding:14px;margin:12px 0 14px;color:white;">
+                <div style="font-size:0.72rem;opacity:0.7;margin-bottom:8px;">🤖 Pergunte ao seu Assistente Financeiro</div>
+                <div style="display:flex;gap:8px;">
+                    <input type="text" id="edu-pergunta" placeholder="Ex: Como investir com pouco dinheiro?" 
+                        style="flex:1;padding:10px 14px;border-radius:10px;border:none;font-size:0.9rem;background:rgba(255,255,255,0.12);color:white;outline:none;"
+                        onkeydown="if(event.key==='Enter')FinancaPro.askAdvisor()">
+                    <button onclick="FinancaPro.askAdvisor()" style="background:var(--primary);color:white;border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;white-space:nowrap;font-size:0.9rem;">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div id="edu-resposta-ia" style="display:none;margin-top:12px;background:rgba(255,255,255,0.08);border-radius:10px;padding:12px;font-size:0.88rem;line-height:1.6;"></div>
+            </div>
+
+            <!-- Filtros de categoria -->
+            <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:14px;">
+                <button class="edu-cat-btn" data-cat="all" onclick="FinancaPro.filterEdu('all',this)" style="padding:7px 14px;border:1.5px solid var(--primary);border-radius:20px;background:var(--primary);color:white;white-space:nowrap;font-size:0.8rem;font-weight:600;cursor:pointer;flex-shrink:0;">Todos</button>
+                <button class="edu-cat-btn" data-cat="investimento" onclick="FinancaPro.filterEdu('investimento',this)" style="padding:7px 14px;border:1.5px solid var(--border);border-radius:20px;background:var(--surface);color:var(--secondary);white-space:nowrap;font-size:0.8rem;font-weight:600;cursor:pointer;flex-shrink:0;">📈 Investimentos</button>
+                <button class="edu-cat-btn" data-cat="poupanca" onclick="FinancaPro.filterEdu('poupanca',this)" style="padding:7px 14px;border:1.5px solid var(--border);border-radius:20px;background:var(--surface);color:var(--secondary);white-space:nowrap;font-size:0.8rem;font-weight:600;cursor:pointer;flex-shrink:0;">💰 Poupança</button>
+                <button class="edu-cat-btn" data-cat="dividas" onclick="FinancaPro.filterEdu('dividas',this)" style="padding:7px 14px;border:1.5px solid var(--border);border-radius:20px;background:var(--surface);color:var(--secondary);white-space:nowrap;font-size:0.8rem;font-weight:600;cursor:pointer;flex-shrink:0;">💳 Dívidas</button>
+                <button class="edu-cat-btn" data-cat="planejamento" onclick="FinancaPro.filterEdu('planejamento',this)" style="padding:7px 14px;border:1.5px solid var(--border);border-radius:20px;background:var(--surface);color:var(--secondary);white-space:nowrap;font-size:0.8rem;font-weight:600;cursor:pointer;flex-shrink:0;">📋 Planejamento</button>
+                <button class="edu-cat-btn" data-cat="empreender" onclick="FinancaPro.filterEdu('empreender',this)" style="padding:7px 14px;border:1.5px solid var(--border);border-radius:20px;background:var(--surface);color:var(--secondary);white-space:nowrap;font-size:0.8rem;font-weight:600;cursor:pointer;flex-shrink:0;">🚀 Empreender</button>
+            </div>
+
+            <div id="education-list">
+                <div style="text-align:center;padding:40px 20px;color:var(--secondary);">
+                    <i class="fas fa-spinner fa-spin" style="font-size:2rem;margin-bottom:12px;display:block;opacity:0.4;"></i>
+                    Carregando conteúdos...
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <button class="fab" onclick="UI.openNewTransaction('expense')" id="main-fab">
@@ -1888,6 +1939,9 @@
         </a>
         <a href="#" class="nav-item" data-target="cards-view" onclick="UI.switchTab(this); UI.renderCards(); return false;">
             <i class="fas fa-credit-card"></i> <span>Cartões</span>
+        </a>
+        <a href="#" class="nav-item" data-target="education-view" onclick="UI.switchTab(this); FinancaPro.renderEducation(); return false;">
+            <i class="fas fa-graduation-cap"></i> <span>Educar</span>
         </a>
     </nav>
 
@@ -3604,7 +3658,7 @@
                                     account.type === 'cartao_credito' ? 'Cartão de Crédito' : 'Outro'}</div>
                             </div>
                         </div>
-                        <div class="account-balance ${balanceClass}">
+                        <div class="account-balance ${balanceClass} balance-sensivel">
                             ${Utils.formatCurrency(account.balance)}
                         </div>
                     </div>
@@ -8303,6 +8357,478 @@
             };
 
         })(); // fim módulo IR
+    </script>
+
+    <!-- ===== MODAL: SUGESTÃO DE RESERVA DE EMERGÊNCIA ===== -->
+    <div class="modal-overlay" id="overlay-sugestao-receita" onclick="document.getElementById('overlay-sugestao-receita').style.display='none';document.getElementById('sheet-sugestao-receita').classList.remove('active');" style="display:none;opacity:1;"></div>
+    <div class="modal-sheet" id="sheet-sugestao-receita" style="z-index:200;">
+        <div class="sheet-handle"></div>
+        <div style="text-align:center;margin-bottom:16px;">
+            <div style="font-size:2rem;margin-bottom:6px;">💡</div>
+            <div style="font-weight:800;font-size:1.1rem;color:var(--dark);" id="sugestao-receita-titulo">Receita registrada!</div>
+            <div style="font-size:0.85rem;color:var(--secondary);margin-top:4px;" id="sugestao-receita-subtitulo">Seu assistente financeiro tem uma sugestão:</div>
+        </div>
+        <div id="sugestao-receita-corpo" style="background:#f0fdf4;border-radius:14px;padding:16px;margin-bottom:16px;border-left:4px solid var(--primary);">
+            <div id="sugestao-receita-texto" style="font-size:0.9rem;line-height:1.6;color:#065f46;"></div>
+        </div>
+        <div id="sugestao-receita-percentuais" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;"></div>
+        <button onclick="document.getElementById('overlay-sugestao-receita').style.display='none';document.getElementById('sheet-sugestao-receita').classList.remove('active');" style="width:100%;padding:14px;background:var(--primary);color:white;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;">Entendido, obrigado! 🎯</button>
+        <button onclick="FinancaPro.abrirInvestimentoSugerido()" style="width:100%;padding:12px;background:#f0fdf4;color:var(--primary);border:1.5px solid var(--primary);border-radius:12px;font-size:0.9rem;font-weight:600;cursor:pointer;margin-top:8px;">Registrar investimento agora</button>
+    </div>
+
+    <!-- ===== MODAL: SUGESTÃO DE ECONOMIA (DESPESA) ===== -->
+    <div class="modal-overlay" id="overlay-sugestao-despesa" onclick="document.getElementById('overlay-sugestao-despesa').style.display='none';document.getElementById('sheet-sugestao-despesa').classList.remove('active');" style="display:none;opacity:1;"></div>
+    <div class="modal-sheet" id="sheet-sugestao-despesa" style="z-index:200;">
+        <div class="sheet-handle"></div>
+        <div style="text-align:center;margin-bottom:16px;">
+            <div style="font-size:2rem;margin-bottom:6px;">🔍</div>
+            <div style="font-weight:800;font-size:1.1rem;color:var(--dark);">Despesa registrada!</div>
+            <div style="font-size:0.85rem;color:var(--secondary);margin-top:4px;">Veja como economizar mais:</div>
+        </div>
+        <div id="sugestao-despesa-corpo" style="background:#fff7ed;border-radius:14px;padding:16px;margin-bottom:16px;border-left:4px solid var(--pending);">
+            <div id="sugestao-despesa-texto" style="font-size:0.9rem;line-height:1.6;color:#92400e;"></div>
+        </div>
+        <div id="sugestao-despesa-dicas" style="margin-bottom:16px;"></div>
+        <button onclick="document.getElementById('overlay-sugestao-despesa').style.display='none';document.getElementById('sheet-sugestao-despesa').classList.remove('active');" style="width:100%;padding:14px;background:var(--pending);color:var(--dark);border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;">Vou economizar! 💪</button>
+    </div>
+
+    <!-- ===== MÓDULO FINANCAPRO PLUS ===== -->
+    <script>
+    (function() {
+        'use strict';
+
+        // ─── ESTADO GLOBAL ───────────────────────────────────────────────
+        let saldosOcultos = true; // começa oculto
+        let ultimaReceitaValor = 0;
+        let ultimaReceitaDesc = '';
+        let ultimaDespesaValor = 0;
+        let ultimaDespesaCategoria = '';
+        let eduCategoria = 'all';
+        let todosConteudos = [];
+
+        // ─── CSS INJETADO ─────────────────────────────────────────────────
+        const style = document.createElement('style');
+        style.textContent = `
+            .saldo-oculto { filter: blur(8px) !important; user-select: none; pointer-events: none; transition: filter 0.3s; }
+            .saldo-visivel { filter: none !important; transition: filter 0.3s; }
+            .edu-card { background: var(--surface); border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.2s; border-top: 3px solid var(--primary); }
+            .edu-card:active { transform: scale(0.98); }
+            .edu-card-tag { display:inline-block;padding:3px 10px;border-radius:10px;font-size:0.72rem;font-weight:700;margin-bottom:8px; }
+            .edu-card-titulo { font-weight:700;font-size:0.98rem;color:var(--dark);margin-bottom:6px;line-height:1.4; }
+            .edu-card-desc { font-size:0.83rem;color:var(--secondary);line-height:1.5;margin-bottom:10px; }
+            .edu-card-rodape { display:flex;justify-content:space-between;align-items:center;font-size:0.75rem;color:var(--secondary); }
+            .edu-card-leitura { font-size:0.75rem;color:var(--primary);font-weight:600;display:flex;align-items:center;gap:4px; }
+            .sugestao-pct-card { background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;transition:all 0.2s; }
+            .sugestao-pct-card:active { transform:scale(0.96); }
+            .sugestao-pct-num { font-size:1.3rem;font-weight:800;color:var(--primary); }
+            .sugestao-pct-label { font-size:0.72rem;color:var(--secondary);margin-top:2px; }
+            .dica-economia { background:var(--surface);border-radius:10px;padding:12px;margin-bottom:8px;border-left:3px solid var(--pending);display:flex;gap:10px;align-items:flex-start; }
+            .dica-economia-icon { font-size:1.2rem;flex-shrink:0; }
+            .dica-economia-texto { font-size:0.85rem;color:var(--dark);line-height:1.5; }
+            #education-view { padding-bottom: 20px; }
+            .edu-resposta-loading { display:flex;align-items:center;gap:8px;opacity:0.7;font-size:0.85rem; }
+        `;
+        document.head.appendChild(style);
+
+        // ─── BANCO DE CONTEÚDOS EDUCACIONAIS ──────────────────────────────
+        const CONTEUDOS = [
+            // Investimentos
+            { id:1, cat:'investimento', emoji:'📈', tag:'Investimentos', cor:'#3b82f6', tagBg:'#dbeafe', titulo:'Regra dos 50/30/20: invista com método', desc:'Destine 50% da renda para necessidades, 30% para desejos e 20% para poupança e investimentos. Uma fórmula simples para organizar suas finanças.', fonte:'Guia FinançaPro', tempo:'5 min', url:null, conteudo:`<h3>A Regra 50/30/20</h3><p>Essa regra é um dos métodos mais eficazes de organização financeira pessoal.</p><ul><li><strong>50% — Necessidades:</strong> aluguel, alimentação, transporte, contas básicas.</li><li><strong>30% — Desejos:</strong> lazer, restaurantes, streaming, roupas.</li><li><strong>20% — Investimentos e poupança:</strong> reserva de emergência, investimentos.</li></ul><p>Se sua renda é R$ 3.000, isso significa: R$ 1.500 para necessidades, R$ 900 para desejos e R$ 600 para investir.</p><h3>Por onde começar?</h3><p>Registre todas suas despesas no FinançaPro por 30 dias e veja em qual categoria você está gastando mais do que deveria.</p>` },
+            { id:2, cat:'investimento', emoji:'🏦', tag:'Investimentos', cor:'#3b82f6', tagBg:'#dbeafe', titulo:'Tesouro Direto: investimento seguro para iniciantes', desc:'O Tesouro Direto é um programa do Governo Federal que permite a compra de títulos públicos com liquidez diária e rendimento superior à poupança.', fonte:'Guia FinançaPro', tempo:'7 min', url:null, conteudo:`<h3>O que é o Tesouro Direto?</h3><p>É um programa do Governo Federal que vende títulos públicos para pessoa física pela internet. É um dos investimentos mais seguros do Brasil.</p><h3>Tipos de títulos:</h3><ul><li><strong>Tesouro Selic:</strong> rende a taxa Selic (ideal para reserva de emergência).</li><li><strong>Tesouro IPCA+:</strong> protege da inflação + rendimento real.</li><li><strong>Tesouro Prefixado:</strong> você sabe exatamente quanto vai receber.</li></ul><h3>Como começar?</h3><ol><li>Abra conta em uma corretora (XP, Rico, NuInvest — sem taxa).</li><li>Transfira a partir de R$ 30,00.</li><li>Escolha o título que se encaixa no seu objetivo.</li></ol>` },
+            { id:3, cat:'investimento', emoji:'💎', tag:'Investimentos', cor:'#3b82f6', tagBg:'#dbeafe', titulo:'Fundos Imobiliários (FIIs): renda passiva mensal', desc:'FIIs permitem investir em imóveis de forma acessível e receber aluguéis mensais direto na sua conta, com isenção de IR para pessoa física.', fonte:'Guia FinançaPro', tempo:'8 min', url:null, conteudo:`<h3>O que são FIIs?</h3><p>Fundos de Investimento Imobiliário são cotas de um fundo que possui imóveis físicos (shoppings, galpões, lajes corporativas) ou papéis imobiliários. Ao comprar cotas, você recebe parte dos aluguéis mensalmente.</p><h3>Vantagens:</h3><ul><li>Dividendos mensais isentos de Imposto de Renda.</li><li>Liquidez: você compra e vende na bolsa como uma ação.</li><li>Diversificação com pouco dinheiro (a partir de R$ 10).</li></ul><h3>Como avaliar um FII?</h3><ul><li><strong>Dividend Yield (DY):</strong> quanto o fundo paga por ano em relação ao preço da cota.</li><li><strong>P/VP:</strong> se está caro ou barato em relação ao valor patrimonial.</li><li><strong>Vacância:</strong> % dos imóveis desocupados.</li></ul>` },
+            { id:4, cat:'investimento', emoji:'📊', tag:'Investimentos', cor:'#3b82f6', tagBg:'#dbeafe', titulo:'Diversificação: não coloque todos os ovos na mesma cesta', desc:'Distribuir seus investimentos entre diferentes classes de ativos é a melhor proteção contra riscos e a chave para crescer com consistência.', fonte:'Guia FinançaPro', tempo:'6 min', url:null, conteudo:`<h3>Por que diversificar?</h3><p>Nenhum investimento é 100% seguro. Quando você diversifica, a queda de um ativo não derruba toda a sua carteira.</p><h3>Sugestão de carteira iniciante:</h3><ul><li><strong>20% — Reserva de emergência:</strong> Tesouro Selic ou CDB de liquidez diária.</li><li><strong>40% — Renda fixa:</strong> CDB, LCI, LCA, Tesouro IPCA+.</li><li><strong>30% — Renda variável:</strong> FIIs e ações de empresas sólidas.</li><li><strong>10% — Internacional:</strong> ETFs de mercado americano (BDRs).</li></ul>` },
+            // Poupança
+            { id:5, cat:'poupanca', emoji:'💰', tag:'Poupança', cor:'#10b981', tagBg:'#d1fae5', titulo:'Reserva de Emergência: sua rede de proteção financeira', desc:'Ter de 3 a 6 meses de despesas guardados em liquidez diária é o primeiro passo para uma vida financeira estável e sem ansiedade.', fonte:'Guia FinançaPro', tempo:'5 min', url:null, conteudo:`<h3>Por que você PRECISA de uma reserva de emergência?</h3><p>Sem ela, qualquer imprevisto — uma demissão, um acidente, uma doença — pode virar uma dívida. A reserva de emergência é o alicerce de toda a vida financeira saudável.</p><h3>Quanto guardar?</h3><ul><li><strong>Empregado CLT:</strong> 3 a 4 meses de despesas mensais.</li><li><strong>Autônomo/empresário:</strong> 6 a 12 meses de despesas mensais.</li></ul><h3>Onde guardar?</h3><p>O dinheiro precisa ter liquidez diária (você retira quando quiser) e ser seguro:</p><ul><li>✅ Tesouro Selic</li><li>✅ CDB com liquidez diária de banco grande</li><li>✅ Conta remunerada (Nubank, Inter, C6)</li><li>❌ Poupança (rende pouco)</li><li>❌ Ações ou FIIs (oscilam demais)</li></ul>` },
+            { id:6, cat:'poupanca', emoji:'🎯', tag:'Poupança', cor:'#10b981', tagBg:'#d1fae5', titulo:'Método dos Envelopes: controle total dos seus gastos', desc:'Separe fisicamente (ou digitalmente) o dinheiro em categorias. Quando o envelope acaba, acabou o dinheiro para aquela categoria no mês.', fonte:'Guia FinançaPro', tempo:'4 min', url:null, conteudo:`<h3>Como funciona?</h3><p>Você divide seu orçamento em categorias e só pode gastar o que foi alocado para cada uma.</p><h3>Categorias sugeridas:</h3><ul><li>🏠 Moradia</li><li>🍽️ Alimentação</li><li>🚗 Transporte</li><li>💊 Saúde</li><li>🎉 Lazer</li><li>👔 Vestuário</li><li>📚 Educação</li><li>💰 Poupança</li></ul><h3>No FinançaPro:</h3><p>Use as categorias para organizar seus gastos e acompanhe os limites de orçamento. Quando uma categoria ultrapassar o limite, o sistema te alerta!</p>` },
+            { id:7, cat:'poupanca', emoji:'⚡', tag:'Poupança', cor:'#10b981', tagBg:'#d1fae5', titulo:'Automatize sua poupança: pague-se primeiro!', desc:'Configure transferências automáticas no dia do recebimento do salário. Quem não vê o dinheiro, não gasta. Essa é a regra de ouro da poupança eficiente.', fonte:'Guia FinançaPro', tempo:'3 min', url:null, conteudo:`<h3>O conceito de "pagar-se primeiro"</h3><p>A maioria das pessoas poupa o que sobra. Mas quase nunca sobra nada. A solução: no dia em que receber, transfira automaticamente um valor para seus investimentos ANTES de pagar qualquer outra coisa.</p><h3>Como fazer:</h3><ol><li>Defina um percentual: comece com 10% da sua renda.</li><li>Configure uma transferência automática no seu banco para o dia do pagamento.</li><li>Viva com o restante.</li></ol><p>Ao longo de um ano, com R$ 200/mês investidos a 1% ao mês, você acumula mais de R$ 2.500. Em 5 anos: mais de R$ 16.000!</p>` },
+            // Dívidas
+            { id:8, cat:'dividas', emoji:'💳', tag:'Dívidas', cor:'#ef4444', tagBg:'#fee2e2', titulo:'Método Bola de Neve: elimine dívidas mais rápido', desc:'Pague a menor dívida primeiro, independente da taxa de juros. A motivação psicológica de eliminar dívidas acelera o processo.', fonte:'Guia FinançaPro', tempo:'6 min', url:null, conteudo:`<h3>Como funciona a Bola de Neve?</h3><ol><li>Liste todas as suas dívidas do menor ao maior valor.</li><li>Pague o mínimo em todas.</li><li>Use o dinheiro extra para pagar a menor dívida primeiro.</li><li>Quando a menor acabar, transfira o valor que pagava para a próxima.</li></ol><h3>Exemplo:</h3><ul><li>Dívida A: R$ 500 (pague primeiro)</li><li>Dívida B: R$ 1.500 (segunda)</li><li>Dívida C: R$ 8.000 (terceira)</li></ul><p>A sensação de eliminar cada dívida cria motivação para continuar. É psicologia aplicada às finanças!</p><h3>Alternativa: Método Avalanche</h3><p>Pague primeiro a dívida com <strong>maior taxa de juros</strong>. Você economiza mais no longo prazo, mas demora mais para ver resultados concretos.</p>` },
+            { id:9, cat:'dividas', emoji:'🚨', tag:'Dívidas', cor:'#ef4444', tagBg:'#fee2e2', titulo:'Cartão de crédito: aliado ou vilão?', desc:'O rotativo do cartão cobra mais de 400% ao ano. Entenda como usar o cartão a seu favor e jamais cair na armadilha dos juros abusivos.', fonte:'Guia FinançaPro', tempo:'7 min', url:null, conteudo:`<h3>Juros do rotativo: o mais caro do Brasil</h3><p>A taxa média do rotativo do cartão de crédito no Brasil é superior a 400% ao ano. Se você deve R$ 1.000 no cartão e paga só o mínimo, em 1 ano pode dever R$ 5.000.</p><h3>Regras de ouro do cartão:</h3><ul><li>✅ Pague SEMPRE o valor TOTAL da fatura.</li><li>✅ Nunca gaste mais do que você tem no banco.</li><li>✅ Use o cartão como ferramenta de controle (cashback, milhas), não de crédito.</li><li>❌ Nunca parcele compras sem necessidade real.</li><li>❌ Nunca use o crédito rotativo.</li></ul><h3>Estratégia para quem está em dívida no cartão:</h3><ol><li>Pare de usar o cartão imediatamente.</li><li>Negocie a dívida direto com o banco (descontos de até 90%).</li><li>Se necessário, faça um empréstimo pessoal para pagar (juros menores).</li></ol>` },
+            { id:10, cat:'dividas', emoji:'🔓', tag:'Dívidas', cor:'#ef4444', tagBg:'#fee2e2', titulo:'Negocie suas dívidas: guia completo', desc:'Credores preferem receber menos do que não receber nada. Saiba como negociar dívidas com desconto e quitar tudo de forma inteligente.', fonte:'Guia FinançaPro', tempo:'8 min', url:null, conteudo:`<h3>Antes de negociar:</h3><ul><li>Levante todas as dívidas: valor original, juros e total atualizado.</li><li>Entenda o quanto pode pagar: à vista ou parcelado.</li><li>Pesquise acordos anteriores da empresa (Serasa Limpa Nome, portais).</li></ul><h3>Como negociar:</h3><ol><li>Ligue para o credor ou acesse o site (muitos têm descontos online).</li><li>Ofereça um valor menor do que o total (comece com 50-60% à vista).</li><li>Sempre peça a confirmação por escrito antes de pagar.</li></ol><h3>Programas disponíveis:</h3><ul><li><strong>Serasa Limpa Nome:</strong> acordos com descontos de até 99%.</li><li><strong>Desenrola Brasil:</strong> programa do governo para renegociação.</li></ul>` },
+            // Planejamento
+            { id:11, cat:'planejamento', emoji:'📋', tag:'Planejamento', cor:'#8b5cf6', tagBg:'#f3e8ff', titulo:'Orçamento mensal: como fazer e manter', desc:'Um orçamento bem feito é o GPS das suas finanças. Sem saber para onde vai seu dinheiro, você nunca vai chegar aonde quer.', fonte:'Guia FinançaPro', tempo:'6 min', url:null, conteudo:`<h3>Passo a passo para criar seu orçamento:</h3><ol><li><strong>Calcule sua renda líquida:</strong> quanto entra por mês.</li><li><strong>Liste todas as despesas fixas:</strong> aluguel, contas, mensalidades.</li><li><strong>Estime despesas variáveis:</strong> alimentação, transporte, lazer.</li><li><strong>Calcule a diferença:</strong> renda - despesas = sobra (ou falta).</li><li><strong>Ajuste:</strong> corte gastos até ter sobra positiva.</li></ol><h3>No FinançaPro:</h3><p>Use as categorias para rastrear cada gasto e veja no relatório mensal se está dentro do planejado. Acesse Análise → Despesas para ver o breakdown completo.</p>` },
+            { id:12, cat:'planejamento', emoji:'🏡', tag:'Planejamento', cor:'#8b5cf6', tagBg:'#f3e8ff', titulo:'Planejamento para compra do imóvel próprio', desc:'Comprar um imóvel é o maior objetivo financeiro de muitos brasileiros. Entenda os passos, o financiamento e como se preparar financeiramente.', fonte:'Guia FinançaPro', tempo:'10 min', url:null, conteudo:`<h3>Antes de financiar:</h3><ul><li>Tenha pelo menos 20% do valor do imóvel como entrada.</li><li>Certifique-se que a parcela não ultrapassa 30% da sua renda.</li><li>Mantenha sua reserva de emergência intacta.</li></ul><h3>Tipos de financiamento:</h3><ul><li><strong>SFH (Caixa/bancos):</strong> para imóveis até R$ 1,5M, usando FGTS.</li><li><strong>SFI:</strong> para imóveis acima desse valor.</li><li><strong>Consórcio:</strong> sem juros, mas você pode demorar anos para ser contemplado.</li></ul><h3>Use o FGTS:</h3><p>O FGTS pode ser usado na entrada, amortização de parcelas ou para reduzir a dívida em imóveis pelo SFH. Vale consultar o saldo!</p>` },
+            { id:13, cat:'planejamento', emoji:'👴', tag:'Planejamento', cor:'#8b5cf6', tagBg:'#f3e8ff', titulo:'Previdência privada: PGBL ou VGBL?', desc:'Planejar a aposentadoria o quanto antes é a decisão mais inteligente que você pode tomar. Entenda as diferenças e qual plano escolher.', fonte:'Guia FinançaPro', tempo:'8 min', url:null, conteudo:`<h3>PGBL (Plano Gerador de Benefício Livre):</h3><ul><li>Ideal para quem faz declaração completa do IR.</li><li>Dedução de até 12% da renda bruta anual no IR.</li><li>Imposto incide sobre o valor total resgatado.</li></ul><h3>VGBL (Vida Gerador de Benefício Livre):</h3><ul><li>Ideal para quem faz declaração simplificada.</li><li>Sem dedução no IR.</li><li>Imposto incide apenas sobre os rendimentos.</li></ul><h3>Tabela regressiva ou progressiva?</h3><p>Se pretende deixar o dinheiro por mais de 10 anos: escolha a tabela regressiva (10% de IR). Se quiser resgatar antes: progressiva (alíquotas menores nos primeiros anos).</p>` },
+            // Empreender
+            { id:14, cat:'empreender', emoji:'🚀', tag:'Empreender', cor:'#f59e0b', tagBg:'#fef3c7', titulo:'Fluxo de caixa para pequenas empresas', desc:'O fluxo de caixa é o coração do seu negócio. Saber exatamente quanto entra e sai é a diferença entre crescer e quebrar.', fonte:'Guia FinançaPro', tempo:'7 min', url:null, conteudo:`<h3>O que é fluxo de caixa?</h3><p>É o registro de todas as entradas e saídas de dinheiro do seu negócio em um período. Diferente do lucro, o fluxo de caixa mostra se você tem dinheiro para pagar as contas agora.</p><h3>Empresa pode dar lucro e quebrar?</h3><p>Sim! Se você vende muito parcelado mas precisa pagar fornecedores à vista, pode ter lucro no papel mas sem caixa. Isso mata negócios saudáveis.</p><h3>Dicas para DJ/Eventos:</h3><ul><li>Exija sinal de 50% no momento do contrato.</li><li>Tenha uma conta separada para o negócio.</li><li>Guarde 20% de cada cachê para impostos e despesas variáveis.</li><li>Construa uma reserva de 3 meses de custos fixos do negócio.</li></ul>` },
+            { id:15, cat:'empreender', emoji:'📱', tag:'Empreender', cor:'#f59e0b', tagBg:'#fef3c7', titulo:'Precificação: como cobrar o valor certo pelo seu serviço', desc:'Cobrar pouco é tão prejudicial quanto cobrar muito. Aprenda a calcular o preço justo que cobre todos os custos e ainda gera lucro real.', fonte:'Guia FinançaPro', tempo:'9 min', url:null, conteudo:`<h3>Fórmula básica de precificação:</h3><p><strong>Preço = Custo direto + Custo indireto + Margem de lucro</strong></p><h3>Custos a considerar (exemplo DJ):</h3><ul><li>Equipamentos (depreciação mensal)</li><li>Transporte</li><li>Alimentação no evento</li><li>Assistente/equipe</li><li>Marketing e divulgação</li><li>Impostos (MEI ou Simples)</li><li>Seguro de equipamentos</li><li>Horas de trabalho (inclusive preparação)</li></ul><h3>Margem de lucro:</h3><p>Some todos os custos e adicione de 30% a 50% de margem. Se o mercado não aceita esse preço, você precisa reduzir custos ou encontrar um público que valorize mais seu trabalho.</p>` },
+            { id:16, cat:'empreender', emoji:'🏢', tag:'Empreender', cor:'#f59e0b', tagBg:'#fef3c7', titulo:'MEI: o que você pode e não pode fazer', desc:'O Microempreendedor Individual oferece vantagens incríveis, mas tem limites. Entenda como usar ao máximo e quando formalizar de outra forma.', fonte:'Guia FinançaPro', tempo:'6 min', url:null, conteudo:`<h3>Vantagens do MEI:</h3><ul><li>CNPJ próprio (abre conta PJ, emite nota fiscal).</li><li>INSS com alíquota reduzida (5% do salário mínimo).</li><li>Cobertura previdenciária (aposentadoria, auxílio-doença).</li><li>Tributação simplificada e barata.</li></ul><h3>Limites do MEI:</h3><ul><li>Faturamento anual máximo: R$ 81.000 (ou R$ 251.600 para alguns casos).</li><li>Apenas 1 funcionário (salário mínimo ou piso da categoria).</li><li>Atividade precisa estar na lista permitida pelo governo.</li></ul><h3>Quando migrar para ME?</h3><p>Quando seu faturamento estiver próximo do limite ou quando precisar ter mais de 1 funcionário. Consulte um contador para a transição.</p>` },
+        ];
+
+        // ─── TOGGLE DE SALDOS ─────────────────────────────────────────────
+        function toggleSaldos() {
+            saldosOcultos = !saldosOcultos;
+            localStorage.setItem('fp_saldos_ocultos', saldosOcultos ? '1' : '0');
+            aplicarVisibilidadeSaldos();
+        }
+
+        function aplicarVisibilidadeSaldos() {
+            const icone = document.getElementById('icone-olho');
+            const elementos = document.querySelectorAll('.balance-sensivel, .account-balance');
+            if (saldosOcultos) {
+                elementos.forEach(el => { el.classList.add('saldo-oculto'); el.classList.remove('saldo-visivel'); });
+                if (icone) { icone.className = 'fas fa-eye-slash'; }
+            } else {
+                elementos.forEach(el => { el.classList.remove('saldo-oculto'); el.classList.add('saldo-visivel'); });
+                if (icone) { icone.className = 'fas fa-eye'; }
+            }
+        }
+
+        // Observa mudanças no DOM para aplicar a classe nos saldos renderizados dinamicamente
+        const observer = new MutationObserver(() => { aplicarVisibilidadeSaldos(); });
+        observer.observe(document.body, { childList: true, subtree: true, attributes: false });
+
+        // ─── SUGESTÃO AO SALVAR RECEITA ──────────────────────────────────
+        function mostrarSugestaoReceita(valor, descricao) {
+            ultimaReceitaValor = valor;
+            ultimaReceitaDesc = descricao;
+
+            const pct10 = valor * 0.10;
+            const pct20 = valor * 0.20;
+            const pct30 = valor * 0.30;
+            const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+            const titulo = document.getElementById('sugestao-receita-titulo');
+            const subtitulo = document.getElementById('sugestao-receita-subtitulo');
+            const texto = document.getElementById('sugestao-receita-texto');
+            const percentuais = document.getElementById('sugestao-receita-percentuais');
+
+            if (titulo) titulo.textContent = `✅ ${descricao || 'Receita'} registrada!`;
+            if (subtitulo) subtitulo.textContent = `Seu assistente financeiro tem uma sugestão para você 💡`;
+            if (texto) texto.innerHTML = `
+                <strong>🎉 Parabéns pela receita de ${fmt(valor)}!</strong><br><br>
+                Especialistas em finanças recomendam que você destine <strong>pelo menos 10% a 20% de toda receita</strong> para a sua <em>Reserva de Emergência</em> ou investimentos.<br><br>
+                Isso cria um <strong>colchão financeiro</strong> que protege você de imprevistos sem precisar recorrer a empréstimos ou cartão de crédito.<br><br>
+                Escolha um percentual abaixo para ver quanto guardar:
+            `;
+            if (percentuais) percentuais.innerHTML = `
+                <div class="sugestao-pct-card" onclick="FinancaPro.confirmarInvestimento(${pct10})">
+                    <div class="sugestao-pct-num">10%</div>
+                    <div style="font-weight:700;color:var(--dark);font-size:0.9rem;">${fmt(pct10)}</div>
+                    <div class="sugestao-pct-label">Conservador</div>
+                </div>
+                <div class="sugestao-pct-card" onclick="FinancaPro.confirmarInvestimento(${pct20})" style="border-color:var(--primary);">
+                    <div class="sugestao-pct-num">20%</div>
+                    <div style="font-weight:700;color:var(--dark);font-size:0.9rem;">${fmt(pct20)}</div>
+                    <div class="sugestao-pct-label">⭐ Recomendado</div>
+                </div>
+                <div class="sugestao-pct-card" onclick="FinancaPro.confirmarInvestimento(${pct30})">
+                    <div class="sugestao-pct-num">30%</div>
+                    <div style="font-weight:700;color:var(--dark);font-size:0.9rem;">${fmt(pct30)}</div>
+                    <div class="sugestao-pct-label">Arrojado</div>
+                </div>
+            `;
+
+            const overlay = document.getElementById('overlay-sugestao-receita');
+            const sheet = document.getElementById('sheet-sugestao-receita');
+            if (overlay) { overlay.style.display = 'flex'; }
+            if (sheet) { setTimeout(() => sheet.classList.add('active'), 50); }
+        }
+
+        function confirmarInvestimento(valor) {
+            document.getElementById('overlay-sugestao-receita').style.display = 'none';
+            document.getElementById('sheet-sugestao-receita').classList.remove('active');
+            setTimeout(() => {
+                UI.openNewTransaction('investment');
+                setTimeout(() => {
+                    const amountEl = document.getElementById('t-amount');
+                    const descEl = document.getElementById('t-description');
+                    if (amountEl) { amountEl.value = valor.toFixed(2).replace('.', ','); }
+                    if (descEl) { descEl.value = 'Reserva de Emergência'; }
+                }, 300);
+            }, 400);
+        }
+
+        function abrirInvestimentoSugerido() {
+            document.getElementById('overlay-sugestao-receita').style.display = 'none';
+            document.getElementById('sheet-sugestao-receita').classList.remove('active');
+            setTimeout(() => { UI.openNewTransaction('investment'); }, 400);
+        }
+
+        // ─── SUGESTÃO AO SALVAR DESPESA ──────────────────────────────────
+        const DICAS_POR_CATEGORIA = {
+            alimentacao: [
+                { icon:'🛒', texto:'Faça uma lista de compras antes de ir ao mercado. Isso reduz compras por impulso em até 30%.' },
+                { icon:'🍱', texto:'Preparar marmitas em casa pode economizar mais de R$ 500/mês comparado a comer fora todos os dias.' },
+                { icon:'💡', texto:'Compre frutas e verduras no sacolão ou feira livre — até 50% mais barato que supermercados.' },
+            ],
+            transporte: [
+                { icon:'🚗', texto:'Calcule o custo real do carro: parcelas + combustível + manutenção + seguro. Aplicativos podem ser mais baratos.' },
+                { icon:'🚌', texto:'O transporte público economiza em média R$ 600-1.200/mês em relação a manter um carro próprio.' },
+                { icon:'⛽', texto:'Evite abastecer com o tanque perto de vazio — abastecimentos frequentes custam mais. Abasteça sempre acima da metade.' },
+            ],
+            lazer: [
+                { icon:'🎬', texto:'Combine assinaturas de streaming com familiares/amigos. Um plano família divide o custo entre 4-6 pessoas.' },
+                { icon:'📅', texto:'Pesquise eventos gratuitos na sua cidade. Maceió tem diversas opções culturais e de lazer sem custo.' },
+                { icon:'🎮', texto:'Jogos usados, bibliotecas públicas, museus gratuitos e trilhas são opções de lazer com custo zero ou baixíssimo.' },
+            ],
+            saude: [
+                { icon:'🏥', texto:'Consultas e exames pelo SUS são gratuitos. UPAs e UBSs oferecem atendimento sem custo.' },
+                { icon:'💊', texto:'Sempre peça o genérico na farmácia — mesma eficácia, até 80% mais barato que o de marca.' },
+                { icon:'🏃', texto:'Exercícios ao ar livre são gratuitos e tão eficazes quanto academia. Parques e praias em Maceió são perfeitos.' },
+            ],
+            educacao: [
+                { icon:'📚', texto:'Plataformas como Coursera, Khan Academy e YouTube oferecem cursos gratuitos de altíssima qualidade.' },
+                { icon:'📖', texto:'Bibliotecas públicas têm acervo digital e físico gratuito. A app Kindle Unlimited custa menos de R$ 20/mês com acesso a milhares de livros.' },
+                { icon:'🎓', texto:'ProUni e FIES oferecem bolsas e financiamento para ensino superior. Pesquise as datas de inscrição.' },
+            ],
+            moradia: [
+                { icon:'💡', texto:'Pequenas trocas economizam muito: LED consome 80% menos energia que lâmpadas incandescentes.' },
+                { icon:'🚿', texto:'Reduzir o banho em 5 minutos pode economizar mais de R$ 50/mês na conta de água e energia.' },
+                { icon:'📱', texto:'Negocie seu plano de internet, TV e telefone a cada 12 meses. Provedores locais costumam ser mais baratos.' },
+            ],
+        };
+
+        function mostrarSugestaoDespesa(valor, categoria) {
+            ultimaDespesaValor = valor;
+            ultimaDespesaCategoria = categoria;
+
+            const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            const texto = document.getElementById('sugestao-despesa-texto');
+            const dicas = document.getElementById('sugestao-despesa-dicas');
+
+            // Encontra dicas da categoria
+            let catKey = 'alimentacao';
+            if (categoria) {
+                const c = categoria.toLowerCase();
+                if (c.includes('transp') || c.includes('carro') || c.includes('comb')) catKey = 'transporte';
+                else if (c.includes('lazer') || c.includes('entret') || c.includes('hobby')) catKey = 'lazer';
+                else if (c.includes('saude') || c.includes('saúde') || c.includes('medic') || c.includes('farm')) catKey = 'saude';
+                else if (c.includes('educ') || c.includes('curso') || c.includes('escola')) catKey = 'educacao';
+                else if (c.includes('alug') || c.includes('mora') || c.includes('casa') || c.includes('conta')) catKey = 'moradia';
+                else if (c.includes('alim') || c.includes('super') || c.includes('restaur') || c.includes('comida')) catKey = 'alimentacao';
+            }
+
+            const dicasCategoria = DICAS_POR_CATEGORIA[catKey] || DICAS_POR_CATEGORIA.alimentacao;
+
+            if (texto) texto.innerHTML = `
+                Você gastou <strong>${fmt(valor)}</strong> com <em>${categoria || 'esta despesa'}</em>.<br><br>
+                Seu assistente financeiro separou <strong>dicas personalizadas</strong> para você gastar menos nessa categoria sem abrir mão da qualidade de vida:
+            `;
+
+            if (dicas) dicas.innerHTML = dicasCategoria.map(d => `
+                <div class="dica-economia">
+                    <div class="dica-economia-icon">${d.icon}</div>
+                    <div class="dica-economia-texto">${d.texto}</div>
+                </div>
+            `).join('');
+
+            const overlay = document.getElementById('overlay-sugestao-despesa');
+            const sheet = document.getElementById('sheet-sugestao-despesa');
+            if (overlay) { overlay.style.display = 'flex'; }
+            if (sheet) { setTimeout(() => sheet.classList.add('active'), 50); }
+        }
+
+        // ─── EDUCAÇÃO FINANCEIRA ──────────────────────────────────────────
+        function renderEducation() {
+            todosConteudos = [...CONTEUDOS];
+            eduCategoria = 'all';
+            // Reset botões
+            document.querySelectorAll('.edu-cat-btn').forEach(b => {
+                b.style.background = 'var(--surface)';
+                b.style.color = 'var(--secondary)';
+                b.style.borderColor = 'var(--border)';
+            });
+            const btnAll = document.querySelector('.edu-cat-btn[data-cat="all"]');
+            if (btnAll) { btnAll.style.background = 'var(--primary)'; btnAll.style.color = 'white'; btnAll.style.borderColor = 'var(--primary)'; }
+
+            // Busca dica personalizada IA
+            gerarDicaPersonalizadaIA();
+            renderizarConteudos(todosConteudos);
+        }
+
+        function filterEdu(cat, btn) {
+            eduCategoria = cat;
+            document.querySelectorAll('.edu-cat-btn').forEach(b => {
+                b.style.background = 'var(--surface)';
+                b.style.color = 'var(--secondary)';
+                b.style.borderColor = 'var(--border)';
+            });
+            if (btn) { btn.style.background = 'var(--primary)'; btn.style.color = 'white'; btn.style.borderColor = 'var(--primary)'; }
+            const filtrados = cat === 'all' ? CONTEUDOS : CONTEUDOS.filter(c => c.cat === cat);
+            renderizarConteudos(filtrados);
+        }
+
+        function renderizarConteudos(lista) {
+            const el = document.getElementById('education-list');
+            if (!el) return;
+            if (lista.length === 0) {
+                el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--secondary);"><i class="fas fa-search" style="font-size:2rem;margin-bottom:12px;display:block;opacity:0.3;"></i>Nenhum conteúdo encontrado.</div>`;
+                return;
+            }
+            el.innerHTML = lista.map(c => `
+                <div class="edu-card" onclick="FinancaPro.abrirConteudo(${c.id})" style="border-top-color:${c.cor};">
+                    <div class="edu-card-tag" style="background:${c.tagBg};color:${c.cor};">${c.emoji} ${c.tag}</div>
+                    <div class="edu-card-titulo">${c.titulo}</div>
+                    <div class="edu-card-desc">${c.desc}</div>
+                    <div class="edu-card-rodape">
+                        <span><i class="fas fa-clock" style="margin-right:4px;"></i>${c.tempo} de leitura</span>
+                        <span class="edu-card-leitura"><i class="fas fa-book-open"></i> Ler agora</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function abrirConteudo(id) {
+            const conteudo = CONTEUDOS.find(c => c.id === id);
+            if (!conteudo) return;
+
+            // Cria um modal inline
+            const existente = document.getElementById('modal-edu-conteudo');
+            if (existente) existente.remove();
+
+            const modal = document.createElement('div');
+            modal.id = 'modal-edu-conteudo';
+            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;display:flex;align-items:flex-end;';
+            modal.innerHTML = `
+                <div style="background:var(--surface);border-radius:20px 20px 0 0;max-height:85vh;overflow-y:auto;width:100%;padding:24px 20px 40px;">
+                    <div style="width:40px;height:4px;background:#cbd5e1;border-radius:2px;margin:0 auto 20px;"></div>
+                    <div style="display:inline-block;padding:4px 12px;border-radius:10px;font-size:0.75rem;font-weight:700;background:${conteudo.tagBg};color:${conteudo.cor};margin-bottom:10px;">${conteudo.emoji} ${conteudo.tag}</div>
+                    <h2 style="font-size:1.1rem;font-weight:800;color:var(--dark);margin-bottom:6px;line-height:1.4;">${conteudo.titulo}</h2>
+                    <div style="font-size:0.78rem;color:var(--secondary);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                        <span><i class="fas fa-clock"></i> ${conteudo.tempo} de leitura</span>
+                        <span>•</span>
+                        <span>${conteudo.fonte}</span>
+                    </div>
+                    <div style="font-size:0.9rem;line-height:1.7;color:var(--dark);" class="edu-conteudo-body">${conteudo.conteudo}</div>
+                    <button onclick="document.getElementById('modal-edu-conteudo').remove()" style="width:100%;margin-top:20px;padding:14px;background:var(--primary);color:white;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;">Fechar</button>
+                </div>
+            `;
+            // Estilo para o conteudo interno
+            const estiloEdu = document.createElement('style');
+            estiloEdu.textContent = '.edu-conteudo-body h3{font-size:1rem;font-weight:700;margin:16px 0 8px;color:var(--dark);}.edu-conteudo-body ul,.edu-conteudo-body ol{padding-left:20px;margin:8px 0;}.edu-conteudo-body li{margin-bottom:6px;}.edu-conteudo-body p{margin-bottom:10px;}.edu-conteudo-body strong{color:var(--dark);}';
+            modal.querySelector('.edu-conteudo-body').parentElement.prepend(estiloEdu);
+            modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+            document.body.appendChild(modal);
+        }
+
+        // ─── PERGUNTAR AO ASSISTENTE (IA via Anthropic API) ──────────────
+        async function askAdvisor() {
+            const input = document.getElementById('edu-pergunta');
+            const resposta = document.getElementById('edu-resposta-ia');
+            if (!input || !resposta) return;
+            const pergunta = input.value.trim();
+            if (!pergunta) return;
+
+            resposta.style.display = 'block';
+            resposta.innerHTML = '<div class="edu-resposta-loading"><i class="fas fa-spinner fa-spin"></i> Consultando seu assistente financeiro...</div>';
+
+            try {
+                // Obtém contexto financeiro do usuário
+                let contexto = '';
+                try {
+                    const txs = (window.FinanceApp && window.FinanceApp.data) ? window.FinanceApp.data.transactions : [];
+                    const accs = (window.FinanceApp && window.FinanceApp.data) ? window.FinanceApp.data.accounts : [];
+                    const now = new Date();
+                    const range = window.Utils ? window.Utils.getMonthRange(now.getMonth(), now.getFullYear()) : { start: '', end: '' };
+                    const txMes = txs.filter(t => t.date >= range.start && t.date <= range.end && t.status === 'cleared');
+                    const receitas = txMes.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                    const despesas = txMes.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+                    const saldo = accs.reduce((s, a) => s + a.balance, 0);
+                    const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+                    contexto = `Dados financeiros do usuário este mês: Receitas: ${fmt(receitas)}, Despesas: ${fmt(despesas)}, Saldo total: ${fmt(saldo)}.`;
+                } catch(e) {}
+
+                const res = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 1000,
+                        system: `Você é o assistente financeiro pessoal do FinançaPro, um app de controle financeiro brasileiro. Responda sempre em português do Brasil. Seja direto, prático, didático e amigável. Use emojis para facilitar a leitura. Formate a resposta com parágrafos curtos e listas quando necessário. Não use markdown complexo. ${contexto} Foque em educação financeira aplicada ao contexto brasileiro.`,
+                        messages: [{ role: 'user', content: pergunta }]
+                    })
+                });
+                const data = await res.json();
+                const texto = data.content && data.content[0] ? data.content[0].text : 'Não foi possível obter uma resposta. Tente novamente.';
+                resposta.innerHTML = texto.replace(/\n/g, '<br>');
+                input.value = '';
+            } catch (err) {
+                resposta.innerHTML = '⚠️ Não foi possível conectar ao assistente. Verifique sua conexão e tente novamente.';
+            }
+        }
+
+        // ─── DICA PERSONALIZADA IA NA EDUCAÇÃO ───────────────────────────
+        async function gerarDicaPersonalizadaIA() {
+            // Só gera a dica se tiver dados de transações
+            try {
+                const txs = (window.FinanceApp && window.FinanceApp.data) ? window.FinanceApp.data.transactions : [];
+                if (txs.length === 0) return;
+            } catch(e) { return; }
+        }
+
+        // ─── INTERCEPTA O SAVE DE TRANSAÇÃO ──────────────────────────────
+        // Espera o FinanceApp carregar e então sobrescreve o save
+        function patchTransactionSave() {
+            if (!window.FinanceApp || !window.FinanceApp.transaction) {
+                setTimeout(patchTransactionSave, 500);
+                return;
+            }
+            const originalSave = window.FinanceApp.transaction.save;
+            window.FinanceApp.transaction.save = async function(e) {
+                // Captura tipo e valor ANTES de salvar
+                const tipoEl = document.getElementById('t-type');
+                const valorEl = document.getElementById('t-amount');
+                const descEl = document.getElementById('t-description');
+                const categoriaEl = document.getElementById('t-category');
+                const tipo = tipoEl ? tipoEl.value : '';
+                const valor = valorEl && window.Utils ? window.Utils.parseCurrency(valorEl.value) : 0;
+                const descricao = descEl ? descEl.value : '';
+                let categoriaNome = '';
+                if (categoriaEl && window.FinanceApp && window.FinanceApp.data) {
+                    const catId = categoriaEl.value;
+                    const cat = window.FinanceApp.data.categories.find(c => c.id === catId);
+                    categoriaNome = cat ? cat.name : '';
+                }
+
+                // Chama o save original
+                await originalSave.call(this, e);
+
+                // Mostra sugestão após salvar (só para novas transações, não edições)
+                const idEl = document.getElementById('t-id');
+                const isNova = !idEl || !idEl.value;
+                if (isNova && valor > 0) {
+                    if (tipo === 'income') {
+                        setTimeout(() => mostrarSugestaoReceita(valor, descricao), 600);
+                    } else if (tipo === 'expense') {
+                        setTimeout(() => mostrarSugestaoDespesa(valor, categoriaNome), 600);
+                    }
+                }
+            };
+        }
+
+        // ─── INIT ─────────────────────────────────────────────────────────
+        function init() {
+            // Carrega preferência de saldo oculto (padrão: oculto)
+            const pref = localStorage.getItem('fp_saldos_ocultos');
+            saldosOcultos = pref === null ? true : pref === '1';
+            setTimeout(aplicarVisibilidadeSaldos, 800);
+
+            // Patch do save de transação
+            patchTransactionSave();
+        }
+
+        // API pública
+        window.FinancaPro = {
+            toggleSaldos,
+            mostrarSugestaoReceita,
+            mostrarSugestaoDespesa,
+            confirmarInvestimento,
+            abrirInvestimentoSugerido,
+            renderEducation,
+            filterEdu,
+            abrirConteudo,
+            askAdvisor,
+        };
+
+        // Inicializa após o DOM estar pronto
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            setTimeout(init, 200);
+        }
+
+    })();
     </script>
 </body>
 </html>
