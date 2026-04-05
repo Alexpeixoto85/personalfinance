@@ -8619,82 +8619,279 @@
             if (sheet) { setTimeout(() => sheet.classList.add('active'), 50); }
         }
 
+        // ─── WIKIPEDIA API ────────────────────────────────────────────────
+        // Endpoint público da Wikipédia em português — sem autenticação, sem chave
+        const WIKI_API = 'https://pt.wikipedia.org/w/api.php';
+
+        // Termos financeiros mapeados por categoria para busca inicial
+        const WIKI_TERMOS_CATEGORIA = {
+            all:         ['Educação financeira', 'Finanças pessoais', 'Investimento', 'Orçamento doméstico', 'Poupança', 'Juros compostos'],
+            investimento:['Tesouro Direto', 'Fundo de investimento imobiliário', 'Ação (finanças)', 'Renda fixa', 'Bolsa de valores', 'Diversificação de investimentos'],
+            poupanca:    ['Poupança', 'Reserva financeira', 'Fundo de emergência', 'Planejamento financeiro pessoal', 'Orçamento pessoal', 'Educação financeira'],
+            dividas:     ['Dívida', 'Juros', 'Crédito rotativo', 'Superendividamento', 'Score de crédito', 'Renegociação de dívidas'],
+            planejamento:['Planejamento financeiro', 'Orçamento doméstico', 'Aposentadoria', 'Previdência privada', 'PGBL', 'VGBL'],
+            empreender:  ['Microempreendedor Individual', 'Fluxo de caixa', 'Simples Nacional', 'Precificação', 'Capital de giro', 'Empreendedorismo'],
+        };
+
+        // Cores e emojis por categoria
+        const WIKI_CAT_META = {
+            all:          { cor:'#10b981', tagBg:'#d1fae5', emoji:'📚', tag:'Geral' },
+            investimento: { cor:'#3b82f6', tagBg:'#dbeafe', emoji:'📈', tag:'Investimentos' },
+            poupanca:     { cor:'#10b981', tagBg:'#d1fae5', emoji:'💰', tag:'Poupança' },
+            dividas:      { cor:'#ef4444', tagBg:'#fee2e2', emoji:'💳', tag:'Dívidas' },
+            planejamento: { cor:'#8b5cf6', tagBg:'#f3e8ff', emoji:'📋', tag:'Planejamento' },
+            empreender:   { cor:'#f59e0b', tagBg:'#fef3c7', emoji:'🚀', tag:'Empreender' },
+        };
+
+        // Cache para não rebuscar o mesmo termo
+        const wikiCache = {};
+
+        // Busca resumo de um artigo da Wikipédia em PT
+        async function wikiResumo(titulo) {
+            if (wikiCache[titulo]) return wikiCache[titulo];
+            const url = `${WIKI_API}?action=query&titles=${encodeURIComponent(titulo)}&prop=extracts|info|pageimages&exintro=true&explaintext=true&inprop=url&pithumbsize=200&format=json&origin=*`;
+            const res = await fetch(url);
+            const data = await res.json();
+            const pages = data.query.pages;
+            const page = Object.values(pages)[0];
+            if (!page || page.missing !== undefined) return null;
+            const resultado = {
+                titulo: page.title,
+                resumo: (page.extract || '').slice(0, 600).trim(),
+                url: page.fullurl || `https://pt.wikipedia.org/wiki/${encodeURIComponent(page.title)}`,
+                thumb: page.thumbnail ? page.thumbnail.source : null,
+                pageid: page.pageid,
+            };
+            wikiCache[titulo] = resultado;
+            return resultado;
+        }
+
+        // Busca artigo completo (mais seções) da Wikipédia
+        async function wikiConteudoCompleto(titulo) {
+            const url = `${WIKI_API}?action=query&titles=${encodeURIComponent(titulo)}&prop=extracts|info&exsectionformat=plain&explaintext=true&inprop=url&format=json&origin=*`;
+            const res = await fetch(url);
+            const data = await res.json();
+            const page = Object.values(data.query.pages)[0];
+            if (!page || page.missing !== undefined) return null;
+            return {
+                titulo: page.title,
+                conteudo: page.extract || '',
+                url: page.fullurl || `https://pt.wikipedia.org/wiki/${encodeURIComponent(page.title)}`,
+            };
+        }
+
+        // Busca artigos relacionados a um tema (search)
+        async function wikiSearch(query, limit = 8) {
+            const url = `${WIKI_API}?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=${limit}&srprop=snippet|titlesnippet&format=json&origin=*`;
+            const res = await fetch(url);
+            const data = await res.json();
+            return (data.query && data.query.search) ? data.query.search : [];
+        }
+
         // ─── EDUCAÇÃO FINANCEIRA ──────────────────────────────────────────
-        function renderEducation() {
-            todosConteudos = [...CONTEUDOS];
+        async function renderEducation() {
             eduCategoria = 'all';
-            // Reset botões
-            document.querySelectorAll('.edu-cat-btn').forEach(b => {
-                b.style.background = 'var(--surface)';
-                b.style.color = 'var(--secondary)';
-                b.style.borderColor = 'var(--border)';
-            });
-            const btnAll = document.querySelector('.edu-cat-btn[data-cat="all"]');
-            if (btnAll) { btnAll.style.background = 'var(--primary)'; btnAll.style.color = 'white'; btnAll.style.borderColor = 'var(--primary)'; }
-
-            // Busca dica personalizada IA
-            gerarDicaPersonalizadaIA();
-            renderizarConteudos(todosConteudos);
-        }
-
-        function filterEdu(cat, btn) {
-            eduCategoria = cat;
-            document.querySelectorAll('.edu-cat-btn').forEach(b => {
-                b.style.background = 'var(--surface)';
-                b.style.color = 'var(--secondary)';
-                b.style.borderColor = 'var(--border)';
-            });
-            if (btn) { btn.style.background = 'var(--primary)'; btn.style.color = 'white'; btn.style.borderColor = 'var(--primary)'; }
-            const filtrados = cat === 'all' ? CONTEUDOS : CONTEUDOS.filter(c => c.cat === cat);
-            renderizarConteudos(filtrados);
-        }
-
-        function renderizarConteudos(lista) {
+            _resetCatBtns('all');
             const el = document.getElementById('education-list');
             if (!el) return;
-            if (lista.length === 0) {
-                el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--secondary);"><i class="fas fa-search" style="font-size:2rem;margin-bottom:12px;display:block;opacity:0.3;"></i>Nenhum conteúdo encontrado.</div>`;
+
+            // Mostra loading
+            el.innerHTML = `
+                <div style="text-align:center;padding:32px 20px;color:var(--secondary);">
+                    <i class="fas fa-spinner fa-spin" style="font-size:2rem;margin-bottom:10px;display:block;color:var(--primary);opacity:0.7;"></i>
+                    <div style="font-weight:600;">Carregando artigos da Wikipédia...</div>
+                    <div style="font-size:0.8rem;margin-top:4px;">Buscando conteúdos financeiros em português</div>
+                </div>`;
+
+            await _carregarWikiArtigos('all');
+        }
+
+        async function filterEdu(cat, btn) {
+            eduCategoria = cat;
+            _resetCatBtns(cat);
+            const el = document.getElementById('education-list');
+            if (!el) return;
+
+            el.innerHTML = `
+                <div style="text-align:center;padding:32px 20px;color:var(--secondary);">
+                    <i class="fas fa-spinner fa-spin" style="font-size:2rem;margin-bottom:10px;display:block;color:var(--primary);opacity:0.7;"></i>
+                    <div style="font-weight:600;">Buscando na Wikipédia...</div>
+                </div>`;
+
+            await _carregarWikiArtigos(cat);
+        }
+
+        function _resetCatBtns(catAtiva) {
+            document.querySelectorAll('.edu-cat-btn').forEach(b => {
+                b.style.background = 'var(--surface)';
+                b.style.color = 'var(--secondary)';
+                b.style.borderColor = 'var(--border)';
+            });
+            const btn = document.querySelector(`.edu-cat-btn[data-cat="${catAtiva}"]`);
+            if (btn) { btn.style.background = 'var(--primary)'; btn.style.color = 'white'; btn.style.borderColor = 'var(--primary)'; }
+        }
+
+        async function _carregarWikiArtigos(cat) {
+            const el = document.getElementById('education-list');
+            if (!el) return;
+            const termos = WIKI_TERMOS_CATEGORIA[cat] || WIKI_TERMOS_CATEGORIA.all;
+            const meta = WIKI_CAT_META[cat] || WIKI_CAT_META.all;
+
+            // Busca em paralelo (todos os termos da categoria)
+            const resultados = await Promise.allSettled(termos.map(t => wikiResumo(t)));
+            const artigos = resultados
+                .filter(r => r.status === 'fulfilled' && r.value)
+                .map(r => r.value);
+
+            // Também busca artigos da curadoria interna do app (CONTEUDOS)
+            const curadoria = cat === 'all' ? CONTEUDOS : CONTEUDOS.filter(c => c.cat === cat);
+
+            if (artigos.length === 0 && curadoria.length === 0) {
+                el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--secondary);"><i class="fas fa-wifi" style="font-size:2rem;margin-bottom:12px;display:block;opacity:0.3;"></i>Sem conexão ou nenhum artigo encontrado.</div>`;
                 return;
             }
-            el.innerHTML = lista.map(c => `
+
+            // Renderiza: primeiro artigos da Wikipédia, depois curadoria interna
+            let html = '';
+
+            if (artigos.length > 0) {
+                html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                    <img src="https://pt.wikipedia.org/static/images/mobile/copyright/wikipedia-wordmark-pt.svg" alt="Wikipedia" style="height:18px;opacity:0.7;">
+                    <span style="font-size:0.78rem;color:var(--secondary);font-weight:600;">Artigos em tempo real</span>
+                </div>`;
+                html += artigos.map(a => _cardWiki(a, meta)).join('');
+            }
+
+            if (curadoria.length > 0) {
+                html += `<div style="display:flex;align-items:center;gap:8px;margin:16px 0 10px;">
+                    <i class="fas fa-star" style="color:var(--primary);font-size:0.85rem;"></i>
+                    <span style="font-size:0.78rem;color:var(--secondary);font-weight:600;">Guias FinançaPro</span>
+                </div>`;
+                html += curadoria.map(c => _cardCuradoria(c)).join('');
+            }
+
+            el.innerHTML = html;
+        }
+
+        function _cardWiki(artigo, meta) {
+            const resumoCurto = artigo.resumo.length > 160 ? artigo.resumo.slice(0, 160) + '…' : artigo.resumo;
+            const thumb = artigo.thumb ? `<img src="${artigo.thumb}" alt="${artigo.titulo}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;flex-shrink:0;">` : `<div style="width:56px;height:56px;border-radius:8px;background:${meta.tagBg};display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0;">${meta.emoji}</div>`;
+            return `
+                <div class="edu-card" onclick="FinancaPro.abrirWikiArtigo('${encodeURIComponent(artigo.titulo)}','${encodeURIComponent(artigo.url)}')" style="border-top-color:${meta.cor};">
+                    <div style="display:flex;gap:12px;align-items:flex-start;">
+                        ${thumb}
+                        <div style="flex:1;min-width:0;">
+                            <div class="edu-card-tag" style="background:${meta.tagBg};color:${meta.cor};">${meta.emoji} ${meta.tag} · Wikipédia</div>
+                            <div class="edu-card-titulo">${artigo.titulo}</div>
+                            <div class="edu-card-desc">${resumoCurto || 'Artigo disponível na Wikipédia.'}</div>
+                        </div>
+                    </div>
+                    <div class="edu-card-rodape" style="margin-top:10px;">
+                        <span style="display:flex;align-items:center;gap:4px;font-size:0.73rem;color:var(--secondary);"><i class="fas fa-globe"></i> Wikipédia PT</span>
+                        <span class="edu-card-leitura"><i class="fas fa-book-open"></i> Ler artigo</span>
+                    </div>
+                </div>`;
+        }
+
+        function _cardCuradoria(c) {
+            return `
                 <div class="edu-card" onclick="FinancaPro.abrirConteudo(${c.id})" style="border-top-color:${c.cor};">
-                    <div class="edu-card-tag" style="background:${c.tagBg};color:${c.cor};">${c.emoji} ${c.tag}</div>
+                    <div class="edu-card-tag" style="background:${c.tagBg};color:${c.cor};">${c.emoji} ${c.tag} · Guia</div>
                     <div class="edu-card-titulo">${c.titulo}</div>
                     <div class="edu-card-desc">${c.desc}</div>
                     <div class="edu-card-rodape">
                         <span><i class="fas fa-clock" style="margin-right:4px;"></i>${c.tempo} de leitura</span>
                         <span class="edu-card-leitura"><i class="fas fa-book-open"></i> Ler agora</span>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
         }
 
-        function abrirConteudo(id) {
-            const conteudo = CONTEUDOS.find(c => c.id === id);
-            if (!conteudo) return;
+        // Abre artigo completo da Wikipédia em modal
+        async function abrirWikiArtigo(tituloEnc, urlEnc) {
+            const titulo = decodeURIComponent(tituloEnc);
+            const url = decodeURIComponent(urlEnc);
 
-            // Cria um modal inline
             const existente = document.getElementById('modal-edu-conteudo');
             if (existente) existente.remove();
 
             const modal = document.createElement('div');
             modal.id = 'modal-edu-conteudo';
-            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;display:flex;align-items:flex-end;';
+            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:300;display:flex;align-items:flex-end;';
+            modal.innerHTML = `
+                <div style="background:var(--surface);border-radius:20px 20px 0 0;max-height:88vh;overflow-y:auto;width:100%;padding:24px 20px 40px;">
+                    <div style="width:40px;height:4px;background:#cbd5e1;border-radius:2px;margin:0 auto 20px;"></div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <img src="https://pt.wikipedia.org/static/images/mobile/copyright/wikipedia-wordmark-pt.svg" alt="Wikipedia" style="height:16px;opacity:0.6;">
+                        <span style="font-size:0.75rem;color:var(--secondary);">Artigo em português</span>
+                    </div>
+                    <h2 id="wiki-modal-titulo" style="font-size:1.1rem;font-weight:800;color:var(--dark);margin-bottom:12px;line-height:1.4;">${titulo}</h2>
+                    <div id="wiki-modal-corpo" style="font-size:0.88rem;line-height:1.75;color:var(--dark);">
+                        <div style="text-align:center;padding:30px 0;">
+                            <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;color:var(--primary);opacity:0.7;"></i>
+                            <div style="margin-top:8px;color:var(--secondary);">Carregando artigo...</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:20px;display:flex;gap:8px;">
+                        <a href="${url}" target="_blank" rel="noopener" style="flex:1;padding:13px;background:#f1f5f9;color:var(--dark);border:none;border-radius:12px;font-size:0.9rem;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;"><i class="fas fa-external-link-alt"></i> Abrir na Wikipédia</a>
+                        <button onclick="document.getElementById('modal-edu-conteudo').remove()" style="flex:1;padding:13px;background:var(--primary);color:white;border:none;border-radius:12px;font-size:0.9rem;font-weight:700;cursor:pointer;">Fechar</button>
+                    </div>
+                </div>`;
+            modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+            document.body.appendChild(modal);
+
+            // Busca conteúdo completo
+            try {
+                const dados = await wikiConteudoCompleto(titulo);
+                const corpoEl = document.getElementById('wiki-modal-corpo');
+                if (!corpoEl) return;
+                if (!dados) {
+                    corpoEl.innerHTML = `<p style="color:var(--secondary);">Não foi possível carregar o artigo completo. <a href="${url}" target="_blank" style="color:var(--primary);font-weight:600;">Abra na Wikipédia</a>.</p>`;
+                    return;
+                }
+                // Formata o conteúdo: divide em parágrafos e seções
+                const linhas = dados.conteudo.split('\n').filter(l => l.trim().length > 0);
+                let conteudoHtml = '';
+                for (const linha of linhas) {
+                    if (linha.startsWith('==') && linha.endsWith('==')) {
+                        const titulo_sec = linha.replace(/=+/g, '').trim();
+                        conteudoHtml += `<h3 style="font-size:0.95rem;font-weight:700;color:var(--dark);margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border);">${titulo_sec}</h3>`;
+                    } else {
+                        conteudoHtml += `<p style="margin-bottom:10px;">${linha}</p>`;
+                    }
+                    // Limita conteúdo para não sobrecarregar o modal
+                    if (conteudoHtml.length > 8000) {
+                        conteudoHtml += `<p style="color:var(--secondary);font-style:italic;">... artigo continua na Wikipédia.</p>`;
+                        break;
+                    }
+                }
+                corpoEl.innerHTML = conteudoHtml || `<p>Conteúdo não disponível. <a href="${url}" target="_blank" style="color:var(--primary);font-weight:600;">Leia na Wikipédia.</a></p>`;
+            } catch(err) {
+                const corpoEl = document.getElementById('wiki-modal-corpo');
+                if (corpoEl) corpoEl.innerHTML = `<p style="color:var(--secondary);">Erro ao carregar. <a href="${url}" target="_blank" style="color:var(--primary);font-weight:600;">Abra na Wikipédia</a>.</p>`;
+            }
+        }
+
+        // Abre conteúdo interno (curadoria FinançaPro)
+        function abrirConteudo(id) {
+            const conteudo = CONTEUDOS.find(c => c.id === id);
+            if (!conteudo) return;
+            const existente = document.getElementById('modal-edu-conteudo');
+            if (existente) existente.remove();
+            const modal = document.createElement('div');
+            modal.id = 'modal-edu-conteudo';
+            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:300;display:flex;align-items:flex-end;';
             modal.innerHTML = `
                 <div style="background:var(--surface);border-radius:20px 20px 0 0;max-height:85vh;overflow-y:auto;width:100%;padding:24px 20px 40px;">
                     <div style="width:40px;height:4px;background:#cbd5e1;border-radius:2px;margin:0 auto 20px;"></div>
-                    <div style="display:inline-block;padding:4px 12px;border-radius:10px;font-size:0.75rem;font-weight:700;background:${conteudo.tagBg};color:${conteudo.cor};margin-bottom:10px;">${conteudo.emoji} ${conteudo.tag}</div>
+                    <div style="display:inline-block;padding:4px 12px;border-radius:10px;font-size:0.75rem;font-weight:700;background:${conteudo.tagBg};color:${conteudo.cor};margin-bottom:10px;">${conteudo.emoji} ${conteudo.tag} · Guia FinançaPro</div>
                     <h2 style="font-size:1.1rem;font-weight:800;color:var(--dark);margin-bottom:6px;line-height:1.4;">${conteudo.titulo}</h2>
                     <div style="font-size:0.78rem;color:var(--secondary);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
                         <span><i class="fas fa-clock"></i> ${conteudo.tempo} de leitura</span>
-                        <span>•</span>
-                        <span>${conteudo.fonte}</span>
+                        <span>•</span><span>${conteudo.fonte}</span>
                     </div>
                     <div style="font-size:0.9rem;line-height:1.7;color:var(--dark);" class="edu-conteudo-body">${conteudo.conteudo}</div>
                     <button onclick="document.getElementById('modal-edu-conteudo').remove()" style="width:100%;margin-top:20px;padding:14px;background:var(--primary);color:white;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;">Fechar</button>
-                </div>
-            `;
-            // Estilo para o conteudo interno
+                </div>`;
             const estiloEdu = document.createElement('style');
             estiloEdu.textContent = '.edu-conteudo-body h3{font-size:1rem;font-weight:700;margin:16px 0 8px;color:var(--dark);}.edu-conteudo-body ul,.edu-conteudo-body ol{padding-left:20px;margin:8px 0;}.edu-conteudo-body li{margin-bottom:6px;}.edu-conteudo-body p{margin-bottom:10px;}.edu-conteudo-body strong{color:var(--dark);}';
             modal.querySelector('.edu-conteudo-body').parentElement.prepend(estiloEdu);
@@ -8702,7 +8899,7 @@
             document.body.appendChild(modal);
         }
 
-        // ─── PERGUNTAR AO ASSISTENTE (IA via Anthropic API) ──────────────
+        // ─── BUSCA LIVRE NA WIKIPEDIA (campo de pesquisa) ─────────────────
         async function askAdvisor() {
             const input = document.getElementById('edu-pergunta');
             const resposta = document.getElementById('edu-resposta-ia');
@@ -8711,50 +8908,82 @@
             if (!pergunta) return;
 
             resposta.style.display = 'block';
-            resposta.innerHTML = '<div class="edu-resposta-loading"><i class="fas fa-spinner fa-spin"></i> Consultando seu assistente financeiro...</div>';
+            resposta.innerHTML = '<div class="edu-resposta-loading"><i class="fas fa-spinner fa-spin"></i> Buscando na Wikipédia e no Assistente IA...</div>';
 
+            // Busca paralela: Wikipédia + Claude
+            const [wikiResultados, respostaIA] = await Promise.allSettled([
+                _buscaWikipedia(pergunta),
+                _respostaAssistente(pergunta),
+            ]);
+
+            let html = '';
+
+            // Resultado IA
+            if (respostaIA.status === 'fulfilled' && respostaIA.value) {
+                html += `<div style="margin-bottom:14px;">
+                    <div style="font-size:0.72rem;font-weight:700;color:rgba(255,255,255,0.6);margin-bottom:6px;display:flex;align-items:center;gap:5px;"><i class="fas fa-robot"></i> Assistente FinançaPro</div>
+                    <div style="font-size:0.88rem;line-height:1.65;">${respostaIA.value.replace(/\n/g,'<br>')}</div>
+                </div>`;
+            }
+
+            // Resultados da Wikipédia
+            if (wikiResultados.status === 'fulfilled' && wikiResultados.value && wikiResultados.value.length > 0) {
+                html += `<div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:12px;margin-top:4px;">
+                    <div style="font-size:0.72rem;font-weight:700;color:rgba(255,255,255,0.6);margin-bottom:8px;display:flex;align-items:center;gap:5px;"><img src="https://pt.wikipedia.org/static/images/mobile/copyright/wikipedia-wordmark-pt.svg" style="height:12px;opacity:0.6;"> Artigos encontrados</div>
+                    ${wikiResultados.value.slice(0,3).map(r => `
+                        <div onclick="FinancaPro.abrirWikiArtigo('${encodeURIComponent(r.title)}','https://pt.wikipedia.org/wiki/${encodeURIComponent(r.title)}')"
+                            style="background:rgba(255,255,255,0.1);border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;">
+                            <div style="font-weight:700;font-size:0.85rem;margin-bottom:3px;">${r.title}</div>
+                            <div style="font-size:0.78rem;opacity:0.75;">${r.snippet.replace(/<[^>]+>/g,'').slice(0,100)}…</div>
+                        </div>`).join('')}
+                </div>`;
+            }
+
+            if (!html) {
+                html = '⚠️ Nenhum resultado encontrado. Tente outros termos.';
+            }
+
+            resposta.innerHTML = html;
+            input.value = '';
+        }
+
+        async function _buscaWikipedia(query) {
+            return await wikiSearch(query + ' finanças', 4);
+        }
+
+        async function _respostaAssistente(pergunta) {
             try {
-                // Obtém contexto financeiro do usuário
                 let contexto = '';
                 try {
                     const txs = (window.FinanceApp && window.FinanceApp.data) ? window.FinanceApp.data.transactions : [];
                     const accs = (window.FinanceApp && window.FinanceApp.data) ? window.FinanceApp.data.accounts : [];
                     const now = new Date();
-                    const range = window.Utils ? window.Utils.getMonthRange(now.getMonth(), now.getFullYear()) : { start: '', end: '' };
+                    const range = window.Utils ? window.Utils.getMonthRange(now.getMonth(), now.getFullYear()) : { start:'', end:'' };
                     const txMes = txs.filter(t => t.date >= range.start && t.date <= range.end && t.status === 'cleared');
-                    const receitas = txMes.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-                    const despesas = txMes.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-                    const saldo = accs.reduce((s, a) => s + a.balance, 0);
-                    const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
-                    contexto = `Dados financeiros do usuário este mês: Receitas: ${fmt(receitas)}, Despesas: ${fmt(despesas)}, Saldo total: ${fmt(saldo)}.`;
+                    const receitas = txMes.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0);
+                    const despesas = txMes.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0);
+                    const saldo = accs.reduce((s,a) => s+a.balance, 0);
+                    const fmt = v => 'R$ ' + v.toFixed(2).replace('.',',');
+                    contexto = `Dados do usuário este mês: Receitas ${fmt(receitas)}, Despesas ${fmt(despesas)}, Saldo ${fmt(saldo)}.`;
                 } catch(e) {}
-
                 const res = await fetch('https://api.anthropic.com/v1/messages', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({
-                        model: 'claude-sonnet-4-20250514',
-                        max_tokens: 1000,
-                        system: `Você é o assistente financeiro pessoal do FinançaPro, um app de controle financeiro brasileiro. Responda sempre em português do Brasil. Seja direto, prático, didático e amigável. Use emojis para facilitar a leitura. Formate a resposta com parágrafos curtos e listas quando necessário. Não use markdown complexo. ${contexto} Foque em educação financeira aplicada ao contexto brasileiro.`,
-                        messages: [{ role: 'user', content: pergunta }]
+                        model:'claude-sonnet-4-20250514',
+                        max_tokens:600,
+                        system:`Você é o assistente financeiro do FinançaPro (app brasileiro). Responda em português, de forma direta, prática e amigável. Use emojis. Máximo 4 parágrafos curtos. ${contexto}`,
+                        messages:[{role:'user',content:pergunta}]
                     })
                 });
                 const data = await res.json();
-                const texto = data.content && data.content[0] ? data.content[0].text : 'Não foi possível obter uma resposta. Tente novamente.';
-                resposta.innerHTML = texto.replace(/\n/g, '<br>');
-                input.value = '';
-            } catch (err) {
-                resposta.innerHTML = '⚠️ Não foi possível conectar ao assistente. Verifique sua conexão e tente novamente.';
-            }
+                return data.content && data.content[0] ? data.content[0].text : null;
+            } catch(e) { return null; }
         }
 
         // ─── DICA PERSONALIZADA IA NA EDUCAÇÃO ───────────────────────────
         async function gerarDicaPersonalizadaIA() {
-            // Só gera a dica se tiver dados de transações
-            try {
-                const txs = (window.FinanceApp && window.FinanceApp.data) ? window.FinanceApp.data.transactions : [];
-                if (txs.length === 0) return;
-            } catch(e) { return; }
+            // reservado para uso futuro
         }
 
         // ─── INTERCEPTA O SAVE DE TRANSAÇÃO ──────────────────────────────
@@ -8818,6 +9047,7 @@
             renderEducation,
             filterEdu,
             abrirConteudo,
+            abrirWikiArtigo,
             askAdvisor,
         };
 
