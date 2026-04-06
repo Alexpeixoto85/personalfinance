@@ -1522,6 +1522,10 @@
                     <i class="fas fa-chart-line"></i>
                     <span>Investir</span>
                 </div>
+                <div class="quick-action" onclick="UI.openSmartTransferModal()" style="background:linear-gradient(135deg,#eff6ff,#f5f3ff);border:1.5px solid #bfdbfe;">
+                    <i class="fas fa-paper-plane" style="color:var(--investment);"></i>
+                    <span style="color:var(--investment);">Aportar</span>
+                </div>
             </div>
 
             <!-- Renda Média & Projeção Mensal DJ -->
@@ -1623,7 +1627,12 @@
             </div>
             
             <div class="section-title">Transferências
-                <button class="icon-btn" style="background: var(--transfer); color: white; border-radius: 8px;" onclick="UI.openTransferModal()"><i class="fas fa-plus"></i></button>
+                <div style="display:flex;gap:6px;">
+                    <button class="icon-btn" title="Transferência Inteligente (Investimento/Meta)" style="background: linear-gradient(135deg,var(--investment),var(--accent)); color: white; border-radius: 8px; padding:6px 10px; font-size:0.85rem;" onclick="UI.openSmartTransferModal()">
+                        <i class="fas fa-paper-plane"></i> <span style="font-size:0.75rem;font-weight:700;">Inteligente</span>
+                    </button>
+                    <button class="icon-btn" title="Transferência Comum" style="background: var(--transfer); color: white; border-radius: 8px;" onclick="UI.openTransferModal()"><i class="fas fa-plus"></i></button>
+                </div>
             </div>
             <div id="transfer-history">
                 <!-- Histórico de transferências será preenchido aqui -->
@@ -2462,6 +2471,119 @@
             <span><strong>Esta e as próximas</strong><br><small style="font-weight:400;color:var(--secondary);">Remove esta e todas as futuras</small></span>
         </button>
         <button class="btn-block" onclick="UI.closeModals()" style="background:var(--light);color:var(--secondary);margin-top:4px;">Cancelar</button>
+    </div>
+
+    <!-- Modal: Excluir parcela de parcelamento -->
+    <div class="modal-overlay" id="overlay-installment-delete"></div>
+    <div class="modal-sheet" id="sheet-installment-delete">
+        <div class="sheet-handle"></div>
+        <div style="text-align:center; margin-bottom:20px;">
+            <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#fef2f2,#fee2e2);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 4px 12px rgba(239,68,68,0.15);">
+                <i class="fas fa-credit-card" style="color:var(--expense);font-size:1.4rem;"></i>
+            </div>
+            <h3 style="font-size:1.1rem;font-weight:800;color:var(--dark);margin-bottom:6px;">Excluir Parcela</h3>
+            <p id="installment-delete-info" style="font-size:0.85rem;color:var(--secondary);line-height:1.5;">Escolha o que deseja remover:</p>
+        </div>
+
+        <button class="btn-block" id="btn-installment-delete-only" style="background:var(--surface);color:var(--dark);border:1.5px solid var(--border);margin-bottom:10px;padding:16px;display:flex;align-items:center;justify-content:flex-start;gap:14px;border-radius:14px;text-align:left;">
+            <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-scissors" style="color:#b45309;font-size:1rem;"></i>
+            </div>
+            <div>
+                <div style="font-weight:700;font-size:0.95rem;color:var(--dark);">Somente esta parcela</div>
+                <div style="font-size:0.78rem;color:var(--secondary);margin-top:2px;">Remove apenas a parcela selecionada</div>
+            </div>
+        </button>
+
+        <button class="btn-block" id="btn-installment-delete-from" style="background:linear-gradient(135deg,#fef2f2,#fff5f5);color:var(--expense);border:1.5px solid #fecaca;margin-bottom:10px;padding:16px;display:flex;align-items:center;justify-content:flex-start;gap:14px;border-radius:14px;text-align:left;">
+            <div style="width:40px;height:40px;border-radius:10px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-forward" style="color:var(--expense);font-size:1rem;"></i>
+            </div>
+            <div>
+                <div style="font-weight:700;font-size:0.95rem;color:var(--expense);">Esta e as próximas parcelas</div>
+                <div id="installment-delete-from-label" style="font-size:0.78rem;color:#ef444499;margin-top:2px;">Remove esta e todas as parcelas seguintes</div>
+            </div>
+        </button>
+
+        <button class="btn-block" onclick="UI.closeInstallmentDeleteModal()" style="background:var(--light);color:var(--secondary);margin-top:4px;border-radius:14px;">Cancelar</button>
+    </div>
+
+    <!-- Modal: Transferência Inteligente para Investimento/Meta -->
+    <div class="modal-overlay" id="overlay-smart-transfer"></div>
+    <div class="modal-sheet" id="sheet-smart-transfer" style="max-height:92vh;overflow-y:auto;">
+        <div class="sheet-handle"></div>
+        <div style="text-align:center;margin-bottom:18px;">
+            <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#dbeafe,#ede9fe);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;box-shadow:0 4px 12px rgba(59,130,246,0.15);">
+                <i class="fas fa-paper-plane" style="color:var(--investment);font-size:1.4rem;"></i>
+            </div>
+            <h3 style="font-size:1.1rem;font-weight:800;color:var(--dark);margin-bottom:4px;">Transferência Inteligente</h3>
+            <p id="smart-transfer-subtitle" style="font-size:0.82rem;color:var(--secondary);">Para conta de investimento ou meta</p>
+        </div>
+
+        <!-- Destino detectado -->
+        <div id="smart-transfer-destination" style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid #bae6fd;display:none;">
+            <div style="font-size:0.72rem;font-weight:700;color:#0369a1;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;"><i class="fas fa-bolt"></i> Destino detectado</div>
+            <div id="smart-transfer-dest-name" style="font-weight:700;color:var(--dark);font-size:0.95rem;"></div>
+            <div id="smart-transfer-dest-type" style="font-size:0.78rem;color:var(--secondary);margin-top:2px;"></div>
+        </div>
+
+        <!-- Opção: vincular à meta -->
+        <div id="smart-transfer-goal-section" style="display:none;margin-bottom:16px;">
+            <div style="font-size:0.8rem;font-weight:700;color:var(--dark);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                <i class="fas fa-bullseye" style="color:var(--primary);"></i> Vincular a uma Meta (opcional)
+            </div>
+            <select id="smart-transfer-goal-select" class="form-control" style="border-radius:10px;">
+                <option value="">— Não vincular a uma meta —</option>
+            </select>
+            <div id="smart-transfer-goal-progress" style="display:none;margin-top:10px;padding:10px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;">
+                <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--secondary);margin-bottom:6px;">
+                    <span id="smart-goal-label">Meta</span>
+                    <span id="smart-goal-pct" style="font-weight:700;color:var(--primary);">0%</span>
+                </div>
+                <div style="height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
+                    <div id="smart-goal-bar" style="height:100%;background:var(--primary);border-radius:3px;transition:width 0.4s;width:0%;"></div>
+                </div>
+                <div style="font-size:0.75rem;color:var(--secondary);margin-top:5px;">
+                    <span id="smart-goal-current">R$ 0</span> de <span id="smart-goal-target">R$ 0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Campos da transferência -->
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">De</label>
+                <select id="stf-from" class="form-control" style="border-radius:10px;" onchange="UI.smartTransferUpdateFrom()">
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Para</label>
+                <select id="stf-to" class="form-control" style="border-radius:10px;" onchange="UI.smartTransferUpdateTo()">
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Valor (R$)</label>
+            <input type="text" id="stf-amount" class="form-control" placeholder="0,00" oninput="Utils.maskMoney(this); UI.smartTransferUpdateGoalPreview();" style="border-radius:10px;font-size:1.1rem;font-weight:700;text-align:center;">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Data</label>
+            <input type="date" id="stf-date" class="form-control" style="border-radius:10px;">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Descrição (opcional)</label>
+            <input type="text" id="stf-description" class="form-control" placeholder="Ex: Aporte mensal, Reserva..." style="border-radius:10px;">
+        </div>
+
+        <button onclick="FinanceApp.smartTransfer.execute()" class="btn-block" id="btn-smart-transfer-exec" style="background:linear-gradient(135deg,var(--investment),var(--accent));border:none;margin-bottom:10px;border-radius:14px;font-size:1rem;font-weight:700;padding:16px;">
+            <i class="fas fa-paper-plane"></i> Executar Transferência
+        </button>
+        <button class="btn-block" onclick="UI.closeModals()" style="background:var(--light);color:var(--secondary);border-radius:14px;">Cancelar</button>
     </div>
 
     <script>
@@ -3999,14 +4121,20 @@
                     
                     const monthMovement = accountIncome - accountExpense - accountTransferOut + accountTransferIn;
                     
+                    const isSpecialAcc = account.type === 'investimento' || account.type === 'poupanca';
+                    const specialBadge = account.type === 'investimento'
+                        ? `<span style="background:#dbeafe;color:#1e40af;font-size:0.65rem;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:5px;">📈 Investimento</span>`
+                        : account.type === 'poupanca'
+                        ? `<span style="background:#d1fae5;color:#065f46;font-size:0.65rem;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:5px;">💰 Poupança</span>`
+                        : '';
                     accountsHtml += `
-                        <div class="account-card" onclick="UI.editAccount('${account.id}')">
+                        <div class="account-card" style="${isSpecialAcc ? 'border-left-color:var(--investment);' : ''}" onclick="UI.editAccount('${account.id}')">
                             <div class="account-info">
                                 <div class="account-icon" style="background: ${account.color}">
                                     <i class="${Utils.getAccountTypeIcon(account.type)}"></i>
                                 </div>
                                 <div>
-                                    <div class="account-name">${account.name}</div>
+                                    <div class="account-name" style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;">${account.name}${specialBadge}</div>
                                     <div class="account-type">${account.institution || ''} ${account.number || ''}</div>
                                     <div class="transaction-date" style="margin-top: 4px;">
                                         Movimento do mês: <span style="color: ${monthMovement >= 0 ? 'var(--income)' : 'var(--expense)'}">
@@ -4015,8 +4143,14 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="account-balance ${account.balance >= 0 ? 'positive' : 'negative'}">
-                                ${Utils.formatCurrency(account.balance)}
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                                <div class="account-balance ${account.balance >= 0 ? 'positive' : 'negative'} balance-sensivel">
+                                    ${Utils.formatCurrency(account.balance)}
+                                </div>
+                                ${isSpecialAcc ? `<div style="display:flex;gap:4px;">
+                                    <button onclick="event.stopPropagation();UI.openSmartTransferModal('${account.id}')" style="background:linear-gradient(135deg,var(--investment),var(--accent));color:white;border:none;border-radius:8px;font-size:0.68rem;font-weight:700;padding:5px 8px;cursor:pointer;white-space:nowrap;"><i class='fas fa-paper-plane'></i> Aportar</button>
+                                    <button onclick="event.stopPropagation();UI.openSmartTransferModal(null,'${account.id}')" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);color:#16a34a;border:1.5px solid #86efac;border-radius:8px;font-size:0.68rem;font-weight:700;padding:5px 8px;cursor:pointer;white-space:nowrap;"><i class='fas fa-hand-holding-usd'></i> Resgatar</button>
+                                </div>` : ''}
                             </div>
                         </div>
                     `;
@@ -5714,7 +5848,204 @@
                 document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active'));
                 document.querySelectorAll('.modal-sheet').forEach(el => el.classList.remove('active'));
             },
-            
+
+            closeInstallmentDeleteModal: () => {
+                document.getElementById('overlay-installment-delete').classList.remove('active');
+                document.getElementById('sheet-installment-delete').classList.remove('active');
+            },
+
+            openInstallmentDeleteModal: (transactionId) => {
+                const transaction = FinanceApp.data.transactions.find(t => t.id === transactionId);
+                if (!transaction || !transaction.installmentGroup) return;
+
+                const group = FinanceApp.data.transactions
+                    .filter(t => t.installmentGroup === transaction.installmentGroup)
+                    .sort((a, b) => a.installmentIndex - b.installmentIndex);
+                const remaining = group.filter(t => t.installmentIndex >= transaction.installmentIndex);
+
+                const info = document.getElementById('installment-delete-info');
+                const baseName = transaction.description.replace(/ \d+\/\d+$/, '');
+                info.innerHTML = `Parcela <strong>${transaction.installmentIndex}/${transaction.installmentTotal}</strong> de <strong>${baseName}</strong>`;
+
+                const fromLabel = document.getElementById('installment-delete-from-label');
+                const remainingAfter = remaining.length - 1;
+                fromLabel.textContent = remainingAfter > 0
+                    ? `Remove esta e mais ${remainingAfter} parcela(s) restante(s)`
+                    : 'Remove apenas esta parcela (última do grupo)';
+
+                const btnOnly = document.getElementById('btn-installment-delete-only');
+                const btnFrom = document.getElementById('btn-installment-delete-from');
+                const newOnly = btnOnly.cloneNode(true);
+                const newFrom = btnFrom.cloneNode(true);
+                btnOnly.parentNode.replaceChild(newOnly, btnOnly);
+                btnFrom.parentNode.replaceChild(newFrom, btnFrom);
+
+                newOnly.addEventListener('click', async () => {
+                    try {
+                        if (transaction.status === 'cleared') {
+                            await FinanceApp.account.reverseBalance(transaction);
+                        }
+                        await DB.deleteTransaction(transactionId);
+                        FinanceApp.data.transactions = FinanceApp.data.transactions.filter(t => t.id !== transactionId);
+                        Utils.toast('Parcela excluída!');
+                        UI.closeModals();
+                        UI.renderDashboard();
+                        UI.renderTransactions();
+                        UI.renderAccounts();
+                        UI.renderReports();
+                    } catch (err) {
+                        console.error(err);
+                        Utils.toast('Erro ao excluir parcela', 'error');
+                    }
+                });
+
+                newFrom.addEventListener('click', async () => {
+                    try {
+                        const toDelete = group.filter(t => t.installmentIndex >= transaction.installmentIndex);
+                        for (const t of toDelete) {
+                            if (t.status === 'cleared') await FinanceApp.account.reverseBalance(t);
+                            await DB.deleteTransaction(t.id);
+                        }
+                        const delIds = toDelete.map(t => t.id);
+                        FinanceApp.data.transactions = FinanceApp.data.transactions.filter(t => !delIds.includes(t.id));
+                        Utils.toast(`${toDelete.length} parcela(s) excluída(s)!`);
+                        UI.closeModals();
+                        UI.renderDashboard();
+                        UI.renderTransactions();
+                        UI.renderAccounts();
+                        UI.renderReports();
+                    } catch (err) {
+                        console.error(err);
+                        Utils.toast('Erro ao excluir parcelas', 'error');
+                    }
+                });
+
+                document.getElementById('overlay-installment-delete').classList.add('active');
+                setTimeout(() => document.getElementById('sheet-installment-delete').classList.add('active'), 10);
+            },
+
+            openSmartTransferModal: (toAccountId, fromAccountId) => {
+                const accounts = FinanceApp.data.accounts;
+                const goals = FinanceApp.data.goals || [];
+
+                const fromSel = document.getElementById('stf-from');
+                const toSel = document.getElementById('stf-to');
+                fromSel.innerHTML = '<option value="">Selecione...</option>';
+                toSel.innerHTML = '<option value="">Selecione...</option>';
+
+                const typeTag = { investimento:'📈', poupanca:'💰', conta_corrente:'🏦', carteira:'👜', cartao_credito:'💳', outro:'📁' };
+                accounts.forEach(a => {
+                    const tag = typeTag[a.type] || '📁';
+                    fromSel.innerHTML += `<option value="${a.id}">${tag} ${a.name} (${Utils.formatCurrency(a.balance)})</option>`;
+                    toSel.innerHTML   += `<option value="${a.id}">${tag} ${a.name} (${Utils.formatCurrency(a.balance)})</option>`;
+                });
+
+                if (fromAccountId) {
+                    fromSel.value = fromAccountId;
+                }
+
+                if (toAccountId) {
+                    toSel.value = toAccountId;
+                    UI.smartTransferUpdateTo();
+                } else {
+                    document.getElementById('smart-transfer-destination').style.display = 'none';
+                    document.getElementById('smart-transfer-goal-section').style.display = 'none';
+                    document.getElementById('smart-transfer-subtitle').textContent = 'Para conta de investimento, poupança ou meta';
+                }
+
+                document.getElementById('stf-date').value = Utils.getToday();
+                document.getElementById('stf-amount').value = '';
+                document.getElementById('stf-description').value = '';
+                document.getElementById('smart-transfer-goal-progress').style.display = 'none';
+
+                const goalSel = document.getElementById('smart-transfer-goal-select');
+                goalSel.innerHTML = '<option value="">— Não vincular a uma meta —</option>';
+                goals.filter(g => g.current < g.target).forEach(g => {
+                    const pct = ((g.current / g.target) * 100).toFixed(0);
+                    goalSel.innerHTML += `<option value="${g.id}">${g.icon || '🎯'} ${g.name} — ${pct}% concluída</option>`;
+                });
+                goalSel.onchange = () => UI.smartTransferUpdateGoalPreview();
+
+                document.getElementById('overlay-smart-transfer').classList.add('active');
+                setTimeout(() => document.getElementById('sheet-smart-transfer').classList.add('active'), 10);
+            },
+
+            smartTransferUpdateFrom: () => {
+                UI.smartTransferUpdateTo(); // recalculate labels when FROM changes
+            },
+
+            smartTransferUpdateTo: () => {
+                const toId   = document.getElementById('stf-to').value;
+                const fromId = document.getElementById('stf-from').value;
+                const toAcc  = FinanceApp.data.accounts.find(a => a.id === toId);
+                const fromAcc = FinanceApp.data.accounts.find(a => a.id === fromId);
+                const destDiv = document.getElementById('smart-transfer-destination');
+                const goalSection = document.getElementById('smart-transfer-goal-section');
+                const subtitle = document.getElementById('smart-transfer-subtitle');
+                const execBtn = document.getElementById('btn-smart-transfer-exec');
+
+                const typeLabels = {
+                    investimento: '📈 Conta de Investimento',
+                    poupanca:     '💰 Conta Poupança',
+                    conta_corrente:'🏦 Conta Corrente',
+                    carteira:     '👜 Carteira',
+                    cartao_credito:'💳 Cartão de Crédito',
+                    outro:        '📁 Outro'
+                };
+
+                if (toAcc) {
+                    document.getElementById('smart-transfer-dest-name').textContent = toAcc.name;
+                    document.getElementById('smart-transfer-dest-type').textContent = typeLabels[toAcc.type] || toAcc.type;
+                    destDiv.style.display = 'block';
+
+                    const toIsSpecial   = toAcc.type === 'investimento' || toAcc.type === 'poupanca';
+                    const fromIsSpecial = fromAcc && (fromAcc.type === 'investimento' || fromAcc.type === 'poupanca');
+
+                    // Resgate: de especial para comum
+                    const isWithdraw = fromIsSpecial && !toIsSpecial;
+                    // Aporte: de comum para especial
+                    const isDeposit  = toIsSpecial && !fromIsSpecial;
+
+                    goalSection.style.display = (toIsSpecial || fromIsSpecial) ? 'block' : 'none';
+
+                    if (isWithdraw) {
+                        subtitle.textContent = `Resgate de ${fromAcc.type === 'investimento' ? 'investimento' : 'poupança'}`;
+                        execBtn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+                        execBtn.innerHTML = '<i class="fas fa-hand-holding-usd"></i> Resgatar';
+                    } else if (isDeposit) {
+                        if (toAcc.type === 'investimento') { subtitle.textContent = 'Aporte para conta de investimento'; }
+                        else                              { subtitle.textContent = 'Transferência para poupança / meta'; }
+                        execBtn.style.background = 'linear-gradient(135deg,var(--investment),var(--accent))';
+                        execBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Executar Aporte';
+                    } else {
+                        subtitle.textContent = 'Transferência entre contas';
+                        execBtn.style.background = 'linear-gradient(135deg,var(--investment),var(--accent))';
+                        execBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Executar Transferência';
+                    }
+                } else {
+                    destDiv.style.display = 'none';
+                    goalSection.style.display = 'none';
+                }
+                UI.smartTransferUpdateGoalPreview();
+            },
+
+            smartTransferUpdateGoalPreview: () => {
+                const goalId = document.getElementById('smart-transfer-goal-select').value;
+                const progressDiv = document.getElementById('smart-transfer-goal-progress');
+                if (!goalId) { progressDiv.style.display = 'none'; return; }
+                const goal = (FinanceApp.data.goals || []).find(g => g.id === goalId);
+                if (!goal) { progressDiv.style.display = 'none'; return; }
+                const amount = Utils.parseCurrency(document.getElementById('stf-amount').value) || 0;
+                const newCurrent = Math.min(goal.current + amount, goal.target);
+                const newPct = Math.min((newCurrent / goal.target) * 100, 100).toFixed(1);
+                document.getElementById('smart-goal-label').textContent = goal.name;
+                document.getElementById('smart-goal-pct').textContent = newPct + '%';
+                document.getElementById('smart-goal-bar').style.width = newPct + '%';
+                document.getElementById('smart-goal-current').textContent = Utils.formatCurrency(newCurrent);
+                document.getElementById('smart-goal-target').textContent = Utils.formatCurrency(goal.target);
+                progressDiv.style.display = 'block';
+            },
+
             setTransactionType: (type, el) => {
                 document.getElementById('t-type').value = type;
                 document.querySelectorAll('#sheet-transaction .type-option').forEach(opt => opt.classList.remove('active'));
@@ -6363,6 +6694,14 @@
                     const transaction = FinanceApp.data.transactions.find(t => t.id === id);
                     if (!transaction) return;
 
+                    // ─── PARCELAMENTO: abre modal elegante ───────────────
+                    const isInstallment = !!transaction.installmentGroup;
+                    if (isInstallment) {
+                        UI.closeModals();
+                        setTimeout(() => UI.openInstallmentDeleteModal(id), 120);
+                        return;
+                    }
+
                     // É recorrente (filho ou mestre com filhos)?
                     const isRecurringChild = !!transaction.recurringParent;
                     const isRecurringMaster = transaction.recurring && !transaction.recurringParent;
@@ -6591,6 +6930,85 @@
                 }
             },
             
+            smartTransfer: {
+                execute: async () => {
+                    const fromAccount = document.getElementById('stf-from').value;
+                    const toAccount   = document.getElementById('stf-to').value;
+                    const amount      = Utils.parseCurrency(document.getElementById('stf-amount').value);
+                    const date        = document.getElementById('stf-date').value;
+                    const description = document.getElementById('stf-description').value || 'Transferência';
+                    const goalId      = document.getElementById('smart-transfer-goal-select').value;
+
+                    if (!fromAccount || !toAccount) { Utils.toast('Selecione as contas', 'error'); return; }
+                    if (fromAccount === toAccount)  { Utils.toast('Contas de origem e destino iguais', 'error'); return; }
+                    if (amount <= 0)                { Utils.toast('Informe um valor válido', 'error'); return; }
+
+                    const fromAcc = FinanceApp.data.accounts.find(a => a.id === fromAccount);
+                    if (!fromAcc || fromAcc.balance < amount) { Utils.toast('Saldo insuficiente', 'error'); return; }
+
+                    try {
+                        const transaction = {
+                            id: Utils.id(),
+                            type: 'transfer',
+                            description,
+                            amount,
+                            date,
+                            account: fromAccount,
+                            category: 'cat13',
+                            transferTo: toAccount,
+                            paymentMethod: 'transferencia',
+                            notes: goalId ? `Meta vinculada: ${goalId}` : '',
+                            status: 'cleared',
+                            smartTransferGoal: goalId || null,
+                            createdAt: new Date().toISOString()
+                        };
+
+                        await DB.saveTransaction(transaction);
+                        FinanceApp.data.transactions.push(transaction);
+
+                        fromAcc.balance -= amount;
+                        await DB.saveAccount(fromAcc);
+
+                        const toAcc = FinanceApp.data.accounts.find(a => a.id === toAccount);
+                        if (toAcc) {
+                            toAcc.balance += amount;
+                            await DB.saveAccount(toAcc);
+                        }
+
+                        // Atualiza meta se vinculada
+                        if (goalId) {
+                            const goal = (FinanceApp.data.goals || []).find(g => g.id === goalId);
+                            if (goal) {
+                                const fromAccSmrt = FinanceApp.data.accounts.find(a => a.id === fromAccount);
+                                const toAccSmrt   = FinanceApp.data.accounts.find(a => a.id === toAccount);
+                                const fromIsSpec  = fromAccSmrt && (fromAccSmrt.type === 'investimento' || fromAccSmrt.type === 'poupanca');
+                                const toIsSpec    = toAccSmrt   && (toAccSmrt.type   === 'investimento' || toAccSmrt.type   === 'poupanca');
+                                // Aporte → incrementa; Resgate → decrementa meta
+                                if (toIsSpec && !fromIsSpec) {
+                                    goal.current = Math.min((goal.current || 0) + amount, goal.target);
+                                } else if (fromIsSpec && !toIsSpec) {
+                                    goal.current = Math.max((goal.current || 0) - amount, 0);
+                                }
+                                await DB.saveGoal(goal);
+                            }
+                        }
+
+                        const toAcc2 = FinanceApp.data.accounts.find(a => a.id === toAccount);
+                        const destLabel = toAcc2 ? toAcc2.type === 'investimento' ? '📈 Aporte realizado!' : '💰 Transferência realizada!' : '✅ Transferência realizada!';
+                        Utils.toast(goalId ? `${destLabel} Meta atualizada!` : destLabel);
+                        UI.closeModals();
+                        UI.renderDashboard();
+                        UI.renderTransactions();
+                        UI.renderAccounts();
+                        UI.renderReports();
+                        if (FinanceApp.data.goals) UI.renderGoals();
+                    } catch (err) {
+                        console.error(err);
+                        Utils.toast('Erro ao realizar transferência', 'error');
+                    }
+                }
+            },
+
             transfer: {
                 execute: async (e) => {
                     e.preventDefault();
@@ -8411,6 +8829,43 @@
         style.textContent = `
             .saldo-oculto { filter: blur(8px) !important; user-select: none; pointer-events: none; transition: filter 0.3s; }
             .saldo-visivel { filter: none !important; transition: filter 0.3s; }
+
+            /* === Installment Delete Modal === */
+            #sheet-installment-delete #btn-installment-delete-only:active,
+            #sheet-installment-delete #btn-installment-delete-from:active {
+                transform: scale(0.97);
+                opacity: 0.85;
+            }
+            #sheet-installment-delete .btn-block {
+                transition: transform 0.15s, opacity 0.15s;
+                cursor: pointer;
+            }
+
+            /* === Smart Transfer Modal === */
+            #sheet-smart-transfer { border-radius: 24px 24px 0 0; }
+            #btn-smart-transfer-exec:active { opacity: 0.85; transform: scale(0.98); }
+            #btn-smart-transfer-exec { transition: all 0.15s; cursor: pointer; }
+            .smart-transfer-acc-btn {
+                background: var(--surface);
+                border: 1.5px solid var(--border);
+                border-radius: 12px;
+                padding: 12px 14px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                cursor: pointer;
+                margin-bottom: 8px;
+                transition: all 0.2s;
+                width: 100%;
+            }
+            .smart-transfer-acc-btn:active { transform: scale(0.98); background: #f8fafc; }
+            .smart-transfer-acc-btn.investment-acc { border-color: var(--investment); background: #f0f9ff; }
+            .smart-transfer-acc-btn.savings-acc { border-color: var(--primary); background: #f0fdf4; }
+            .smart-transfer-acc-btn .acc-icon { width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0; }
+            .smart-transfer-acc-btn .acc-info { flex:1;text-align:left; }
+            .smart-transfer-acc-btn .acc-name { font-weight:700;font-size:0.9rem;color:var(--dark); }
+            .smart-transfer-acc-btn .acc-balance { font-size:0.78rem;color:var(--secondary);margin-top:2px; }
+            .smart-transfer-acc-btn .acc-arrow { color:var(--secondary);font-size:0.85rem; }
             .edu-card { background: var(--surface); border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.2s; border-top: 3px solid var(--primary); }
             .edu-card:active { transform: scale(0.98); }
             .edu-card-tag { display:inline-block;padding:3px 10px;border-radius:10px;font-size:0.72rem;font-weight:700;margin-bottom:8px; }
