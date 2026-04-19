@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
     <style>
         :root {
@@ -1099,7 +1100,7 @@
         }
         .login-success.show { display: block; }
 
-        /* --- Biometria --- */
+        /* --- Reconhecimento Facial --- */
         .biometric-btn {
             width: 100%;
             display: flex;
@@ -1118,6 +1119,7 @@
             transition: all 0.2s;
         }
         .biometric-btn:active { background: rgba(16,185,129,0.08); transform: scale(0.98); }
+        .biometric-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .biometric-btn i { font-size: 1.3rem; }
         .biometric-divider {
             display: flex;
@@ -1134,23 +1136,142 @@
             height: 1px;
             background: var(--border);
         }
-        .biometric-enable-wrap {
+
+        /* Modal câmera */
+        #face-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.88);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+        }
+        #face-modal-overlay.active { display: flex; }
+        .face-modal-box {
+            background: #0f172a;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 360px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        }
+        .face-modal-header {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .face-modal-title {
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-top: 14px;
-            padding: 12px;
-            background: #f0fdf4;
-            border-radius: 10px;
-            font-size: 0.85rem;
-            color: #065f46;
         }
-        .biometric-enable-wrap input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
-        .biometric-lock-msg {
-            font-size: 0.8rem;
-            color: var(--secondary);
+        .face-modal-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.5);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .face-cam-wrap {
+            position: relative;
+            width: 100%;
+            background: #000;
+            aspect-ratio: 4/3;
+            overflow: hidden;
+        }
+        #face-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* espelho */
+        }
+        #face-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+        }
+        .face-oval-guide {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .face-oval-guide::after {
+            content: '';
+            width: 54%;
+            aspect-ratio: 3/4;
+            border: 3px solid rgba(16,185,129,0.7);
+            border-radius: 50%;
+            box-shadow: 0 0 0 4000px rgba(0,0,0,0.35);
+        }
+        .face-modal-body {
+            padding: 16px 20px 20px;
+        }
+        #face-status {
             text-align: center;
-            margin-top: 10px;
+            font-size: 0.88rem;
+            color: rgba(255,255,255,0.75);
+            margin-bottom: 14px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        #face-status.ok { color: #34d399; }
+        #face-status.err { color: #f87171; }
+        .face-progress {
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+        .face-progress-bar {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.4s;
+        }
+        .face-modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .face-btn-primary {
+            flex: 1;
+            padding: 13px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .face-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .face-btn-secondary {
+            padding: 13px 16px;
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.7);
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            cursor: pointer;
         }
 
         .login-footer {
@@ -1410,11 +1531,11 @@
                 </div>
                 <button class="login-btn" onclick="Auth.login()" id="btn-login">Entrar</button>
 
-                <!-- Biometria -->
+                <!-- Reconhecimento Facial -->
                 <div id="biometric-section" style="display:none;">
                     <div class="biometric-divider">ou</div>
-                    <button class="biometric-btn" id="btn-biometric" onclick="Auth.loginBiometric()">
-                        <i class="fas fa-fingerprint"></i> Entrar com Biometria
+                    <button class="biometric-btn" id="btn-biometric" onclick="FaceAuth.loginFace()">
+                        <i class="fas fa-user-circle"></i> Entrar com Reconhecimento Facial
                     </button>
                 </div>
 
@@ -2440,7 +2561,7 @@
 
             <hr style="border: 0; border-top: 1px solid var(--border); margin: 16px 0;">
 
-            <!-- Segurança: Biometria -->
+            <!-- Segurança: Reconhecimento Facial -->
             <div class="form-group">
                 <label class="form-label" style="display:flex;align-items:center;gap:6px;">
                     <i class="fas fa-shield-alt" style="color:var(--primary);"></i> Segurança
@@ -2449,22 +2570,22 @@
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
                         <div style="flex:1;min-width:0;">
                             <div style="font-weight:600;font-size:0.95rem;color:#065f46;display:flex;align-items:center;gap:6px;">
-                                <i class="fas fa-fingerprint"></i> Acesso por Biometria
+                                <i class="fas fa-user-circle"></i> Reconhecimento Facial
                             </div>
                             <div id="settings-biometric-status" style="font-size:0.8rem;color:#047857;margin-top:3px;">Verificando...</div>
                         </div>
                         <button type="button" id="settings-biometric-btn"
-                            onclick="Auth.settingsToggleBiometric()"
+                            onclick="FaceAuth.settingsToggle()"
                             style="padding:10px 18px;border:none;border-radius:10px;font-size:0.9rem;font-weight:700;cursor:pointer;white-space:nowrap;background:var(--primary);color:white;">
-                            Ativar
+                            Cadastrar Rosto
                         </button>
                     </div>
                     <p style="font-size:0.78rem;color:#6b7280;margin-top:10px;line-height:1.5;">
-                        A biometria é uma alternativa rápida à senha. A senha ainda será exigida ao abrir o app caso a biometria falhe.
+                        Cadastre seu rosto para acessar o app sem digitar a senha. A imagem fica armazenada somente neste dispositivo.
                     </p>
                 </div>
                 <div id="settings-biometric-unsupported" style="display:none;background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:14px;font-size:0.85rem;color:var(--secondary);">
-                    <i class="fas fa-exclamation-circle"></i> Biometria não disponível neste dispositivo/navegador.
+                    <i class="fas fa-exclamation-circle"></i> Câmera não disponível neste dispositivo/navegador.
                 </div>
             </div>
 
@@ -2947,7 +3068,7 @@
         // --- INDEXEDDB MANAGER ---
         const DB = {
             name: 'FinancaProDB',
-            version: 6,
+            version: 7,
             db: null,
             
             init: async () => {
@@ -2995,6 +3116,10 @@
                         if (!db.objectStoreNames.contains('users')) {
                             const userStore = db.createObjectStore('users', { keyPath: 'username' });
                             userStore.createIndex('username', 'username', { unique: true });
+                        }
+
+                        if (!db.objectStoreNames.contains('face_descriptors')) {
+                            db.createObjectStore('face_descriptors', { keyPath: 'username' });
                         }
                     };
                 });
@@ -3277,6 +3402,47 @@
                     request.onsuccess = () => resolve(request.result);
                     request.onerror = () => reject(request.error);
                 });
+            },
+
+            saveFaceDescriptor: async (username, descriptors) => {
+                return new Promise((resolve, reject) => {
+                    const tx = DB.db.transaction(['face_descriptors'], 'readwrite');
+                    const store = tx.objectStore('face_descriptors');
+                    // descriptors: array of Float32Array serialized as regular arrays
+                    const request = store.put({ username, descriptors, savedAt: new Date().toISOString() });
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            getFaceDescriptor: async (username) => {
+                return new Promise((resolve, reject) => {
+                    const tx = DB.db.transaction(['face_descriptors'], 'readonly');
+                    const store = tx.objectStore('face_descriptors');
+                    const request = store.get(username);
+                    request.onsuccess = () => resolve(request.result || null);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            deleteFaceDescriptor: async (username) => {
+                return new Promise((resolve, reject) => {
+                    const tx = DB.db.transaction(['face_descriptors'], 'readwrite');
+                    const store = tx.objectStore('face_descriptors');
+                    const request = store.delete(username);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            getAllFaceUsers: async () => {
+                return new Promise((resolve, reject) => {
+                    const tx = DB.db.transaction(['face_descriptors'], 'readonly');
+                    const store = tx.objectStore('face_descriptors');
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
             }
         };
 
@@ -3463,166 +3629,385 @@
             // ── Sem checkSession automático — senha sempre obrigatória ─────
             checkSession: async () => false,
 
-            // ══════════════════════════════════════════════════════════════
-            //  BIOMETRIA — Web Authentication API (WebAuthn / FIDO2)
-            // ══════════════════════════════════════════════════════════════
-
-            _webauthnSupported: () => !!(window.PublicKeyCredential && navigator.credentials),
-
-            // Atualiza visibilidade do botão de biometria na tela de login
+            // ── Atualiza botão facial na tela de login ─────────────────────
             _refreshBiometricUI: async () => {
                 const section = document.getElementById('biometric-section');
                 if (!section) return;
-                if (!Auth._webauthnSupported()) { section.style.display = 'none'; return; }
-
-                // Descobre se há algum usuário com biometria cadastrada neste dispositivo
-                const users = await DB.getAllUsers().catch(() => []);
-                const hasBiometric = users.some(u => localStorage.getItem('fp_biometric_' + u.username));
-                section.style.display = hasBiometric ? 'block' : 'none';
+                try {
+                    const rows = await DB.getAllFaceUsers().catch(() => []);
+                    section.style.display = rows.length > 0 ? 'block' : 'none';
+                } catch(e) { section.style.display = 'none'; }
             },
 
-            // Login por biometria
-            loginBiometric: async () => {
-                if (!Auth._webauthnSupported()) {
-                    Auth.showError('Biometria não suportada neste dispositivo.');
-                    return;
-                }
-
-                // Encontra usuário(s) com biometria cadastrada
-                let targetUser = null;
-                try {
-                    const users = await DB.getAllUsers();
-                    targetUser = users.find(u => localStorage.getItem('fp_biometric_' + u.username));
-                } catch(e) {}
-
-                if (!targetUser) {
-                    Auth.showError('Nenhuma biometria cadastrada. Faça login com senha primeiro.');
-                    return;
-                }
-
-                const btn = document.getElementById('btn-biometric');
-                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Aguardando biometria...'; }
-
-                try {
-                    const challenge = crypto.getRandomValues(new Uint8Array(32));
-
-                    const assertion = await navigator.credentials.get({
-                        publicKey: {
-                            challenge,
-                            timeout: 60000,
-                            userVerification: 'required',
-                            rpId: location.hostname || 'localhost'
-                        }
-                    });
-
-                    if (assertion) {
-                        Auth.currentUser = targetUser;
-                        Auth.enterApp(targetUser);
-                    }
-                } catch (err) {
-                    console.warn('Biometria falhou:', err);
-                    if (err.name === 'NotAllowedError') {
-                        Auth.showError('Biometria cancelada. Use sua senha para entrar.');
-                    } else {
-                        Auth.showError('Falha na autenticação biométrica. Tente novamente ou use a senha.');
-                    }
-                } finally {
-                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-fingerprint"></i> Entrar com Biometria'; }
-                }
-            },
-
-            // ── Biometria nas configurações ────────────────────────────────
-
-            // Atualiza o painel de biometria no modal de configurações
-            refreshSettingsBiometricUI: () => {
-                const box = document.getElementById('settings-biometric-box');
-                const unsupported = document.getElementById('settings-biometric-unsupported');
-                const statusEl = document.getElementById('settings-biometric-status');
-                const btn = document.getElementById('settings-biometric-btn');
+            // ── Atualiza card no painel de configurações ───────────────────
+            refreshSettingsBiometricUI: async () => {
+                const box     = document.getElementById('settings-biometric-box');
+                const noSupp  = document.getElementById('settings-biometric-unsupported');
+                const statusEl= document.getElementById('settings-biometric-status');
+                const btn     = document.getElementById('settings-biometric-btn');
                 if (!box) return;
 
-                if (!Auth._webauthnSupported()) {
+                if (!navigator.mediaDevices) {
                     box.style.display = 'none';
-                    if (unsupported) unsupported.style.display = 'block';
+                    if (noSupp) noSupp.style.display = 'block';
                     return;
                 }
-
                 box.style.display = 'block';
-                if (unsupported) unsupported.style.display = 'none';
+                if (noSupp) noSupp.style.display = 'none';
 
                 const username = Auth.currentUser ? Auth.currentUser.username : null;
-                const hasCredential = username && localStorage.getItem('fp_biometric_' + username);
+                const record = username ? await DB.getFaceDescriptor(username).catch(() => null) : null;
 
-                if (hasCredential) {
-                    if (statusEl) statusEl.textContent = '✅ Ativada — biometria disponível neste dispositivo';
-                    if (btn) { btn.textContent = 'Remover'; btn.style.background = '#ef4444'; }
+                if (record) {
+                    if (statusEl) statusEl.textContent = '✅ Rosto cadastrado — acesso facial ativo';
+                    if (btn) { btn.textContent = 'Remover Rosto'; btn.style.background = '#ef4444'; }
                 } else {
-                    if (statusEl) statusEl.textContent = 'Desativada — toque em Ativar para cadastrar';
-                    if (btn) { btn.textContent = 'Ativar'; btn.style.background = 'var(--primary)'; }
-                }
-            },
-
-            // Botão no painel de configurações: alterna ativar/remover biometria
-            settingsToggleBiometric: async () => {
-                if (!Auth.currentUser) return;
-                const username = Auth.currentUser.username;
-                const hasCredential = localStorage.getItem('fp_biometric_' + username);
-
-                if (hasCredential) {
-                    if (confirm('Remover o acesso por biometria deste dispositivo?')) {
-                        localStorage.removeItem('fp_biometric_' + username);
-                        Utils.toast('Biometria removida');
-                        Auth.refreshSettingsBiometricUI();
-                        Auth._refreshBiometricUI();
-                    }
-                    return;
-                }
-
-                // Ativar — registrar credencial WebAuthn
-                const btn = document.getElementById('settings-biometric-btn');
-                if (btn) { btn.disabled = true; btn.textContent = 'Aguardando...'; }
-
-                try {
-                    const challenge = crypto.getRandomValues(new Uint8Array(32));
-                    const userId = new TextEncoder().encode(username);
-
-                    const credential = await navigator.credentials.create({
-                        publicKey: {
-                            challenge,
-                            rp: { name: 'FinançaPro', id: location.hostname || 'localhost' },
-                            user: { id: userId, name: username, displayName: Auth.currentUser.name || username },
-                            pubKeyCredParams: [
-                                { type: 'public-key', alg: -7 },
-                                { type: 'public-key', alg: -257 }
-                            ],
-                            authenticatorSelection: {
-                                authenticatorAttachment: 'platform',
-                                userVerification: 'required',
-                                residentKey: 'preferred'
-                            },
-                            timeout: 60000,
-                            attestation: 'none'
-                        }
-                    });
-
-                    if (credential) {
-                        const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
-                        localStorage.setItem('fp_biometric_' + username, credId);
-                        Utils.toast('✅ Biometria ativada!');
-                        Auth.refreshSettingsBiometricUI();
-                        Auth._refreshBiometricUI();
-                    }
-                } catch (err) {
-                    console.warn('Biometria cancelada ou falhou:', err);
-                    if (err.name !== 'NotAllowedError') {
-                        Utils.toast('Não foi possível ativar a biometria', 'error');
-                    }
-                } finally {
-                    if (btn) btn.disabled = false;
-                    Auth.refreshSettingsBiometricUI();
+                    if (statusEl) statusEl.textContent = 'Nenhum rosto cadastrado';
+                    if (btn) { btn.textContent = 'Cadastrar Rosto'; btn.style.background = 'var(--primary)'; }
                 }
             }
         };
+
+        // ═══════════════════════════════════════════════════════════════
+        //  FACE AUTH — Reconhecimento facial com face-api.js
+        // ═══════════════════════════════════════════════════════════════
+        const FaceAuth = (() => {
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model';
+            const MATCH_THRESHOLD = 0.45;   // distância euclidiana — menor = mais parecido
+            const CAPTURE_SAMPLES  = 5;     // amostras coletadas no cadastro
+            const DETECT_INTERVAL  = 180;   // ms entre detecções
+
+            let _modelsLoaded  = false;
+            let _loadingModels = false;
+            let _stream        = null;
+            let _detectTimer   = null;
+            let _mode          = null;       // 'register' | 'login'
+            let _samples       = [];         // descriptors coletados no cadastro
+            let _onSuccess     = null;       // callback após sucesso
+
+            // ── Elementos do DOM ─────────────────────────────────────────
+            const el = () => ({
+                overlay  : document.getElementById('face-modal-overlay'),
+                video    : document.getElementById('face-video'),
+                canvas   : document.getElementById('face-canvas'),
+                status   : document.getElementById('face-status'),
+                progress : document.getElementById('face-progress-bar'),
+                actionBtn: document.getElementById('face-action-btn'),
+                title    : document.getElementById('face-modal-title').querySelector('span'),
+            });
+
+            function _setStatus(msg, cls = '') {
+                const s = el().status;
+                if (!s) return;
+                s.innerHTML = msg;
+                s.className = cls;
+            }
+
+            function _setProgress(pct) {
+                const p = el().progress;
+                if (p) p.style.width = pct + '%';
+            }
+
+            function _setActionBtn(label, disabled = false) {
+                const b = el().actionBtn;
+                if (!b) return;
+                b.textContent = label;
+                b.disabled = disabled;
+            }
+
+            // ── Carregar modelos face-api ─────────────────────────────────
+            async function _loadModels() {
+                if (_modelsLoaded) return;
+                if (_loadingModels) {
+                    // aguarda quem já está carregando
+                    await new Promise(res => {
+                        const iv = setInterval(() => { if (_modelsLoaded) { clearInterval(iv); res(); } }, 200);
+                    });
+                    return;
+                }
+                _loadingModels = true;
+                _setStatus('<i class="fas fa-spinner fa-spin"></i> Carregando modelos de IA…');
+                _setProgress(10);
+                try {
+                    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                    _setProgress(50);
+                    await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
+                    _setProgress(80);
+                    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                    _setProgress(100);
+                    _modelsLoaded = true;
+                } finally {
+                    _loadingModels = false;
+                }
+            }
+
+            // ── Iniciar câmera ────────────────────────────────────────────
+            async function _startCamera() {
+                const v = el().video;
+                try {
+                    _stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+                    });
+                    v.srcObject = _stream;
+                    await new Promise(res => { v.onloadedmetadata = res; });
+                    await v.play();
+                } catch(e) {
+                    throw new Error('Não foi possível acessar a câmera. Verifique as permissões.');
+                }
+            }
+
+            // ── Parar câmera ──────────────────────────────────────────────
+            function _stopCamera() {
+                clearInterval(_detectTimer);
+                if (_stream) { _stream.getTracks().forEach(t => t.stop()); _stream = null; }
+                const v = el().video;
+                if (v) { v.srcObject = null; }
+                // limpa canvas
+                const c = el().canvas;
+                if (c) { const ctx = c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); }
+            }
+
+            // ── Detectar rosto no frame atual ─────────────────────────────
+            async function _detect() {
+                const v = el().video;
+                if (!v || v.paused || v.ended || !v.videoWidth) return null;
+                return await faceapi
+                    .detectSingleFace(v, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+                    .withFaceLandmarks(true)
+                    .withFaceDescriptor();
+            }
+
+            // ── Desenhar caixa de detecção no canvas ──────────────────────
+            function _drawBox(detection, color) {
+                const v = el().video;
+                const c = el().canvas;
+                if (!c || !v) return;
+                c.width  = v.videoWidth;
+                c.height = v.videoHeight;
+                const ctx = c.getContext('2d');
+                ctx.clearRect(0, 0, c.width, c.height);
+                if (!detection) return;
+                const box = detection.detection.box;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(box.x, box.y, box.width, box.height);
+            }
+
+            // ── MODO CADASTRO ─────────────────────────────────────────────
+            function _startRegisterLoop() {
+                _samples = [];
+                _setStatus('Posicione seu rosto no centro da moldura', '');
+                _setProgress(0);
+                _setActionBtn('Capturar', true);
+
+                _detectTimer = setInterval(async () => {
+                    const det = await _detect();
+                    if (!det) {
+                        _drawBox(null, '');
+                        _setStatus('⚠️ Nenhum rosto detectado — centralize o rosto', 'err');
+                        _setActionBtn('Capturar', true);
+                        return;
+                    }
+                    _drawBox(det, '#10b981');
+                    _setStatus('✅ Rosto detectado — clique em <strong>Capturar</strong>', 'ok');
+                    _setActionBtn('Capturar', false);
+                }, DETECT_INTERVAL);
+            }
+
+            async function _captureRegister() {
+                _setActionBtn('Capturando…', true);
+                for (let i = 0; i < CAPTURE_SAMPLES; i++) {
+                    _setStatus(`<i class="fas fa-spinner fa-spin"></i> Capturando amostra ${i+1}/${CAPTURE_SAMPLES}…`);
+                    _setProgress(Math.round(((i) / CAPTURE_SAMPLES) * 100));
+                    let det = null;
+                    // tenta até 10x encontrar rosto nesta amostra
+                    for (let t = 0; t < 10; t++) {
+                        det = await _detect();
+                        if (det) break;
+                        await new Promise(res => setTimeout(res, 150));
+                    }
+                    if (!det) {
+                        _setStatus('❌ Rosto perdido durante captura. Tente novamente.', 'err');
+                        _setActionBtn('Capturar', false);
+                        return;
+                    }
+                    _samples.push(Array.from(det.descriptor));
+                    await new Promise(res => setTimeout(res, 100));
+                }
+                _setProgress(100);
+                _setStatus('✅ Capturas concluídas!', 'ok');
+                _setActionBtn('Salvar', false);
+                clearInterval(_detectTimer);
+                _drawBox(await _detect(), '#34d399');
+            }
+
+            async function _saveRegister() {
+                if (!_samples.length) return;
+                _setActionBtn('Salvando…', true);
+                _setStatus('<i class="fas fa-spinner fa-spin"></i> Salvando rosto…');
+                await DB.saveFaceDescriptor(Auth.currentUser.username, _samples);
+                _setProgress(100);
+                _setStatus('✅ Rosto cadastrado com sucesso!', 'ok');
+                setTimeout(() => {
+                    closeModal();
+                    Utils.toast('✅ Reconhecimento facial ativado!');
+                    Auth.refreshSettingsBiometricUI();
+                    Auth._refreshBiometricUI();
+                    if (_onSuccess) _onSuccess();
+                }, 900);
+            }
+
+            // ── MODO LOGIN ────────────────────────────────────────────────
+            function _startLoginLoop(faceUsers) {
+                _setActionBtn('Verificando…', true);
+                _setStatus('Posicione seu rosto no centro da moldura', '');
+                _setProgress(0);
+                let attempts = 0;
+                const MAX_ATTEMPTS = 30;
+
+                _detectTimer = setInterval(async () => {
+                    attempts++;
+                    if (attempts > MAX_ATTEMPTS) {
+                        clearInterval(_detectTimer);
+                        _setStatus('❌ Tempo esgotado. Tente novamente ou use a senha.', 'err');
+                        _setActionBtn('Tentar novamente', false);
+                        _drawBox(null, '');
+                        return;
+                    }
+
+                    _setProgress(Math.min(95, Math.round((attempts / MAX_ATTEMPTS) * 100)));
+                    const det = await _detect();
+                    if (!det) {
+                        _drawBox(null, '');
+                        _setStatus('⚠️ Centralize o rosto na moldura…', '');
+                        return;
+                    }
+                    _drawBox(det, '#f59e0b');
+                    _setStatus('<i class="fas fa-spinner fa-spin"></i> Verificando identidade…');
+
+                    const liveDescriptor = det.descriptor;
+
+                    // Compara com todos os usuários que têm rosto cadastrado
+                    for (const row of faceUsers) {
+                        const storedDescriptors = row.descriptors; // array de arrays
+                        // calcula distância mínima entre o descriptor ao vivo e as amostras salvas
+                        let minDist = Infinity;
+                        for (const saved of storedDescriptors) {
+                            const dist = faceapi.euclideanDistance(liveDescriptor, new Float32Array(saved));
+                            if (dist < minDist) minDist = dist;
+                        }
+                        if (minDist <= MATCH_THRESHOLD) {
+                            clearInterval(_detectTimer);
+                            _drawBox(det, '#10b981');
+                            _setProgress(100);
+                            _setStatus('✅ Identidade confirmada!', 'ok');
+                            _setActionBtn('Entrando…', true);
+
+                            // busca usuário no DB
+                            const user = await DB.getUser(row.username).catch(() => null);
+                            setTimeout(async () => {
+                                closeModal();
+                                if (user) {
+                                    Auth.currentUser = user;
+                                    Auth.enterApp(user);
+                                } else {
+                                    Auth.showError('Usuário não encontrado. Faça login com senha.');
+                                }
+                            }, 700);
+                            return;
+                        }
+                    }
+                    _drawBox(det, '#ef4444');
+                    _setStatus('🔍 Rosto não reconhecido — aguarde…', '');
+                }, DETECT_INTERVAL);
+            }
+
+            // ── API pública ───────────────────────────────────────────────
+
+            async function openModal(mode, onSuccess) {
+                _mode      = mode;
+                _onSuccess = onSuccess || null;
+                _samples   = [];
+
+                const overlay = document.getElementById('face-modal-overlay');
+                const titleEl = document.getElementById('face-modal-title').querySelector('span');
+                overlay.classList.add('active');
+                titleEl.textContent = mode === 'register' ? 'Cadastrar Rosto' : 'Reconhecimento Facial';
+
+                _setProgress(0);
+                _setStatus('<i class="fas fa-spinner fa-spin"></i> Carregando modelos de IA…', '');
+                _setActionBtn('Aguarde…', true);
+
+                try {
+                    await _loadModels();
+                    await _startCamera();
+
+                    if (mode === 'register') {
+                        _startRegisterLoop();
+                    } else {
+                        // Carrega descritores salvos
+                        const faceUsers = await DB.getAllFaceUsers().catch(() => []);
+                        if (!faceUsers.length) {
+                            _setStatus('❌ Nenhum rosto cadastrado. Faça login com senha.', 'err');
+                            _setActionBtn('Fechar', false);
+                            return;
+                        }
+                        _startLoginLoop(faceUsers);
+                    }
+                } catch(e) {
+                    _setStatus('❌ ' + (e.message || 'Erro ao iniciar câmera.'), 'err');
+                    _setActionBtn('Fechar', false);
+                }
+            }
+
+            function closeModal() {
+                _stopCamera();
+                const overlay = document.getElementById('face-modal-overlay');
+                if (overlay) overlay.classList.remove('active');
+                _mode = null;
+                _samples = [];
+            }
+
+            function actionBtn() {
+                const btn = el().actionBtn;
+                if (!btn || btn.disabled) return;
+                const label = btn.textContent.trim();
+
+                if (label === 'Capturar')         { _captureRegister(); }
+                else if (label === 'Salvar')       { _saveRegister(); }
+                else if (label === 'Tentar novamente') {
+                    clearInterval(_detectTimer);
+                    _startLoginLoop.call(null, /* faceUsers reloaded */ null);
+                    // re-open para recarregar
+                    closeModal();
+                    openModal('login');
+                }
+                else if (label === 'Fechar')       { closeModal(); }
+            }
+
+            // Chamado pelo botão na tela de login
+            async function loginFace() {
+                await openModal('login');
+            }
+
+            // Chamado pelo botão nas configurações
+            async function settingsToggle() {
+                if (!Auth.currentUser) return;
+                const record = await DB.getFaceDescriptor(Auth.currentUser.username).catch(() => null);
+                if (record) {
+                    if (confirm('Remover o reconhecimento facial cadastrado?')) {
+                        await DB.deleteFaceDescriptor(Auth.currentUser.username);
+                        Utils.toast('Reconhecimento facial removido');
+                        Auth.refreshSettingsBiometricUI();
+                        Auth._refreshBiometricUI();
+                    }
+                } else {
+                    await openModal('register');
+                }
+            }
+
+            return { openModal, closeModal, actionBtn, loginFace, settingsToggle };
+        })();
 
         // --- UI MANAGER ---
         const UI = {
@@ -8355,7 +8740,7 @@
                 // Exibe mensagem de bloqueio
                 const errEl = document.getElementById('login-error');
                 if (errEl) {
-                    errEl.textContent = `\uD83D\uDD12 Sessão bloqueada por inatividade. Olá, ${name}! Use sua senha ou biometria para continuar.`;
+                    errEl.textContent = `\uD83D\uDD12 Sessão bloqueada por inatividade. Olá, ${name}! Use sua senha ou reconhecimento facial para continuar.`;
                     errEl.style.display = 'block';
                     errEl.style.background = '#fffbeb';
                     errEl.style.color = '#92400e';
@@ -9754,5 +10139,32 @@
 
     })();
     </script>
+
+    <!-- ===== MODAL CÂMERA FACIAL ===== -->
+    <div id="face-modal-overlay">
+        <div class="face-modal-box">
+            <div class="face-modal-header">
+                <div class="face-modal-title" id="face-modal-title">
+                    <i class="fas fa-user-circle" style="color:var(--primary);"></i>
+                    <span>Reconhecimento Facial</span>
+                </div>
+                <button class="face-modal-close" onclick="FaceAuth.closeModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="face-cam-wrap">
+                <video id="face-video" autoplay playsinline muted></video>
+                <canvas id="face-canvas"></canvas>
+                <div class="face-oval-guide"></div>
+            </div>
+            <div class="face-modal-body">
+                <div class="face-progress"><div class="face-progress-bar" id="face-progress-bar"></div></div>
+                <div id="face-status"><i class="fas fa-spinner fa-spin"></i> Carregando modelos...</div>
+                <div class="face-modal-actions">
+                    <button class="face-btn-primary" id="face-action-btn" onclick="FaceAuth.actionBtn()" disabled>Aguarde...</button>
+                    <button class="face-btn-secondary" onclick="FaceAuth.closeModal()">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
