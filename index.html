@@ -1099,6 +1099,60 @@
         }
         .login-success.show { display: block; }
 
+        /* --- Biometria --- */
+        .biometric-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px;
+            margin-top: 12px;
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            background: transparent;
+            color: var(--primary);
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .biometric-btn:active { background: rgba(16,185,129,0.08); transform: scale(0.98); }
+        .biometric-btn i { font-size: 1.3rem; }
+        .biometric-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 14px 0 2px;
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+        .biometric-divider::before,
+        .biometric-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+        .biometric-enable-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+            padding: 12px;
+            background: #f0fdf4;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            color: #065f46;
+        }
+        .biometric-enable-wrap input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+        .biometric-lock-msg {
+            font-size: 0.8rem;
+            color: var(--secondary);
+            text-align: center;
+            margin-top: 10px;
+        }
+
         .login-footer {
             color: #475569;
             font-size: 0.78rem;
@@ -1350,11 +1404,28 @@
                 <div class="login-form-group">
                     <label class="login-label">Senha</label>
                     <div class="input-wrapper">
-                        <input type="password" id="l-password" class="login-input" placeholder="Digite sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter') Auth.login()">
+                        <input type="password" id="l-password" class="login-input" placeholder="Digite sua senha" autocomplete="off" onkeydown="if(event.key==='Enter') Auth.login()">
                         <button class="toggle-pw" type="button" onclick="Auth.togglePassword('l-password', this)"><i class="fas fa-eye"></i></button>
                     </div>
                 </div>
                 <button class="login-btn" onclick="Auth.login()" id="btn-login">Entrar</button>
+
+                <!-- Biometria -->
+                <div id="biometric-section" style="display:none;">
+                    <div class="biometric-divider">ou</div>
+                    <button class="biometric-btn" id="btn-biometric" onclick="Auth.loginBiometric()">
+                        <i class="fas fa-fingerprint"></i> Entrar com Biometria
+                    </button>
+                </div>
+
+                <!-- Ativar biometria após login com senha -->
+                <div id="biometric-enable-section" style="display:none;">
+                    <label class="biometric-enable-wrap">
+                        <input type="checkbox" id="chk-enable-biometric" onchange="Auth.toggleEnableBiometric(this.checked)">
+                        <span><i class="fas fa-fingerprint"></i> Ativar acesso por biometria neste dispositivo</span>
+                    </label>
+                    <p class="biometric-lock-msg">A senha será sempre solicitada ao abrir o app. A biometria é uma alternativa rápida.</p>
+                </div>
             </div>
 
             <!-- Formulário Cadastro -->
@@ -3192,6 +3263,7 @@
         const Auth = {
             currentUser: null,
 
+            // ── Utilitários ────────────────────────────────────────────────
             hashPassword: async (password) => {
                 const encoder = new TextEncoder();
                 const data = encoder.encode(password + 'financapro_salt_2024');
@@ -3206,6 +3278,7 @@
                 document.getElementById('tab-login').style.display = tab === 'login' ? 'block' : 'none';
                 document.getElementById('tab-register').style.display = tab === 'register' ? 'block' : 'none';
                 Auth.hideMessages();
+                if (tab === 'login') Auth._refreshBiometricUI();
             },
 
             showError: (msg) => {
@@ -3239,6 +3312,7 @@
                 }
             },
 
+            // ── Login com senha (SEMPRE obrigatório, sem salvar sessão) ────
             login: async () => {
                 const username = document.getElementById('l-username').value.trim();
                 const password = document.getElementById('l-password').value;
@@ -3250,7 +3324,7 @@
 
                 const btn = document.getElementById('btn-login');
                 btn.disabled = true;
-                btn.textContent = 'Entrando...';
+                btn.textContent = 'Verificando...';
 
                 try {
                     const user = await DB.getUser(username.toLowerCase());
@@ -3265,9 +3339,9 @@
                         return;
                     }
 
+                    // NÃO salvamos sessão em sessionStorage — senha obrigatória sempre
                     Auth.currentUser = user;
-                    sessionStorage.setItem('fp_user', user.username);
-                    Auth.enterApp(user);
+                    Auth._afterPasswordLogin(user);
 
                 } catch (err) {
                     console.error('Erro no login:', err);
@@ -3278,6 +3352,20 @@
                 }
             },
 
+            // Chamado após login bem-sucedido com senha
+            _afterPasswordLogin: (user) => {
+                // Mostrar opção de ativar biometria (se suportado e ainda não ativado)
+                const enableSection = document.getElementById('biometric-enable-section');
+                if (enableSection && Auth._webauthnSupported()) {
+                    const hasCredential = localStorage.getItem('fp_biometric_' + user.username);
+                    enableSection.style.display = 'block';
+                    const chk = document.getElementById('chk-enable-biometric');
+                    if (chk) chk.checked = !!hasCredential;
+                }
+                Auth.enterApp(user);
+            },
+
+            // ── Cadastro ───────────────────────────────────────────────────
             register: async () => {
                 const name = document.getElementById('r-name').value.trim();
                 const username = document.getElementById('r-username').value.trim().toLowerCase();
@@ -3288,17 +3376,14 @@
                     Auth.showError('Preencha todos os campos.');
                     return;
                 }
-
                 if (username.length < 3) {
                     Auth.showError('Usuário deve ter pelo menos 3 caracteres.');
                     return;
                 }
-
                 if (password.length < 6) {
                     Auth.showError('A senha deve ter pelo menos 6 caracteres.');
                     return;
                 }
-
                 if (password !== confirm) {
                     Auth.showError('As senhas não coincidem.');
                     return;
@@ -3316,30 +3401,16 @@
                     }
 
                     const passwordHash = await Auth.hashPassword(password);
-                    const user = {
-                        username,
-                        name,
-                        passwordHash,
-                        createdAt: new Date().toISOString()
-                    };
-
+                    const user = { username, name, passwordHash, createdAt: new Date().toISOString() };
                     await DB.saveUser(user);
 
-                    // Salvar nome nas configurações
-                    const settings = {
-                        id: 'user_settings',
-                        name,
-                        currency: 'BRL',
-                        closingDay: 1
-                    };
+                    const settings = { id: 'user_settings', name, currency: 'BRL', closingDay: 1 };
                     await DB.saveSettings(settings);
 
-                    Auth.showSuccess('Conta criada com sucesso! Fazendo login...');
-
+                    Auth.showSuccess('Conta criada! Entrando...');
                     setTimeout(() => {
                         Auth.currentUser = user;
-                        sessionStorage.setItem('fp_user', user.username);
-                        Auth.enterApp(user);
+                        Auth._afterPasswordLogin(user);
                     }, 800);
 
                 } catch (err) {
@@ -3351,43 +3422,172 @@
                 }
             },
 
+            // ── Entrar no app ──────────────────────────────────────────────
             enterApp: (user) => {
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('header-username').textContent = user.name || user.username;
-                // Atualiza nome nas configurações se necessário
                 if (FinanceApp.data.settings) {
                     FinanceApp.data.settings.name = user.name || user.username;
                 }
             },
 
+            // ── Logout ─────────────────────────────────────────────────────
             logout: () => {
                 if (confirm('Deseja sair da sua conta?')) {
-                    sessionStorage.removeItem('fp_user');
                     Auth.currentUser = null;
-                    // Limpa campos
-                    document.getElementById('l-username').value = '';
-                    document.getElementById('l-password').value = '';
+                    sessionStorage.removeItem('fp_user');
+                    // Limpa campos de senha
+                    const pField = document.getElementById('l-password');
+                    if (pField) pField.value = '';
                     Auth.hideMessages();
-                    Auth.switchTab('login');
+                    Auth.switchTab('login', document.querySelectorAll('.login-tab-btn')[0]);
                     document.getElementById('login-screen').classList.remove('hidden');
+                    document.getElementById('biometric-enable-section').style.display = 'none';
+                    Auth._refreshBiometricUI();
                 }
             },
 
-            checkSession: async () => {
-                const savedUser = sessionStorage.getItem('fp_user');
-                if (savedUser) {
-                    try {
-                        const user = await DB.getUser(savedUser);
-                        if (user) {
-                            Auth.currentUser = user;
-                            Auth.enterApp(user);
-                            return true;
+            // ── Sem checkSession automático — senha sempre obrigatória ─────
+            checkSession: async () => false,
+
+            // ══════════════════════════════════════════════════════════════
+            //  BIOMETRIA — Web Authentication API (WebAuthn / FIDO2)
+            // ══════════════════════════════════════════════════════════════
+
+            _webauthnSupported: () => !!(window.PublicKeyCredential && navigator.credentials),
+
+            // Atualiza visibilidade do botão de biometria na tela de login
+            _refreshBiometricUI: async () => {
+                const section = document.getElementById('biometric-section');
+                if (!section) return;
+                if (!Auth._webauthnSupported()) { section.style.display = 'none'; return; }
+
+                // Descobre se há algum usuário com biometria cadastrada neste dispositivo
+                const users = await DB.getAllUsers().catch(() => []);
+                const hasBiometric = users.some(u => localStorage.getItem('fp_biometric_' + u.username));
+                section.style.display = hasBiometric ? 'block' : 'none';
+            },
+
+            // Ativa biometria para o usuário logado (registra credencial WebAuthn)
+            toggleEnableBiometric: async (enable) => {
+                if (!Auth.currentUser) return;
+                const username = Auth.currentUser.username;
+
+                if (!enable) {
+                    // Remove credencial
+                    localStorage.removeItem('fp_biometric_' + username);
+                    Utils.toast('Biometria desativada');
+                    Auth._refreshBiometricUI();
+                    return;
+                }
+
+                if (!Auth._webauthnSupported()) {
+                    Utils.toast('Biometria não suportada neste dispositivo', 'error');
+                    const chk = document.getElementById('chk-enable-biometric');
+                    if (chk) chk.checked = false;
+                    return;
+                }
+
+                try {
+                    // Gera um challenge aleatório (não precisa ser validado no servidor — uso local)
+                    const challenge = crypto.getRandomValues(new Uint8Array(32));
+                    const userId = new TextEncoder().encode(username);
+
+                    const credential = await navigator.credentials.create({
+                        publicKey: {
+                            challenge,
+                            rp: { name: 'FinançaPro', id: location.hostname || 'localhost' },
+                            user: { id: userId, name: username, displayName: Auth.currentUser.name || username },
+                            pubKeyCredParams: [
+                                { type: 'public-key', alg: -7 },   // ES256
+                                { type: 'public-key', alg: -257 }  // RS256
+                            ],
+                            authenticatorSelection: {
+                                authenticatorAttachment: 'platform', // biometria nativa do dispositivo
+                                userVerification: 'required',
+                                residentKey: 'preferred'
+                            },
+                            timeout: 60000,
+                            attestation: 'none'
                         }
-                    } catch (e) {
-                        console.warn('Sessão inválida:', e);
+                    });
+
+                    if (credential) {
+                        // Salva o ID da credencial localmente para uso futuro
+                        const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+                        localStorage.setItem('fp_biometric_' + username, credId);
+                        Utils.toast('✅ Biometria ativada com sucesso!');
+                        Auth._refreshBiometricUI();
+                    }
+                } catch (err) {
+                    console.warn('Biometria cancelada ou falhou:', err);
+                    const chk = document.getElementById('chk-enable-biometric');
+                    if (chk) chk.checked = false;
+                    if (err.name === 'NotAllowedError') {
+                        Utils.toast('Biometria cancelada pelo usuário');
+                    } else {
+                        Utils.toast('Não foi possível ativar a biometria', 'error');
                     }
                 }
-                return false;
+            },
+
+            // Login por biometria
+            loginBiometric: async () => {
+                if (!Auth._webauthnSupported()) {
+                    Auth.showError('Biometria não suportada neste dispositivo.');
+                    return;
+                }
+
+                // Encontra usuário(s) com biometria cadastrada
+                let targetUser = null;
+                try {
+                    const users = await DB.getAllUsers();
+                    targetUser = users.find(u => localStorage.getItem('fp_biometric_' + u.username));
+                } catch(e) {}
+
+                if (!targetUser) {
+                    Auth.showError('Nenhuma biometria cadastrada. Faça login com senha primeiro.');
+                    return;
+                }
+
+                const btn = document.getElementById('btn-biometric');
+                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Aguardando biometria...'; }
+
+                try {
+                    const challenge = crypto.getRandomValues(new Uint8Array(32));
+
+                    const assertion = await navigator.credentials.get({
+                        publicKey: {
+                            challenge,
+                            timeout: 60000,
+                            userVerification: 'required',
+                            rpId: location.hostname || 'localhost'
+                        }
+                    });
+
+                    if (assertion) {
+                        // Autenticação bem-sucedida — autentica o usuário com biometria cadastrada
+                        Auth.currentUser = targetUser;
+                        Auth.enterApp(targetUser);
+
+                        // Mostra opção de gerenciar biometria após entrar
+                        const enableSection = document.getElementById('biometric-enable-section');
+                        if (enableSection) {
+                            enableSection.style.display = 'block';
+                            const chk = document.getElementById('chk-enable-biometric');
+                            if (chk) chk.checked = true;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Biometria falhou:', err);
+                    if (err.name === 'NotAllowedError') {
+                        Auth.showError('Biometria cancelada. Use sua senha para entrar.');
+                    } else {
+                        Auth.showError('Falha na autenticação biométrica. Tente novamente ou use a senha.');
+                    }
+                } finally {
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-fingerprint"></i> Entrar com Biometria'; }
+                }
             }
         };
 
@@ -6403,18 +6603,18 @@
             
             init: async () => {
                 await UI.init();
-                // Verificar sessão ativa após carregar o app
-                const hasSession = await Auth.checkSession();
-                if (!hasSession) {
-                    // Verificar se há usuários cadastrados
-                    try {
-                        const users = await DB.getAllUsers();
-                        if (users.length === 0) {
-                            // Primeiro uso: mostrar tab de cadastro
-                            Auth.switchTab('register', document.querySelectorAll('.login-tab-btn')[1]);
-                        }
-                    } catch(e) {}
-                }
+                // Sem checkSession automático — senha sempre obrigatória
+                // Apenas verifica se há usuários cadastrados e ajusta UI
+                try {
+                    const users = await DB.getAllUsers();
+                    if (users.length === 0) {
+                        // Primeiro uso: mostrar tab de cadastro
+                        Auth.switchTab('register', document.querySelectorAll('.login-tab-btn')[1]);
+                    } else {
+                        // Atualiza botão de biometria se houver credencial salva
+                        Auth._refreshBiometricUI();
+                    }
+                } catch(e) {}
             },
             
             changeMonth: (direction) => {
@@ -8119,12 +8319,15 @@
                 // Exibe mensagem de bloqueio
                 const errEl = document.getElementById('login-error');
                 if (errEl) {
-                    errEl.textContent = `\uD83D\uDD12 Sessão bloqueada por inatividade. Olá, ${name}! Digite sua senha para continuar.`;
+                    errEl.textContent = `\uD83D\uDD12 Sessão bloqueada por inatividade. Olá, ${name}! Use sua senha ou biometria para continuar.`;
                     errEl.style.display = 'block';
                     errEl.style.background = '#fffbeb';
                     errEl.style.color = '#92400e';
                     errEl.style.border = '1px solid #fcd34d';
                 }
+
+                // Atualiza visibilidade do botão de biometria
+                Auth._refreshBiometricUI();
             }
 
             function _reset() {
