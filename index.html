@@ -1148,10 +1148,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 24px;
+            justify-content: flex-start;
+            padding: 40px 24px 32px;
             overflow-y: auto;
         }
+        #login-screen .login-logo { margin-top: 20px; }
         #login-screen.hidden { display: none; }
 
         .login-logo {
@@ -1745,6 +1746,12 @@
             </div>
         </div>
         <p class="login-footer">Seus dados ficam salvos localmente no dispositivo.</p>
+
+        <!-- Alternância rápida de usuários -->
+        <div id="user-switcher-section" style="display:none;margin-top:20px;width:100%;max-width:380px;">
+            <div style="font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;text-align:center;">Acessar como</div>
+            <div id="user-switcher-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
     </div>
 
 
@@ -1762,6 +1769,7 @@
             <button class="dark-toggle" id="dark-toggle-btn" onclick="UI.toggleDarkMode()" title="Alternar tema"><i class="fas fa-moon"></i></button>
             <button class="icon-btn" onclick="FinanceApp.backup.exportData()"><i class="fas fa-cloud-download-alt"></i></button>
             <button class="icon-btn" onclick="UI.openSettings()"><i class="fas fa-cog"></i></button>
+            <button class="icon-btn" onclick="Auth.showUserSwitcher()" title="Trocar usuário"><i class="fas fa-users"></i></button>
             <button class="icon-btn" onclick="Auth.logout()" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </header>
@@ -3246,6 +3254,37 @@
             name: 'FinancaProDB',
             version: 7,
             db: null,
+            currentUsername: null,
+
+            // Open DB scoped to a specific user
+            initForUser: async (username) => {
+                // Close existing DB if open
+                if (DB.db) { try { DB.db.close(); } catch(e) {} DB.db = null; }
+                DB.currentUsername = username;
+                DB.name = 'FinancaProDB_' + username;
+                return DB.init();
+            },
+
+            // Shared DB for users list (always named FinancaProDB_users)
+            _usersDB: null,
+            initUsersDB: async () => {
+                if (DB._usersDB) return;
+                return new Promise((resolve, reject) => {
+                    const req = indexedDB.open('FinancaProDB_users', 1);
+                    req.onerror = () => reject(req.error);
+                    req.onsuccess = () => { DB._usersDB = req.result; resolve(); };
+                    req.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains('users')) {
+                            const s = db.createObjectStore('users', { keyPath: 'username' });
+                            s.createIndex('username', 'username', { unique: true });
+                        }
+                        if (!db.objectStoreNames.contains('face_descriptors')) {
+                            db.createObjectStore('face_descriptors', { keyPath: 'username' });
+                        }
+                    };
+                });
+            },
             
             init: async () => {
                 return new Promise((resolve, reject) => {
@@ -3287,15 +3326,6 @@
                         
                         if (!db.objectStoreNames.contains('settings')) {
                             db.createObjectStore('settings', { keyPath: 'id' });
-                        }
-
-                        if (!db.objectStoreNames.contains('users')) {
-                            const userStore = db.createObjectStore('users', { keyPath: 'username' });
-                            userStore.createIndex('username', 'username', { unique: true });
-                        }
-
-                        if (!db.objectStoreNames.contains('face_descriptors')) {
-                            db.createObjectStore('face_descriptors', { keyPath: 'username' });
                         }
                     };
                 });
@@ -3551,8 +3581,9 @@
             },
 
             saveUser: async (user) => {
+                await DB.initUsersDB();
                 return new Promise((resolve, reject) => {
-                    const tx = DB.db.transaction(['users'], 'readwrite');
+                    const tx = DB._usersDB.transaction(['users'], 'readwrite');
                     const store = tx.objectStore('users');
                     const request = store.put(user);
                     request.onsuccess = () => resolve();
@@ -3561,8 +3592,9 @@
             },
 
             getUser: async (username) => {
+                await DB.initUsersDB();
                 return new Promise((resolve, reject) => {
-                    const tx = DB.db.transaction(['users'], 'readonly');
+                    const tx = DB._usersDB.transaction(['users'], 'readonly');
                     const store = tx.objectStore('users');
                     const request = store.get(username.toLowerCase().trim());
                     request.onsuccess = () => resolve(request.result || null);
@@ -3571,8 +3603,9 @@
             },
 
             getAllUsers: async () => {
+                await DB.initUsersDB();
                 return new Promise((resolve, reject) => {
-                    const tx = DB.db.transaction(['users'], 'readonly');
+                    const tx = DB._usersDB.transaction(['users'], 'readonly');
                     const store = tx.objectStore('users');
                     const request = store.getAll();
                     request.onsuccess = () => resolve(request.result);
@@ -3581,10 +3614,10 @@
             },
 
             saveFaceDescriptor: async (username, descriptors) => {
+                await DB.initUsersDB();
                 return new Promise((resolve, reject) => {
-                    const tx = DB.db.transaction(['face_descriptors'], 'readwrite');
+                    const tx = DB._usersDB.transaction(['face_descriptors'], 'readwrite');
                     const store = tx.objectStore('face_descriptors');
-                    // descriptors: array of Float32Array serialized as regular arrays
                     const request = store.put({ username, descriptors, savedAt: new Date().toISOString() });
                     request.onsuccess = () => resolve();
                     request.onerror = () => reject(request.error);
@@ -3592,8 +3625,9 @@
             },
 
             getFaceDescriptor: async (username) => {
+                await DB.initUsersDB();
                 return new Promise((resolve, reject) => {
-                    const tx = DB.db.transaction(['face_descriptors'], 'readonly');
+                    const tx = DB._usersDB.transaction(['face_descriptors'], 'readonly');
                     const store = tx.objectStore('face_descriptors');
                     const request = store.get(username);
                     request.onsuccess = () => resolve(request.result || null);
@@ -3602,8 +3636,9 @@
             },
 
             deleteFaceDescriptor: async (username) => {
+                await DB.initUsersDB();
                 return new Promise((resolve, reject) => {
-                    const tx = DB.db.transaction(['face_descriptors'], 'readwrite');
+                    const tx = DB._usersDB.transaction(['face_descriptors'], 'readwrite');
                     const store = tx.objectStore('face_descriptors');
                     const request = store.delete(username);
                     request.onsuccess = () => resolve();
@@ -3612,8 +3647,9 @@
             },
 
             getAllFaceUsers: async () => {
+                await DB.initUsersDB();
                 return new Promise((resolve, reject) => {
-                    const tx = DB.db.transaction(['face_descriptors'], 'readonly');
+                    const tx = DB._usersDB.transaction(['face_descriptors'], 'readonly');
                     const store = tx.objectStore('face_descriptors');
                     const request = store.getAll();
                     request.onsuccess = () => resolve(request.result);
@@ -3717,8 +3753,8 @@
             },
 
             // Chamado após login bem-sucedido com senha
-            _afterPasswordLogin: (user) => {
-                Auth.enterApp(user);
+            _afterPasswordLogin: async (user) => {
+                await Auth.enterApp(user);
             },
 
             // ── Cadastro ───────────────────────────────────────────────────
@@ -3759,9 +3795,7 @@
                     const passwordHash = await Auth.hashPassword(password);
                     const user = { username, name, passwordHash, createdAt: new Date().toISOString() };
                     await DB.saveUser(user);
-
-                    const settings = { id: 'user_settings', name, currency: 'BRL', closingDay: 1 };
-                    await DB.saveSettings(settings);
+                    // Settings will be saved inside enterApp after per-user DB is opened
 
                     Auth.showSuccess('Conta criada! Entrando...');
                     setTimeout(() => {
@@ -3779,12 +3813,60 @@
             },
 
             // ── Entrar no app ──────────────────────────────────────────────
-            enterApp: (user) => {
+            enterApp: async (user) => {
+                // Switch to this user's own DB
+                await DB.initForUser(user.username);
+
+                // Reset in-memory data
+                FinanceApp.data.transactions = [];
+                FinanceApp.data.accounts = [];
+                FinanceApp.data.categories = [];
+                FinanceApp.data.goals = [];
+                FinanceApp.data.settings = null;
+
+                // Create defaults only if this user has NO data yet (new user = blank data)
+                const existingCategories = await DB.getAllCategories();
+                const existingAccounts = await DB.getAllAccounts();
+                // DO NOT create defaults — new user starts blank
+
+                await UI.loadInitialData();
+
+                // If brand new user (no settings), create minimal settings
+                if (!FinanceApp.data.settings || !FinanceApp.data.settings.name) {
+                    const settings = { id: 'user_settings', name: user.name || user.username, currency: 'BRL', closingDay: 1 };
+                    await DB.saveSettings(settings);
+                    FinanceApp.data.settings = settings;
+                }
+
+                await UI.processAutoRecurringTransactions();
+                UI.updateMonthDisplay();
+                UI.updateTransactionMonthDisplay();
+                UI.renderDashboard();
+
+                // Prevent nav link scroll-to-top (idempotent)
+                document.querySelectorAll('.bottom-nav .nav-item').forEach(el => {
+                    el.addEventListener('click', (e) => e.preventDefault());
+                });
+
+                UI.checkFuturePendingTransactions();
+
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('header-username').textContent = user.name || user.username;
                 if (FinanceApp.data.settings) {
                     FinanceApp.data.settings.name = user.name || user.username;
                 }
+
+                // Update user switcher
+                Auth._renderUserSwitcher();
+            },
+
+            showUserSwitcher: () => {
+                Auth.currentUser = null;
+                document.getElementById('login-screen').classList.remove('hidden');
+                Auth.hideMessages();
+                Auth.switchTab('login', document.querySelectorAll('.login-tab-btn')[0]);
+                Auth._renderUserSwitcher();
+                Auth._refreshBiometricUI();
             },
 
             // ── Logout ─────────────────────────────────────────────────────
@@ -3792,18 +3874,50 @@
                 if (confirm('Deseja sair da sua conta?')) {
                     Auth.currentUser = null;
                     sessionStorage.removeItem('fp_user');
-                    // Limpa campos de senha
                     const pField = document.getElementById('l-password');
                     if (pField) pField.value = '';
                     Auth.hideMessages();
                     Auth.switchTab('login', document.querySelectorAll('.login-tab-btn')[0]);
                     document.getElementById('login-screen').classList.remove('hidden');
+                    Auth._renderUserSwitcher();
                     Auth._refreshBiometricUI();
                 }
             },
 
             // ── Sem checkSession automático — senha sempre obrigatória ─────
             checkSession: async () => false,
+
+            // ── Lista de usuários para alternância rápida ──────────────────
+            _renderUserSwitcher: async () => {
+                const container = document.getElementById('user-switcher-list');
+                if (!container) return;
+                try {
+                    const users = await DB.getAllUsers();
+                    if (users.length === 0) {
+                        container.innerHTML = '';
+                        document.getElementById('user-switcher-section').style.display = 'none';
+                        return;
+                    }
+                    document.getElementById('user-switcher-section').style.display = 'block';
+                    container.innerHTML = users.map(u => `
+                        <div onclick="Auth.switchUser('${u.username}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8fafc;border-radius:12px;cursor:pointer;border:1.5px solid ${Auth.currentUser && Auth.currentUser.username===u.username?'var(--primary)':'#e2e8f0'};transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='${Auth.currentUser && Auth.currentUser.username===u.username?'var(--primary)':'#e2e8f0'}'">
+                            <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:1rem;flex-shrink:0;">${(u.name||u.username).charAt(0).toUpperCase()}</div>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-weight:700;font-size:0.9rem;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${u.name || u.username}</div>
+                                <div style="font-size:0.75rem;color:#64748b;">@${u.username}</div>
+                            </div>
+                            ${Auth.currentUser && Auth.currentUser.username===u.username ? '<span style="color:var(--primary);font-size:0.7rem;font-weight:700;">ATIVO</span>' : '<i class="fas fa-sign-in-alt" style="color:#94a3b8;font-size:0.9rem;"></i>'}
+                        </div>`).join('');
+                } catch(e) { container.innerHTML = ''; }
+            },
+
+            switchUser: async (username) => {
+                const user = await DB.getUser(username).catch(() => null);
+                if (!user) { Utils.toast('Usuário não encontrado.'); return; }
+                Auth.currentUser = user;
+                await Auth.enterApp(user);
+                Utils.toast(`👋 Olá, ${user.name || user.username}!`);
+            },
 
             // ── Atualiza botão facial na tela de login ─────────────────────
             _refreshBiometricUI: async () => {
@@ -4199,35 +4313,16 @@
             
             init: async () => {
                 try {
-                    await DB.init();
+                    // Init shared users DB (for login/user list)
+                    await DB.initUsersDB();
 
-                    // Create defaults if first run (before loading so data is ready)
-                    const existingCategories = await DB.getAllCategories();
-                    if (existingCategories.length === 0) {
-                        await UI.createDefaultCategories();
-                    }
-                    const existingAccounts = await DB.getAllAccounts();
-                    if (existingAccounts.length === 0) {
-                        await UI.createDefaultAccounts();
-                    }
+                    // Show user switcher on login screen
+                    Auth._renderUserSwitcher();
 
-                    await UI.loadInitialData();
-                    await UI.processAutoRecurringTransactions();
-
-                    UI.updateMonthDisplay();
-                    UI.updateTransactionMonthDisplay();
-                    UI.renderDashboard();
-
-                    // Prevent nav link scroll-to-top
-                    document.querySelectorAll('.bottom-nav .nav-item').forEach(el => {
-                        el.addEventListener('click', (e) => e.preventDefault());
-                    });
-
-                    UI.checkFuturePendingTransactions();
+                    // Per-user DB init happens in Auth.enterApp after login
 
                 } catch (error) {
                     console.error('Erro ao inicializar:', error);
-                    Utils.toast('Erro ao carregar dados', 'error');
                 }
             },
             
@@ -4941,6 +5036,7 @@
                                 <div class="account-balance ${account.balance >= 0 ? 'positive' : 'negative'} balance-sensivel">
                                     ${Utils.formatCurrency(account.balance)}
                                 </div>
+                                <button onclick="event.stopPropagation();UI.openAccountStatement('${account.id}')" style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);color:#0369a1;border:1.5px solid #7dd3fc;border-radius:8px;font-size:0.68rem;font-weight:700;padding:5px 8px;cursor:pointer;white-space:nowrap;"><i class='fas fa-file-invoice'></i> Extrato</button>
                                 ${isSpecialAcc ? `<div style="display:flex;gap:4px;">
                                     <button onclick="event.stopPropagation();UI.openSmartTransferModal('${account.id}')" style="background:linear-gradient(135deg,var(--investment),var(--accent));color:white;border:none;border-radius:8px;font-size:0.68rem;font-weight:700;padding:5px 8px;cursor:pointer;white-space:nowrap;"><i class='fas fa-paper-plane'></i> Aportar</button>
                                     <button onclick="event.stopPropagation();UI.openSmartTransferModal(null,'${account.id}')" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);color:#16a34a;border:1.5px solid #86efac;border-radius:8px;font-size:0.68rem;font-weight:700;padding:5px 8px;cursor:pointer;white-space:nowrap;"><i class='fas fa-hand-holding-usd'></i> Resgatar</button>
@@ -8657,6 +8753,272 @@
             else Utils.toast('Relatório aberto! Use "Imprimir → Salvar como PDF".');
         };
 
+        // ===== ACCOUNT STATEMENT (EXTRATO POR CONTA) =====
+        UI.openAccountStatement = (accountId) => {
+            const account = FinanceApp.data.accounts.find(a => a.id === accountId);
+            if (!account) return;
+            const allTxs = FinanceApp.data.transactions.filter(t =>
+                t.account === accountId || (t.type === 'transfer' && t.transferTo === accountId)
+            ).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            const overlay = document.getElementById('overlay-account-statement');
+            const modal   = document.getElementById('sheet-account-statement');
+            const titleEl = document.getElementById('stmt-account-title');
+            const filterSel = document.getElementById('stmt-month-filter');
+            if (!overlay) return;
+
+            titleEl.textContent = `Extrato — ${account.name}`;
+            const months = new Set(allTxs.map(t => t.date.slice(0,7)));
+            filterSel.innerHTML = '<option value="all">Todos os períodos</option>';
+            [...months].sort().reverse().forEach(m => {
+                const [y, mo] = m.split('-');
+                const label = new Date(+y, +mo-1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+                filterSel.innerHTML += `<option value="${m}">${label.charAt(0).toUpperCase()+label.slice(1)}</option>`;
+            });
+            // default to current month if exists
+            const now = new Date();
+            const curM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+            if (months.has(curM)) filterSel.value = curM;
+
+            UI._stmtAccountId = accountId;
+            UI._stmtAllTxs = allTxs;
+            UI._renderStatement(filterSel.value);
+
+            overlay.classList.add('active');
+            modal.classList.add('active');
+        };
+
+        UI._renderStatement = (monthFilter) => {
+            const accountId = UI._stmtAccountId;
+            const account   = FinanceApp.data.accounts.find(a => a.id === accountId);
+            const categories = FinanceApp.data.categories;
+            const accounts   = FinanceApp.data.accounts;
+            let txs = (UI._stmtAllTxs || []);
+            if (monthFilter !== 'all') txs = txs.filter(t => t.date.startsWith(monthFilter));
+
+            const bodyEl = document.getElementById('stmt-body');
+            if (!bodyEl) return;
+            if (txs.length === 0) {
+                bodyEl.innerHTML = `<div style="text-align:center;padding:32px;color:#94a3b8;"><i class="fas fa-file-invoice" style="font-size:2rem;margin-bottom:8px;display:block;opacity:0.3;"></i>Nenhuma movimentação neste período.</div>`;
+                document.getElementById('stmt-total-income').textContent = 'R$ 0,00';
+                document.getElementById('stmt-total-expense').textContent = 'R$ 0,00';
+                const balEl = document.getElementById('stmt-balance');
+                balEl.textContent = 'R$ 0,00'; balEl.style.color = '';
+                return;
+            }
+
+            const typeColors = { income: '#10b981', expense: '#ef4444', investment: '#3b82f6', transfer: '#8b5cf6' };
+            const typeIcons  = { income: 'fas fa-arrow-down', expense: 'fas fa-arrow-up', investment: 'fas fa-chart-line', transfer: 'fas fa-exchange-alt' };
+            const typeIconBg = { income: '#d1fae5', expense: '#fee2e2', investment: '#dbeafe', transfer: '#f3e8ff' };
+            const typeLabels = { income: 'Receita', expense: 'Despesa', investment: 'Investimento', transfer: 'Transferência' };
+
+            let runningBalance = 0;
+            const allBeforeFilter = (UI._stmtAllTxs || []).filter(t =>
+                monthFilter === 'all' ? false : t.date < monthFilter + '-01'
+            );
+            allBeforeFilter.forEach(t => {
+                if (t.status !== 'cleared') return;
+                const isTransferIn = t.type === 'transfer' && t.transferTo === accountId;
+                if (isTransferIn) runningBalance += t.amount;
+                else if (t.account === accountId) {
+                    if (t.type === 'income') runningBalance += t.amount;
+                    else if (t.type === 'expense' || t.type === 'investment') runningBalance -= t.amount;
+                    else if (t.type === 'transfer') runningBalance -= t.amount;
+                }
+            });
+
+            let totalIncome = 0, totalExpense = 0;
+            const grouped = {};
+            txs.forEach(t => { if (!grouped[t.date]) grouped[t.date] = []; grouped[t.date].push(t); });
+
+            let html = '';
+            Object.keys(grouped).sort().forEach(date => {
+                html += `<div style="background:#f8fafc;padding:8px 12px;font-weight:700;font-size:0.78rem;color:#475569;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;margin-top:4px;">${Utils.formatDate(date)}</div>`;
+                grouped[date].forEach(t => {
+                    const isTransferIn = t.type === 'transfer' && t.transferTo === accountId;
+                    const cat = categories.find(c => c.id === t.category);
+                    const otherAcc = accounts.find(a => a.id === (isTransferIn ? t.account : t.transferTo));
+                    const effectiveType = isTransferIn ? 'transfer' : t.type;
+
+                    let impact = 0;
+                    if (isTransferIn) impact = +t.amount;
+                    else if (t.account === accountId) {
+                        if (t.type === 'income') impact = +t.amount;
+                        else if (t.type === 'expense' || t.type === 'investment') impact = -t.amount;
+                        else if (t.type === 'transfer') impact = -t.amount;
+                    }
+                    if (t.status === 'cleared') {
+                        if (impact > 0) totalIncome += impact;
+                        else totalExpense += Math.abs(impact);
+                        runningBalance += impact;
+                    }
+
+                    const sign = impact > 0 ? '+' : '';
+                    const color = impact >= 0 ? '#10b981' : '#ef4444';
+                    const icon   = typeIcons[effectiveType] || 'fas fa-circle';
+                    const iconBg = typeIconBg[effectiveType] || '#f1f5f9';
+                    const typeColor = typeColors[effectiveType] || '#64748b';
+                    const statusBadge = t.status === 'pending' ? `<span style="background:#fef3c7;color:#b45309;font-size:0.65rem;padding:1px 5px;border-radius:8px;font-weight:700;margin-left:4px;">Pendente</span>` :
+                        t.status === 'scheduled' ? `<span style="background:#dbeafe;color:#1e40af;font-size:0.65rem;padding:1px 5px;border-radius:8px;font-weight:700;margin-left:4px;">Agendada</span>` : '';
+                    const transferNote = isTransferIn ? ` <span style="font-size:0.72rem;color:#8b5cf6">(de: ${otherAcc ? otherAcc.name : '?'})</span>` :
+                        (t.type === 'transfer' && otherAcc) ? ` <span style="font-size:0.72rem;color:#8b5cf6">(para: ${otherAcc.name})</span>` : '';
+
+                    html += `
+                    <div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid #f1f5f9;">
+                        <div style="width:36px;height:36px;border-radius:9px;background:${iconBg};color:${typeColor};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.85rem;">
+                            <i class="${icon}"></i>
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:600;font-size:0.88rem;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.description}${statusBadge}${transferNote}</div>
+                            <div style="font-size:0.73rem;color:#64748b;">${cat ? cat.name : typeLabels[effectiveType] || '—'}</div>
+                        </div>
+                        <div style="text-align:right;flex-shrink:0;">
+                            <div style="font-weight:700;font-size:0.92rem;color:${color};">${sign}${Utils.formatCurrency(t.amount)}</div>
+                            <div style="font-size:0.7rem;color:#94a3b8;">Saldo: ${Utils.formatCurrency(runningBalance)}</div>
+                        </div>
+                    </div>`;
+                });
+            });
+
+            bodyEl.innerHTML = html;
+            document.getElementById('stmt-total-income').textContent = Utils.formatCurrency(totalIncome);
+            document.getElementById('stmt-total-expense').textContent = Utils.formatCurrency(totalExpense);
+            const bal = totalIncome - totalExpense;
+            const balEl = document.getElementById('stmt-balance');
+            balEl.textContent = (bal >= 0 ? '+' : '') + Utils.formatCurrency(bal);
+            balEl.style.color = bal >= 0 ? '#10b981' : '#ef4444';
+        };
+
+        UI.filterStatement = () => {
+            const sel = document.getElementById('stmt-month-filter');
+            UI._renderStatement(sel ? sel.value : 'all');
+        };
+
+        UI.closeAccountStatement = () => {
+            const overlay = document.getElementById('overlay-account-statement');
+            const modal   = document.getElementById('sheet-account-statement');
+            if (overlay) overlay.classList.remove('active');
+            if (modal)   modal.classList.remove('active');
+        };
+
+        UI.downloadStatementPDF = () => {
+            const accountId = UI._stmtAccountId;
+            const account   = FinanceApp.data.accounts.find(a => a.id === accountId);
+            const categories = FinanceApp.data.categories;
+            const accounts   = FinanceApp.data.accounts;
+            const monthFilter = (document.getElementById('stmt-month-filter') || {}).value || 'all';
+            let txs = (UI._stmtAllTxs || []).filter(t => monthFilter === 'all' || t.date.startsWith(monthFilter));
+            if (!account || txs.length === 0) { Utils.toast('Nenhuma movimentação para exportar!'); return; }
+
+            const typeLabels = { income: 'Receita', expense: 'Despesa', investment: 'Investimento', transfer: 'Transferência' };
+            const statusColors = { cleared: '#10b981', pending: '#f59e0b', scheduled: '#3b82f6' };
+            const statusLabels = { cleared: 'Efetivada', pending: 'Pendente', scheduled: 'Agendada' };
+
+            let runningBalance = 0;
+            const allBeforeFilter = (UI._stmtAllTxs || []).filter(t =>
+                monthFilter === 'all' ? false : t.date < monthFilter + '-01'
+            );
+            allBeforeFilter.forEach(t => {
+                if (t.status !== 'cleared') return;
+                const isTransferIn = t.type === 'transfer' && t.transferTo === accountId;
+                if (isTransferIn) runningBalance += t.amount;
+                else if (t.account === accountId) {
+                    if (t.type === 'income') runningBalance += t.amount;
+                    else if (t.type === 'expense' || t.type === 'investment') runningBalance -= t.amount;
+                    else if (t.type === 'transfer') runningBalance -= t.amount;
+                }
+            });
+
+            let totalIncome = 0, totalExpense = 0, rowsHtml = '';
+            const grouped = {};
+            txs.forEach(t => { if (!grouped[t.date]) grouped[t.date] = []; grouped[t.date].push(t); });
+
+            Object.keys(grouped).sort().forEach(date => {
+                rowsHtml += `<tr><td colspan="5" style="background:#f8fafc;padding:6px 10px;font-weight:700;font-size:0.78rem;color:#475569;border-top:2px solid #e2e8f0;">${Utils.formatDate(date)}</td></tr>`;
+                grouped[date].forEach(t => {
+                    const isTransferIn = t.type === 'transfer' && t.transferTo === accountId;
+                    const cat = categories.find(c => c.id === t.category);
+                    const otherAcc = accounts.find(a => a.id === (isTransferIn ? t.account : t.transferTo));
+                    const effectiveType = isTransferIn ? 'transfer' : t.type;
+                    let impact = 0;
+                    if (isTransferIn) impact = +t.amount;
+                    else if (t.account === accountId) {
+                        if (t.type === 'income') impact = +t.amount;
+                        else if (t.type === 'expense' || t.type === 'investment') impact = -t.amount;
+                        else if (t.type === 'transfer') impact = -t.amount;
+                    }
+                    if (t.status === 'cleared') {
+                        if (impact > 0) totalIncome += impact;
+                        else totalExpense += Math.abs(impact);
+                        runningBalance += impact;
+                    }
+                    const sign = impact > 0 ? '+' : '';
+                    const color = impact >= 0 ? '#10b981' : '#ef4444';
+                    const sc = statusColors[t.status] || '#64748b';
+                    const transferNote = isTransferIn ? ` (de: ${otherAcc ? otherAcc.name : '?'})` :
+                        (t.type === 'transfer' && otherAcc) ? ` (para: ${otherAcc.name})` : '';
+                    rowsHtml += `<tr>
+                        <td style="padding:8px 10px;"><strong style="display:block;">${t.description}${transferNote}</strong><span style="font-size:0.75rem;color:#64748b;">${cat ? cat.name : typeLabels[effectiveType] || '—'}</span></td>
+                        <td style="padding:8px 10px;font-size:0.8rem;">${typeLabels[effectiveType] || '—'}</td>
+                        <td style="padding:8px 10px;text-align:center;"><span style="background:${sc}22;color:${sc};padding:2px 8px;border-radius:8px;font-size:0.75rem;font-weight:700;">${statusLabels[t.status] || t.status}</span></td>
+                        <td style="padding:8px 10px;font-weight:700;color:${color};text-align:right;">${sign}${Utils.formatCurrency(t.amount)}</td>
+                        <td style="padding:8px 10px;font-size:0.82rem;color:#475569;text-align:right;">${Utils.formatCurrency(runningBalance)}</td>
+                    </tr>`;
+                });
+            });
+
+            const periodLabel = monthFilter === 'all' ? 'Todo o período' : (() => {
+                const [y,m] = monthFilter.split('-');
+                const lbl = new Date(+y,+m-1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+                return lbl.charAt(0).toUpperCase() + lbl.slice(1);
+            })();
+            const userName = Auth.currentUser ? (Auth.currentUser.name || Auth.currentUser.username) : 'Usuário';
+            const bal = totalIncome - totalExpense;
+
+            const html = `<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Extrato — ${account.name}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:20px;}.no-print{margin-top:20px;text-align:center;}@media print{.no-print{display:none;}body{padding:0;}}
+.header-block{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #e2e8f0;padding-bottom:12px;}
+.brand{font-size:1.1rem;font-weight:800;color:#0f172a;}.brand span{color:#10b981;}
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+.summary-card{background:#f8fafc;border-radius:8px;padding:12px;text-align:center;}
+.summary-label{font-size:0.72rem;color:#64748b;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;}
+.sval{font-size:1.1rem;font-weight:800;}
+table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+th{background:#f1f5f9;padding:8px 10px;font-size:0.78rem;color:#475569;text-align:left;border-bottom:2px solid #e2e8f0;}
+td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+.footer{font-size:0.72rem;color:#94a3b8;text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid #e2e8f0;}
+</style></head><body>
+<div style="max-width:820px;margin:0 auto;">
+  <div class="header-block">
+    <div><div class="brand"><span>Finança</span>Pro</div><div style="font-size:0.8rem;color:#64748b;">Extrato gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
+    <div style="text-align:right;"><div style="font-weight:700;font-size:1rem;">${account.name}</div>
+      <div style="font-size:0.78rem;color:#64748b;">${account.institution || ''} ${account.number || ''}</div>
+      <div style="font-size:0.78rem;color:#64748b;">Titular: ${userName}</div>
+      <div style="font-size:0.78rem;color:#475569;font-weight:600;">Período: ${periodLabel}</div>
+    </div>
+  </div>
+  <div class="summary-grid">
+    <div class="summary-card"><div class="summary-label">Entradas</div><div class="sval" style="color:#10b981;">${Utils.formatCurrency(totalIncome)}</div></div>
+    <div class="summary-card"><div class="summary-label">Saídas</div><div class="sval" style="color:#ef4444;">${Utils.formatCurrency(totalExpense)}</div></div>
+    <div class="summary-card"><div class="summary-label">Resultado</div><div class="sval" style="color:${bal>=0?'#10b981':'#ef4444'};">${bal>=0?'+':''}${Utils.formatCurrency(bal)}</div></div>
+  </div>
+  <table><thead><tr>
+    <th>Descrição / Categoria</th><th>Tipo</th><th style="text-align:center">Status</th><th style="text-align:right">Valor</th><th style="text-align:right">Saldo Acumulado</th>
+  </tr></thead><tbody>${rowsHtml}</tbody></table>
+  <div class="footer">FinançaPro • Extrato de ${account.name} • ${txs.length} movimentação(ões) • ${new Date().toLocaleString('pt-BR')}</div>
+  <div class="no-print">
+    <button onclick="window.print()" style="background:#10b981;color:white;border:none;padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;margin-right:12px;">🖨️ Imprimir / Salvar PDF</button>
+    <button onclick="window.close()" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;">✕ Fechar</button>
+  </div>
+</div></body></html>`;
+
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const win = window.open(url, '_blank');
+            if (!win) Utils.toast('Permita pop-ups para baixar o extrato!');
+            else Utils.toast('Extrato aberto! Use "Imprimir → Salvar como PDF".');
+        };
+
         // ===== CARD FINANCE APP METHODS =====
         FinanceApp.card = {
             save: (e) => {
@@ -9075,9 +9437,16 @@
 
         // Hookeia Auth.enterApp para iniciar AutoLock ao entrar no app
         const _origEnterApp = Auth.enterApp.bind(Auth);
-        Auth.enterApp = (user) => {
-            _origEnterApp(user);
+        Auth.enterApp = async (user) => {
+            await _origEnterApp(user);
             AutoLock.start();
+        };
+
+        // Hookeia Auth.showUserSwitcher para parar AutoLock
+        const _origShowUserSwitcher = Auth.showUserSwitcher.bind(Auth);
+        Auth.showUserSwitcher = () => {
+            AutoLock.stop();
+            _origShowUserSwitcher();
         };
 
         // Hookeia Auth.logout para parar AutoLock ao sair
@@ -10416,6 +10785,41 @@
 
     })();
     </script>
+
+    <!-- ===== MODAL EXTRATO POR CONTA ===== -->
+    <div class="modal-overlay" id="overlay-account-statement" onclick="UI.closeAccountStatement()"></div>
+    <div class="modal-sheet" id="sheet-account-statement" style="max-height:90vh;display:flex;flex-direction:column;">
+        <div class="sheet-handle"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 12px;">
+            <h3 class="section-title" id="stmt-account-title" style="margin:0;">Extrato</h3>
+            <button class="icon-btn" onclick="UI.closeAccountStatement()"><i class="fas fa-times"></i></button>
+        </div>
+        <!-- Filter -->
+        <div style="margin-bottom:12px;">
+            <select id="stmt-month-filter" class="form-control" onchange="UI.filterStatement()" style="font-size:0.88rem;"></select>
+        </div>
+        <!-- Summary -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+            <div style="background:#d1fae5;border-radius:10px;padding:10px;text-align:center;">
+                <div style="font-size:0.65rem;color:#065f46;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Entradas</div>
+                <div id="stmt-total-income" style="font-weight:800;font-size:0.95rem;color:#059669;">R$ 0,00</div>
+            </div>
+            <div style="background:#fee2e2;border-radius:10px;padding:10px;text-align:center;">
+                <div style="font-size:0.65rem;color:#991b1b;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Saídas</div>
+                <div id="stmt-total-expense" style="font-weight:800;font-size:0.95rem;color:#ef4444;">R$ 0,00</div>
+            </div>
+            <div style="background:#f1f5f9;border-radius:10px;padding:10px;text-align:center;">
+                <div style="font-size:0.65rem;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Resultado</div>
+                <div id="stmt-balance" style="font-weight:800;font-size:0.95rem;">R$ 0,00</div>
+            </div>
+        </div>
+        <!-- Transaction list -->
+        <div id="stmt-body" style="flex:1;overflow-y:auto;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:12px;"></div>
+        <!-- Actions -->
+        <button onclick="UI.downloadStatementPDF()" style="width:100%;background:linear-gradient(135deg,#ef4444,#dc2626);color:white;border:none;border-radius:10px;padding:13px;font-size:0.95rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <i class="fas fa-file-pdf"></i> Baixar Extrato em PDF
+        </button>
+    </div>
 
     <!-- ===== MODAL SELEÇÃO PDF ===== -->
     <div id="pdf-select-overlay">
