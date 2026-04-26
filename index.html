@@ -329,6 +329,7 @@
         .transaction-card.investment { border-left-color: var(--investment); }
         .transaction-card.pending { border-left-color: var(--pending); }
         .transaction-card.transfer { border-left-color: var(--transfer); }
+        .transaction-card.adjustment { border-left-color: #8b5cf6; background: linear-gradient(90deg, #faf5ff, var(--surface)); }
 
         .transaction-icon {
             width: 40px; height: 40px;
@@ -341,6 +342,7 @@
         .icon-investment { background: #dbeafe; color: var(--investment); }
         .icon-pending { background: #fef3c7; color: var(--pending); }
         .icon-transfer { background: #f3e8ff; color: var(--transfer); }
+        .icon-adjustment { background: #f3e8ff; color: #8b5cf6; }
 
         .transaction-info { flex: 1; }
         .transaction-title { 
@@ -2050,11 +2052,14 @@
             </div>
             
             <div class="section-title">Transferências
-                <div style="display:flex;gap:6px;">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
                     <button class="icon-btn" title="Transferência Inteligente (Investimento/Meta)" style="background: linear-gradient(135deg,var(--investment),var(--accent)); color: white; border-radius: 8px; padding:6px 10px; font-size:0.85rem;" onclick="UI.openSmartTransferModal()">
                         <i class="fas fa-paper-plane"></i> <span style="font-size:0.75rem;font-weight:700;">Inteligente</span>
                     </button>
-                    <button class="icon-btn" title="Transferência Comum" style="background: var(--transfer); color: white; border-radius: 8px;" onclick="UI.openTransferModal()"><i class="fas fa-plus"></i></button>
+                    <button class="icon-btn" title="Transferência entre Contas" style="background: var(--transfer); color: white; border-radius: 8px;" onclick="UI.openTransferModal()"><i class="fas fa-exchange-alt"></i></button>
+                    <button class="icon-btn" id="btn-cross-user-transfer" title="Transferir para outro usuário" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);color:white;border-radius:8px;padding:6px 10px;font-size:0.85rem;display:none;" onclick="UI.openCrossUserTransfer()">
+                        <i class="fas fa-users"></i> <span style="font-size:0.75rem;font-weight:700;">Entre Usuários</span>
+                    </button>
                 </div>
             </div>
             <div id="transfer-history">
@@ -3039,6 +3044,67 @@
         <button class="btn-block" onclick="UI.closeModals()" style="background:var(--light);color:var(--secondary);border-radius:14px;">Cancelar</button>
     </div>
 
+    <!-- ===== MODAL: TRANSFERÊNCIA ENTRE USUÁRIOS ===== -->
+    <div class="modal-overlay" id="overlay-cross-user-transfer" onclick="UI.closeCrossUserTransfer()"></div>
+    <div class="modal-sheet" id="sheet-cross-user-transfer" style="max-height:92vh;overflow-y:auto;">
+        <div class="sheet-handle"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div>
+                <h3 class="section-title" style="margin:0;">Transferir para Usuário</h3>
+                <p style="font-size:0.82rem;color:var(--secondary);margin:4px 0 0;">Enviar valor de uma conta sua para a conta de outro usuário</p>
+            </div>
+            <button class="icon-btn" onclick="UI.closeCrossUserTransfer()"><i class="fas fa-times"></i></button>
+        </div>
+
+        <!-- Origem -->
+        <div style="margin-bottom:14px;">
+            <label class="form-label">Conta de origem (sua)</label>
+            <select id="cut-from-account" class="form-control" onchange="UI.cutUpdateBalance()">
+                <option value="">Selecione sua conta</option>
+            </select>
+            <div id="cut-from-balance" style="font-size:0.78rem;color:#64748b;margin-top:4px;padding-left:2px;"></div>
+        </div>
+
+        <!-- Valor -->
+        <div style="margin-bottom:14px;">
+            <label class="form-label">Valor a transferir</label>
+            <input type="text" id="cut-amount" class="form-control currency-input" placeholder="R$ 0,00" inputmode="decimal">
+        </div>
+
+        <!-- Destinatário -->
+        <div style="margin-bottom:14px;">
+            <label class="form-label">Usuário destinatário</label>
+            <select id="cut-to-user" class="form-control" onchange="UI.cutLoadDestAccounts()">
+                <option value="">Selecione o usuário</option>
+            </select>
+        </div>
+
+        <!-- Conta destino -->
+        <div style="margin-bottom:14px;" id="cut-dest-account-section" style="display:none;">
+            <label class="form-label">Conta destino</label>
+            <select id="cut-to-account" class="form-control">
+                <option value="">Selecione a conta destino</option>
+            </select>
+        </div>
+
+        <!-- Descrição -->
+        <div style="margin-bottom:18px;">
+            <label class="form-label">Descrição (opcional)</label>
+            <input type="text" id="cut-description" class="form-control" placeholder="Ex: Pagamento, divisão de conta...">
+        </div>
+
+        <!-- Resumo -->
+        <div id="cut-summary" style="display:none;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid #86efac;">
+            <div style="font-size:0.78rem;font-weight:700;color:#065f46;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;">Resumo da transferência</div>
+            <div id="cut-summary-text" style="font-size:0.88rem;color:#166534;line-height:1.6;"></div>
+        </div>
+
+        <button onclick="UI.executeCrossUserTransfer()" class="btn-block" style="background:linear-gradient(135deg,var(--primary),var(--primary-dark));border:none;margin-bottom:10px;border-radius:14px;font-size:1rem;font-weight:700;padding:16px;">
+            <i class="fas fa-paper-plane"></i> Confirmar Transferência
+        </button>
+        <button class="btn-block" onclick="UI.closeCrossUserTransfer()" style="background:var(--light);color:var(--secondary);border-radius:14px;">Cancelar</button>
+    </div>
+
     <script>
         // --- UTILITÁRIOS ---
         const Utils = {
@@ -3159,7 +3225,8 @@
                     'income': 'fas fa-plus-circle',
                     'expense': 'fas fa-minus-circle',
                     'investment': 'fas fa-chart-line',
-                    'transfer': 'fas fa-exchange-alt'
+                    'transfer': 'fas fa-exchange-alt',
+                    'adjustment': 'fas fa-sliders-h'
                 };
                 return icons[type] || 'fas fa-exchange-alt';
             },
@@ -3913,6 +3980,8 @@
 
                 // Update user switcher
                 Auth._renderUserSwitcher();
+                // Mostrar/ocultar botão de transferência entre usuários
+                UI._refreshCrossUserBtn();
             },
 
             showUserSwitcher: () => {
@@ -4853,52 +4922,65 @@
             },
 
             createTransactionCard: (transaction) => {
-                const typeClass = transaction.type;
-                const amountClass = `amount-${transaction.type}`;
-                const iconClass = `icon-${transaction.type}`;
-                const amountSign = transaction.type === 'income' ? '+' : 
-                                  transaction.type === 'expense' || transaction.type === 'investment' ? '-' : 
-                                  transaction.type === 'transfer' ? '↔' : '';
-                
+                const isAdj = !!transaction.isBalanceAdjustment;
+
+                // Para ajustes, usamos classe/ícone próprios mas mantemos o sinal real (income=+, expense=-)
+                const cardType  = isAdj ? 'adjustment' : transaction.type;
+                const iconClass = isAdj ? 'icon-adjustment' : `icon-${transaction.type}`;
+                const amountSign = transaction.type === 'income' ? '+' :
+                                   transaction.type === 'expense' || transaction.type === 'investment' ? '-' :
+                                   transaction.type === 'transfer' ? '↔' : '';
+                const amountClass = isAdj
+                    ? (transaction.type === 'income' ? 'amount-income' : 'amount-expense')
+                    : `amount-${transaction.type}`;
+
                 const category = FinanceApp.data.categories.find(c => c.id === transaction.category);
-                const categoryName = category ? category.name : 'Sem categoria';
-                
+                const categoryName = isAdj ? 'Ajuste de Saldo' : (category ? category.name : 'Sem categoria');
+
                 const account = FinanceApp.data.accounts.find(a => a.id === transaction.account);
                 const accountName = account ? account.name : 'Sem conta';
-                
+
                 let statusBadge = '';
-                if (transaction.status === 'pending') {
-                    if (Utils.isFutureDate(transaction.date)) {
-                        statusBadge = '<span class="future-badge">Futura</span>';
-                    } else {
-                        statusBadge = '<span class="pending-badge">Pendente</span>';
+                if (!isAdj) {
+                    if (transaction.status === 'pending') {
+                        statusBadge = Utils.isFutureDate(transaction.date)
+                            ? '<span class="future-badge">Futura</span>'
+                            : '<span class="pending-badge">Pendente</span>';
+                    } else if (transaction.status === 'scheduled') {
+                        statusBadge = '<span class="future-badge">Agendada</span>';
                     }
-                } else if (transaction.status === 'scheduled') {
-                    statusBadge = '<span class="future-badge">Agendada</span>';
                 }
-                
+
+                const adjBadge = isAdj
+                    ? '<span style="background:#f3e8ff;color:#7c3aed;font-size:0.68rem;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:4px;">⚙ Ajuste</span>'
+                    : '';
+
                 let description = transaction.description;
-                if (transaction.type === 'transfer' && transaction.transferTo) {
+                if (!isAdj && transaction.type === 'transfer' && transaction.transferTo) {
                     const toAccount = FinanceApp.data.accounts.find(a => a.id === transaction.transferTo);
-                    const toAccountName = toAccount ? toAccount.name : 'Conta desconhecida';
-                    description = `${accountName} → ${toAccountName}`;
+                    description = `${accountName} → ${toAccount ? toAccount.name : 'Conta desconhecida'}`;
                 }
-                
+
+                const noteLine = isAdj && transaction.notes
+                    ? `<div style="font-size:0.72rem;color:#7c3aed;margin-top:2px;">${transaction.notes}</div>`
+                    : '';
+
                 return `
-                    <div class="transaction-card ${typeClass}" onclick="UI.editTransaction('${transaction.id}')">
+                    <div class="transaction-card ${cardType}" onclick="UI.editTransaction('${transaction.id}')">
                         <div class="transaction-icon ${iconClass}">
-                            <i class="${Utils.getTransactionTypeIcon(transaction.type)}"></i>
+                            <i class="${Utils.getTransactionTypeIcon(isAdj ? 'adjustment' : transaction.type)}"></i>
                         </div>
                         <div class="transaction-info">
-                            <div class="transaction-title">${description}</div>
+                            <div class="transaction-title">${description}${adjBadge}</div>
                             <div class="transaction-category">
-                                <i class="fas fa-tag"></i> ${categoryName}
-                                ${transaction.recurringParent ? '<span class="recurring-badge">Recorrente</span>' : ''}
-                                ${transaction.recurring ? '<span class="recurring-badge">Mestre</span>' : ''}
-                                ${transaction.installmentGroup ? `<span style="background:#dbeafe;color:#1e40af;font-size:0.7rem;padding:2px 6px;border-radius:10px;margin-left:4px;font-weight:700;"><i class="fas fa-layer-group" style="font-size:0.65rem;"></i> ${transaction.installmentIndex}/${transaction.installmentTotal}</span>` : ''}
+                                <i class="fas fa-${isAdj ? 'sliders-h' : 'tag'}"></i> ${categoryName}
+                                ${!isAdj && transaction.recurringParent ? '<span class="recurring-badge">Recorrente</span>' : ''}
+                                ${!isAdj && transaction.recurring ? '<span class="recurring-badge">Mestre</span>' : ''}
+                                ${!isAdj && transaction.installmentGroup ? `<span style="background:#dbeafe;color:#1e40af;font-size:0.7rem;padding:2px 6px;border-radius:10px;margin-left:4px;font-weight:700;"><i class="fas fa-layer-group" style="font-size:0.65rem;"></i> ${transaction.installmentIndex}/${transaction.installmentTotal}</span>` : ''}
                                 ${statusBadge}
                             </div>
                             <div class="transaction-date">${Utils.formatDate(transaction.date)}</div>
+                            ${noteLine}
                         </div>
                         <div class="transaction-amount ${amountClass}">
                             ${amountSign} ${Utils.formatCurrency(transaction.amount)}
@@ -9212,6 +9294,244 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
             const win  = window.open(url, '_blank');
             if (!win) Utils.toast('Permita pop-ups para baixar o extrato!');
             else Utils.toast('Extrato aberto! Use "Imprimir → Salvar como PDF".');
+        };
+
+        // ===== TRANSFERÊNCIA ENTRE USUÁRIOS =====
+        UI._crossUserDestAccounts = []; // contas carregadas do usuário destino
+
+        // Abre o IndexedDB de outro usuário e retorna as contas dele
+        UI._loadUserAccounts = (username) => {
+            return new Promise((resolve, reject) => {
+                const dbName = 'FinancaProDB_' + username;
+                const req = indexedDB.open(dbName, 7);
+                req.onerror = () => resolve([]); // se não existe, retorna vazio
+                req.onsuccess = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('accounts')) { db.close(); resolve([]); return; }
+                    const tx = db.transaction(['accounts'], 'readonly');
+                    const store = tx.objectStore('accounts');
+                    const all = store.getAll();
+                    all.onsuccess = () => { db.close(); resolve(all.result || []); };
+                    all.onerror = () => { db.close(); resolve([]); };
+                };
+                req.onupgradeneeded = (e) => {
+                    // DB existe mas é de versão anterior — não mexemos, fechamos
+                    e.target.transaction.abort();
+                };
+            });
+        };
+
+        // Abre o IndexedDB de outro usuário e grava uma transação + atualiza saldo da conta
+        UI._creditUserAccount = (username, accountId, amount, description) => {
+            return new Promise((resolve, reject) => {
+                const dbName = 'FinancaProDB_' + username;
+                const req = indexedDB.open(dbName, 7);
+                req.onerror = () => reject(new Error('Não foi possível abrir o banco do usuário destino.'));
+                req.onsuccess = (e) => {
+                    const db = e.target.result;
+                    const today = Utils.getToday();
+                    const adjId = Utils.id();
+
+                    // Busca a conta destino
+                    const txRead = db.transaction(['accounts'], 'readonly');
+                    const accStore = txRead.objectStore('accounts');
+                    const getAcc = accStore.get(accountId);
+
+                    getAcc.onsuccess = () => {
+                        const account = getAcc.result;
+                        if (!account) { db.close(); reject(new Error('Conta destino não encontrada.')); return; }
+
+                        const newBalance = account.balance + amount;
+
+                        // Escreve transação de entrada + atualiza saldo
+                        const txWrite = db.transaction(['transactions', 'accounts'], 'readwrite');
+                        const txStore = txWrite.objectStore('transactions');
+                        const accW    = txWrite.objectStore('accounts');
+
+                        const incomeTx = {
+                            id: adjId,
+                            type: 'income',
+                            description: description || 'Transferência recebida entre usuários',
+                            amount: amount,
+                            date: today,
+                            account: accountId,
+                            category: 'cat_cross_user_transfer',
+                            status: 'cleared',
+                            paymentMethod: 'outro',
+                            notes: `Recebido de: ${Auth.currentUser ? (Auth.currentUser.name || Auth.currentUser.username) : 'outro usuário'}`,
+                            isCrossUserTransfer: true,
+                            fromUser: Auth.currentUser ? Auth.currentUser.username : '',
+                            recurring: false,
+                            recurringParent: null,
+                            recurringFrequency: null,
+                            recurringCount: 0,
+                            recurringEndDate: null,
+                            createdAt: new Date().toISOString()
+                        };
+
+                        account.balance = newBalance;
+
+                        txStore.put(incomeTx);
+                        accW.put(account);
+
+                        txWrite.oncomplete = () => { db.close(); resolve(); };
+                        txWrite.onerror = () => { db.close(); reject(new Error('Erro ao gravar no banco do destinatário.')); };
+                    };
+                    getAcc.onerror = () => { db.close(); reject(new Error('Erro ao ler conta destino.')); };
+                };
+                req.onupgradeneeded = (e) => { e.target.transaction.abort(); };
+            });
+        };
+
+        UI.openCrossUserTransfer = async () => {
+            const users = await DB.getAllUsers().catch(() => []);
+            const otherUsers = users.filter(u => !Auth.currentUser || u.username !== Auth.currentUser.username);
+
+            if (otherUsers.length === 0) {
+                Utils.toast('Nenhum outro usuário cadastrado para transferir.'); return;
+            }
+
+            // Preenche contas origem (do usuário atual)
+            const fromSel = document.getElementById('cut-from-account');
+            fromSel.innerHTML = '<option value="">Selecione sua conta</option>';
+            FinanceApp.data.accounts.forEach(a => {
+                fromSel.innerHTML += `<option value="${a.id}">${a.name} (${Utils.formatCurrency(a.balance)})</option>`;
+            });
+            document.getElementById('cut-from-balance').textContent = '';
+
+            // Preenche usuários destino
+            const userSel = document.getElementById('cut-to-user');
+            userSel.innerHTML = '<option value="">Selecione o usuário</option>';
+            otherUsers.forEach(u => {
+                userSel.innerHTML += `<option value="${u.username}">${u.name || u.username} (@${u.username})</option>`;
+            });
+
+            document.getElementById('cut-to-account').innerHTML = '<option value="">Selecione a conta destino</option>';
+            document.getElementById('cut-dest-account-section').style.display = 'none';
+            document.getElementById('cut-amount').value = '';
+            document.getElementById('cut-description').value = '';
+            document.getElementById('cut-summary').style.display = 'none';
+
+            document.getElementById('overlay-cross-user-transfer').classList.add('active');
+            document.getElementById('sheet-cross-user-transfer').classList.add('active');
+        };
+
+        UI.closeCrossUserTransfer = () => {
+            document.getElementById('overlay-cross-user-transfer').classList.remove('active');
+            document.getElementById('sheet-cross-user-transfer').classList.remove('active');
+        };
+
+        UI.cutUpdateBalance = () => {
+            const accId = document.getElementById('cut-from-account').value;
+            const acc = FinanceApp.data.accounts.find(a => a.id === accId);
+            const el = document.getElementById('cut-from-balance');
+            el.textContent = acc ? `Saldo disponível: ${Utils.formatCurrency(acc.balance)}` : '';
+        };
+
+        UI.cutLoadDestAccounts = async () => {
+            const username = document.getElementById('cut-to-user').value;
+            const destSel = document.getElementById('cut-to-account');
+            const section = document.getElementById('cut-dest-account-section');
+
+            destSel.innerHTML = '<option value="">Carregando...</option>';
+            section.style.display = 'block';
+
+            const accounts = await UI._loadUserAccounts(username);
+            UI._crossUserDestAccounts = accounts;
+
+            if (accounts.length === 0) {
+                destSel.innerHTML = '<option value="">Este usuário não tem contas cadastradas</option>';
+            } else {
+                destSel.innerHTML = '<option value="">Selecione a conta destino</option>';
+                accounts.forEach(a => {
+                    destSel.innerHTML += `<option value="${a.id}">${a.name} — saldo atual: ${Utils.formatCurrency(a.balance)}</option>`;
+                });
+            }
+        };
+
+        UI.executeCrossUserTransfer = async () => {
+            const fromAccId   = document.getElementById('cut-from-account').value;
+            const toUsername  = document.getElementById('cut-to-user').value;
+            const toAccId     = document.getElementById('cut-to-account').value;
+            const amountRaw   = document.getElementById('cut-amount').value;
+            const description = document.getElementById('cut-description').value.trim();
+            const amount      = Utils.parseCurrency(amountRaw);
+
+            if (!fromAccId) { Utils.toast('Selecione a conta de origem.'); return; }
+            if (!toUsername) { Utils.toast('Selecione o usuário destinatário.'); return; }
+            if (!toAccId)   { Utils.toast('Selecione a conta destino.'); return; }
+            if (!amount || amount <= 0) { Utils.toast('Informe um valor válido.'); return; }
+
+            const fromAcc = FinanceApp.data.accounts.find(a => a.id === fromAccId);
+            if (!fromAcc) { Utils.toast('Conta de origem não encontrada.'); return; }
+            if (fromAcc.balance < amount) { Utils.toast(`Saldo insuficiente. Disponível: ${Utils.formatCurrency(fromAcc.balance)}`); return; }
+
+            const destAcc = UI._crossUserDestAccounts.find(a => a.id === toAccId);
+            const destUserSel = document.getElementById('cut-to-user');
+            const destUserName = destUserSel.options[destUserSel.selectedIndex].text;
+            const desc = description || `Transferência para ${destUserName}`;
+
+            if (!confirm(`Confirmar transferência de ${Utils.formatCurrency(amount)} de "${fromAcc.name}" para "${destAcc ? destAcc.name : '?'}" (${destUserName})?`)) return;
+
+            try {
+                // 1. Debita na conta do usuário atual
+                const today = Utils.getToday();
+                const debitTxId = Utils.id();
+
+                const debitTx = {
+                    id: debitTxId,
+                    type: 'expense',
+                    description: desc,
+                    amount: amount,
+                    date: today,
+                    account: fromAccId,
+                    category: 'cat_cross_user_transfer',
+                    status: 'cleared',
+                    paymentMethod: 'outro',
+                    notes: `Transferido para: ${destUserName} → ${destAcc ? destAcc.name : toAccId}`,
+                    isCrossUserTransfer: true,
+                    toUser: toUsername,
+                    recurring: false, recurringParent: null, recurringFrequency: null,
+                    recurringCount: 0, recurringEndDate: null,
+                    createdAt: new Date().toISOString()
+                };
+
+                await DB.saveTransaction(debitTx);
+                FinanceApp.data.transactions.push(debitTx);
+
+                fromAcc.balance -= amount;
+                await DB.saveAccount(fromAcc);
+
+                // Garante categoria local
+                if (!FinanceApp.data.categories.find(c => c.id === 'cat_cross_user_transfer')) {
+                    const cat = { id: 'cat_cross_user_transfer', name: 'Transfer. Usuários', type: 'expense', icon: 'users', color: '#0ea5e9', budget: 0 };
+                    await DB.saveCategory(cat);
+                    FinanceApp.data.categories.push(cat);
+                }
+
+                // 2. Credita no banco do usuário destino
+                await UI._creditUserAccount(toUsername, toAccId, amount, desc);
+
+                Utils.toast(`✅ ${Utils.formatCurrency(amount)} transferidos para ${destUserName}!`);
+                UI.closeCrossUserTransfer();
+                UI.renderDashboard();
+                UI.renderAccounts();
+                UI.renderTransactions();
+
+            } catch (err) {
+                console.error('Erro na transferência entre usuários:', err);
+                Utils.toast('Erro na transferência: ' + err.message, 'error');
+            }
+        };
+
+        // Mostrar/esconder botão de transferência entre usuários conforme nº de usuários
+        UI._refreshCrossUserBtn = async () => {
+            const btn = document.getElementById('btn-cross-user-transfer');
+            if (!btn) return;
+            try {
+                const users = await DB.getAllUsers();
+                btn.style.display = users.length > 1 ? 'flex' : 'none';
+            } catch(e) { btn.style.display = 'none'; }
         };
 
         // ===== CARD FINANCE APP METHODS =====
