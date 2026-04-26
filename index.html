@@ -1484,8 +1484,63 @@
         }
         .user-greeting strong { color: var(--dark); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        /* ===== DARK MODE ===== */
-        body.dark-mode {
+        /* ===== EXTRATO — BOTÕES DE PERÍODO ===== */
+        .stmt-qbtn {
+            padding: 5px 11px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 20px;
+            background: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .stmt-qbtn:active { transform: scale(0.96); }
+        .stmt-qbtn-active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        body.dark-mode .stmt-qbtn { background: #1e293b; color: #94a3b8; border-color: #334155; }
+        body.dark-mode .stmt-qbtn-active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* ===== PDF PERIOD FILTER ===== */
+        .pdf-period-bar {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            background: #f8fafc;
+        }
+        .pdf-period-bar-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+        .pdf-period-qbtns {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .pdf-period-dates {
+            display: none;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .pdf-period-dates.visible { display: grid; }
+        .pdf-period-label {
+            font-size: 0.75rem;
+            color: #059669;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+
             --primary: #10b981;
             --primary-dark: #059669;
             --secondary: #94a3b8;
@@ -8425,47 +8480,102 @@
         // ===== PDF SELECTION MODAL =====
         UI._pdfFilteredTxs = [];
         UI._pdfSelectedIds = new Set();
+        UI._pdfBaseTxs = []; // all txs before period filter, for re-filtering
+
+        UI._pdfMonthStart = (offset) => {
+            const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + (offset||0));
+            return d.toISOString().split('T')[0];
+        };
+        UI._pdfMonthEnd = (offset) => {
+            const d = new Date(); d.setMonth(d.getMonth() + (offset||0) + 1); d.setDate(0);
+            return d.toISOString().split('T')[0];
+        };
+
+        UI.pdfQuickPeriod = (mode, btn) => {
+            document.querySelectorAll('#pdf-period-qbtns .stmt-qbtn').forEach(b => b.classList.remove('stmt-qbtn-active'));
+            if (btn) btn.classList.add('stmt-qbtn-active');
+            const datesEl = document.getElementById('pdf-period-dates');
+            const today = new Date().toISOString().split('T')[0];
+            let from = '', to = today;
+
+            if      (mode === 'this_month') { from = UI._pdfMonthStart(0); to = UI._pdfMonthEnd(0); datesEl.classList.remove('visible'); }
+            else if (mode === 'last_month') { from = UI._pdfMonthStart(-1); to = UI._pdfMonthEnd(-1); datesEl.classList.remove('visible'); }
+            else if (mode === 'last_3')     { from = UI._pdfMonthStart(-2); to = today; datesEl.classList.remove('visible'); }
+            else if (mode === 'last_6')     { from = UI._pdfMonthStart(-5); to = today; datesEl.classList.remove('visible'); }
+            else if (mode === 'this_year')  { const y=new Date().getFullYear(); from=`${y}-01-01`; to=`${y}-12-31`; datesEl.classList.remove('visible'); }
+            else if (mode === 'all')        { from = ''; to = ''; datesEl.classList.remove('visible'); }
+            else if (mode === 'custom')     { datesEl.classList.add('visible'); from=(document.getElementById('pdf-date-from')||{}).value||''; to=(document.getElementById('pdf-date-to')||{}).value||''; }
+
+            if (mode !== 'custom') {
+                if (document.getElementById('pdf-date-from')) document.getElementById('pdf-date-from').value = from;
+                if (document.getElementById('pdf-date-to'))   document.getElementById('pdf-date-to').value   = to;
+            }
+
+            UI._pdfApplyDateFilter(from, to);
+            const fmtD = d => d ? new Date(d+'T00:00:00').toLocaleDateString('pt-BR') : '?';
+            const lbl = document.getElementById('pdf-period-label');
+            if (lbl) lbl.textContent = (!from && !to) ? '📅 Todas as datas' : `📅 ${fmtD(from)}  →  ${fmtD(to)}`;
+        };
+
+        UI.pdfApplyPeriod = () => {
+            const from = (document.getElementById('pdf-date-from')||{}).value || '';
+            const to   = (document.getElementById('pdf-date-to')  ||{}).value || '';
+            UI._pdfApplyDateFilter(from, to);
+            const fmtD = d => d ? new Date(d+'T00:00:00').toLocaleDateString('pt-BR') : '?';
+            const lbl = document.getElementById('pdf-period-label');
+            if (lbl) lbl.textContent = `📅 ${fmtD(from)}  →  ${fmtD(to)}`;
+        };
+
+        UI._pdfApplyDateFilter = (from, to) => {
+            let filtered = UI._pdfBaseTxs.slice();
+            if (from) filtered = filtered.filter(t => t.date >= from);
+            if (to)   filtered = filtered.filter(t => t.date <= to);
+            UI._pdfFilteredTxs = filtered;
+            UI._pdfSelectedIds = new Set(filtered.map(t => t.id));
+            UI._renderPdfSelectList();
+        };
 
         UI.exportTransactionsPDF = () => {
             const searchTerm = document.querySelector('#transactions-view .search-input').value.toLowerCase();
-            const monthRange = Utils.getMonthRange(UI.transactionMonth, UI.transactionYear);
 
-            let filtered = FinanceApp.data.transactions.filter(t =>
-                t.date >= monthRange.start && t.date <= monthRange.end
-            );
+            // Start with ALL transactions (period will be applied via the modal filter)
+            let base = FinanceApp.data.transactions.slice();
+
             if (UI.transactionViewMode === 'pending') {
-                filtered = filtered.filter(t => t.status === 'pending');
+                base = base.filter(t => t.status === 'pending');
             } else if (UI.transactionViewMode === 'cleared') {
-                filtered = filtered.filter(t => t.status === 'cleared');
+                base = base.filter(t => t.status === 'cleared');
             }
             if (UI.transactionFilter !== 'all') {
-                if (UI.transactionFilter === 'recurring') {
-                    filtered = filtered.filter(t => t.recurring || t.recurringParent);
-                } else if (UI.transactionFilter === 'scheduled') {
-                    filtered = filtered.filter(t => t.status === 'scheduled');
-                } else {
-                    filtered = filtered.filter(t => t.type === UI.transactionFilter);
-                }
+                if (UI.transactionFilter === 'recurring')  base = base.filter(t => t.recurring || t.recurringParent);
+                else if (UI.transactionFilter === 'scheduled') base = base.filter(t => t.status === 'scheduled');
+                else base = base.filter(t => t.type === UI.transactionFilter);
             }
             if (searchTerm) {
-                filtered = filtered.filter(t =>
+                base = base.filter(t =>
                     t.description.toLowerCase().includes(searchTerm) ||
                     (t.notes && t.notes.toLowerCase().includes(searchTerm))
                 );
             }
-            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+            base.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-            if (filtered.length === 0) {
-                Utils.toast('Nenhuma transação para exportar!');
-                return;
-            }
+            if (base.length === 0) { Utils.toast('Nenhuma transação para exportar!'); return; }
 
-            // Open selection modal
-            UI._pdfFilteredTxs = filtered;
-            UI._pdfSelectedIds = new Set(filtered.map(t => t.id));
-            UI._renderPdfSelectList();
+            // Store base (pre-period-filter) for the modal to refilter
+            UI._pdfBaseTxs = base;
+
+            // Default period = this month
+            const defFrom = UI._pdfMonthStart(0);
+            const defTo   = UI._pdfMonthEnd(0);
+            if (document.getElementById('pdf-date-from')) document.getElementById('pdf-date-from').value = defFrom;
+            if (document.getElementById('pdf-date-to'))   document.getElementById('pdf-date-to').value   = defTo;
+            if (document.getElementById('pdf-period-dates')) document.getElementById('pdf-period-dates').classList.remove('visible');
+            document.querySelectorAll('#pdf-period-qbtns .stmt-qbtn').forEach((b,i) => b.classList.toggle('stmt-qbtn-active', i===0));
+            const lbl = document.getElementById('pdf-period-label');
+            if (lbl) { const fmtD = d=>new Date(d+'T00:00:00').toLocaleDateString('pt-BR'); lbl.textContent = `📅 ${fmtD(defFrom)}  →  ${fmtD(defTo)}`; }
+
+            UI._pdfApplyDateFilter(defFrom, defTo);
             document.getElementById('pdf-select-overlay').classList.add('active');
-            return; // early return — actual PDF generation happens after user confirms
         };
 
         UI.closePdfSelectModal = () => {
@@ -8753,7 +8863,61 @@
             else Utils.toast('Relatório aberto! Use "Imprimir → Salvar como PDF".');
         };
 
-        // ===== ACCOUNT STATEMENT (EXTRATO POR CONTA) =====
+        // ===== ACCOUNT STATEMENT (EXTRATO POR CONTA) — período livre =====
+        UI._stmtState = { accountId: null, allTxs: [], dateFrom: '', dateTo: '' };
+
+        UI._stmtMonthStart = (offset) => {
+            const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + (offset||0));
+            return d.toISOString().split('T')[0];
+        };
+        UI._stmtMonthEnd = (offset) => {
+            const d = new Date(); d.setMonth(d.getMonth() + (offset||0) + 1); d.setDate(0);
+            return d.toISOString().split('T')[0];
+        };
+
+        UI.stmtQuickPeriod = (mode, btn) => {
+            document.querySelectorAll('.stmt-qbtn').forEach(b => b.classList.remove('stmt-qbtn-active'));
+            if (btn) btn.classList.add('stmt-qbtn-active');
+
+            const customDates = document.getElementById('stmt-custom-dates');
+            const today = new Date().toISOString().split('T')[0];
+            let from = '', to = today;
+
+            if      (mode === 'this_month')  { from = UI._stmtMonthStart(0); to = UI._stmtMonthEnd(0); customDates.style.display = 'none'; }
+            else if (mode === 'last_month')  { from = UI._stmtMonthStart(-1); to = UI._stmtMonthEnd(-1); customDates.style.display = 'none'; }
+            else if (mode === 'last_3')      { from = UI._stmtMonthStart(-2); to = today; customDates.style.display = 'none'; }
+            else if (mode === 'last_6')      { from = UI._stmtMonthStart(-5); to = today; customDates.style.display = 'none'; }
+            else if (mode === 'this_year')   { const y = new Date().getFullYear(); from = `${y}-01-01`; to = `${y}-12-31`; customDates.style.display = 'none'; }
+            else if (mode === 'all')         { from = ''; to = ''; customDates.style.display = 'none'; }
+            else if (mode === 'custom')      { customDates.style.display = 'grid'; from = (document.getElementById('stmt-date-from')||{}).value||''; to = (document.getElementById('stmt-date-to')||{}).value||''; }
+
+            if (mode !== 'custom') {
+                if (document.getElementById('stmt-date-from')) document.getElementById('stmt-date-from').value = from;
+                if (document.getElementById('stmt-date-to'))   document.getElementById('stmt-date-to').value   = to;
+            }
+            UI._stmtState.dateFrom = from;
+            UI._stmtState.dateTo   = to;
+            UI._updateStmtPeriodLabel(from, to);
+            UI._renderStatement();
+        };
+
+        UI._updateStmtPeriodLabel = (from, to) => {
+            const el = document.getElementById('stmt-period-label');
+            if (!el) return;
+            if (!from && !to) { el.textContent = '📅 Exibindo todo o período'; return; }
+            const fmt = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '?';
+            el.textContent = `📅 ${fmt(from)}  →  ${fmt(to)}`;
+        };
+
+        UI.filterStatement = () => {
+            const from = (document.getElementById('stmt-date-from')||{}).value || '';
+            const to   = (document.getElementById('stmt-date-to')  ||{}).value || '';
+            UI._stmtState.dateFrom = from;
+            UI._stmtState.dateTo   = to;
+            UI._updateStmtPeriodLabel(from, to);
+            UI._renderStatement();
+        };
+
         UI.openAccountStatement = (accountId) => {
             const account = FinanceApp.data.accounts.find(a => a.id === accountId);
             if (!account) return;
@@ -8763,258 +8927,232 @@
 
             const overlay = document.getElementById('overlay-account-statement');
             const modal   = document.getElementById('sheet-account-statement');
-            const titleEl = document.getElementById('stmt-account-title');
-            const filterSel = document.getElementById('stmt-month-filter');
             if (!overlay) return;
 
-            titleEl.textContent = `Extrato — ${account.name}`;
-            const months = new Set(allTxs.map(t => t.date.slice(0,7)));
-            filterSel.innerHTML = '<option value="all">Todos os períodos</option>';
-            [...months].sort().reverse().forEach(m => {
-                const [y, mo] = m.split('-');
-                const label = new Date(+y, +mo-1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
-                filterSel.innerHTML += `<option value="${m}">${label.charAt(0).toUpperCase()+label.slice(1)}</option>`;
-            });
-            // default to current month if exists
-            const now = new Date();
-            const curM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-            if (months.has(curM)) filterSel.value = curM;
+            document.getElementById('stmt-account-title').textContent = `Extrato — ${account.name}`;
 
-            UI._stmtAccountId = accountId;
-            UI._stmtAllTxs = allTxs;
-            UI._renderStatement(filterSel.value);
+            // Default: este mês
+            const from = UI._stmtMonthStart(0), to = UI._stmtMonthEnd(0);
+            if (document.getElementById('stmt-date-from')) document.getElementById('stmt-date-from').value = from;
+            if (document.getElementById('stmt-date-to'))   document.getElementById('stmt-date-to').value   = to;
+            if (document.getElementById('stmt-custom-dates')) document.getElementById('stmt-custom-dates').style.display = 'none';
+            document.querySelectorAll('.stmt-qbtn').forEach((b,i) => b.classList.toggle('stmt-qbtn-active', i === 0));
+
+            UI._stmtState = { accountId, allTxs, dateFrom: from, dateTo: to };
+            UI._updateStmtPeriodLabel(from, to);
+            UI._renderStatement();
 
             overlay.classList.add('active');
             modal.classList.add('active');
         };
 
-        UI._renderStatement = (monthFilter) => {
-            const accountId = UI._stmtAccountId;
-            const account   = FinanceApp.data.accounts.find(a => a.id === accountId);
+        UI._renderStatement = () => {
+            const { accountId, allTxs, dateFrom, dateTo } = UI._stmtState;
             const categories = FinanceApp.data.categories;
             const accounts   = FinanceApp.data.accounts;
-            let txs = (UI._stmtAllTxs || []);
-            if (monthFilter !== 'all') txs = txs.filter(t => t.date.startsWith(monthFilter));
+
+            let txs = allTxs;
+            if (dateFrom) txs = txs.filter(t => t.date >= dateFrom);
+            if (dateTo)   txs = txs.filter(t => t.date <= dateTo);
 
             const bodyEl = document.getElementById('stmt-body');
             if (!bodyEl) return;
+
             if (txs.length === 0) {
-                bodyEl.innerHTML = `<div style="text-align:center;padding:32px;color:#94a3b8;"><i class="fas fa-file-invoice" style="font-size:2rem;margin-bottom:8px;display:block;opacity:0.3;"></i>Nenhuma movimentação neste período.</div>`;
-                document.getElementById('stmt-total-income').textContent = 'R$ 0,00';
-                document.getElementById('stmt-total-expense').textContent = 'R$ 0,00';
-                const balEl = document.getElementById('stmt-balance');
-                balEl.textContent = 'R$ 0,00'; balEl.style.color = '';
+                bodyEl.innerHTML = '<div style="text-align:center;padding:32px;color:#94a3b8;"><i class="fas fa-file-invoice" style="font-size:2rem;margin-bottom:8px;display:block;opacity:0.3;"></i>Nenhuma movimentação neste período.</div>';
+                ['stmt-total-income','stmt-total-expense'].forEach(id => document.getElementById(id).textContent = 'R$ 0,00');
+                const bel = document.getElementById('stmt-balance'); if(bel){bel.textContent='R$ 0,00';bel.style.color='';}
                 return;
             }
 
-            const typeColors = { income: '#10b981', expense: '#ef4444', investment: '#3b82f6', transfer: '#8b5cf6' };
-            const typeIcons  = { income: 'fas fa-arrow-down', expense: 'fas fa-arrow-up', investment: 'fas fa-chart-line', transfer: 'fas fa-exchange-alt' };
-            const typeIconBg = { income: '#d1fae5', expense: '#fee2e2', investment: '#dbeafe', transfer: '#f3e8ff' };
-            const typeLabels = { income: 'Receita', expense: 'Despesa', investment: 'Investimento', transfer: 'Transferência' };
+            const TC = { income:'#10b981',expense:'#ef4444',investment:'#3b82f6',transfer:'#8b5cf6' };
+            const TI = { income:'fas fa-arrow-down',expense:'fas fa-arrow-up',investment:'fas fa-chart-line',transfer:'fas fa-exchange-alt' };
+            const TB = { income:'#d1fae5',expense:'#fee2e2',investment:'#dbeafe',transfer:'#f3e8ff' };
+            const TL = { income:'Receita',expense:'Despesa',investment:'Investimento',transfer:'Transferência' };
 
-            let runningBalance = 0;
-            const allBeforeFilter = (UI._stmtAllTxs || []).filter(t =>
-                monthFilter === 'all' ? false : t.date < monthFilter + '-01'
-            );
-            allBeforeFilter.forEach(t => {
+            // saldo anterior ao período
+            let running = 0;
+            allTxs.filter(t => dateFrom ? t.date < dateFrom : false).forEach(t => {
                 if (t.status !== 'cleared') return;
-                const isTransferIn = t.type === 'transfer' && t.transferTo === accountId;
-                if (isTransferIn) runningBalance += t.amount;
+                const isIn = t.type === 'transfer' && t.transferTo === accountId;
+                if (isIn) running += t.amount;
                 else if (t.account === accountId) {
-                    if (t.type === 'income') runningBalance += t.amount;
-                    else if (t.type === 'expense' || t.type === 'investment') runningBalance -= t.amount;
-                    else if (t.type === 'transfer') runningBalance -= t.amount;
+                    if (t.type === 'income') running += t.amount;
+                    else if (t.type === 'expense' || t.type === 'investment') running -= t.amount;
+                    else if (t.type === 'transfer') running -= t.amount;
                 }
             });
 
-            let totalIncome = 0, totalExpense = 0;
+            let totIn = 0, totOut = 0;
             const grouped = {};
-            txs.forEach(t => { if (!grouped[t.date]) grouped[t.date] = []; grouped[t.date].push(t); });
+            txs.forEach(t => { if (!grouped[t.date]) grouped[t.date]=[]; grouped[t.date].push(t); });
 
             let html = '';
             Object.keys(grouped).sort().forEach(date => {
-                html += `<div style="background:#f8fafc;padding:8px 12px;font-weight:700;font-size:0.78rem;color:#475569;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;margin-top:4px;">${Utils.formatDate(date)}</div>`;
+                const dayNet = grouped[date].filter(t=>t.status==='cleared').reduce((s,t)=>{
+                    const isIn = t.type==='transfer'&&t.transferTo===accountId;
+                    if(isIn) return s+t.amount;
+                    if(t.account===accountId){
+                        if(t.type==='income') return s+t.amount;
+                        if(t.type==='expense'||t.type==='investment') return s-t.amount;
+                        if(t.type==='transfer') return s-t.amount;
+                    } return s;
+                },0);
+                const dc = dayNet>=0?'#10b981':'#ef4444';
+                html += `<div style="background:#f8fafc;padding:8px 12px;font-weight:700;font-size:0.78rem;color:#475569;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+                    <span>${Utils.formatDate(date)}</span>
+                    <span style="color:${dc};font-size:0.76rem;">${dayNet>=0?'+':''}${Utils.formatCurrency(dayNet)}</span></div>`;
+
                 grouped[date].forEach(t => {
-                    const isTransferIn = t.type === 'transfer' && t.transferTo === accountId;
-                    const cat = categories.find(c => c.id === t.category);
-                    const otherAcc = accounts.find(a => a.id === (isTransferIn ? t.account : t.transferTo));
-                    const effectiveType = isTransferIn ? 'transfer' : t.type;
-
-                    let impact = 0;
-                    if (isTransferIn) impact = +t.amount;
-                    else if (t.account === accountId) {
-                        if (t.type === 'income') impact = +t.amount;
-                        else if (t.type === 'expense' || t.type === 'investment') impact = -t.amount;
-                        else if (t.type === 'transfer') impact = -t.amount;
+                    const isIn = t.type==='transfer'&&t.transferTo===accountId;
+                    const cat = categories.find(c=>c.id===t.category);
+                    const otherAcc = accounts.find(a=>a.id===(isIn?t.account:t.transferTo));
+                    const eff = isIn?'transfer':t.type;
+                    let impact=0;
+                    if(isIn) impact=+t.amount;
+                    else if(t.account===accountId){
+                        if(t.type==='income') impact=+t.amount;
+                        else if(t.type==='expense'||t.type==='investment') impact=-t.amount;
+                        else if(t.type==='transfer') impact=-t.amount;
                     }
-                    if (t.status === 'cleared') {
-                        if (impact > 0) totalIncome += impact;
-                        else totalExpense += Math.abs(impact);
-                        runningBalance += impact;
+                    if(t.status==='cleared'){
+                        if(impact>0) totIn+=impact; else totOut+=Math.abs(impact);
+                        running+=impact;
                     }
-
-                    const sign = impact > 0 ? '+' : '';
-                    const color = impact >= 0 ? '#10b981' : '#ef4444';
-                    const icon   = typeIcons[effectiveType] || 'fas fa-circle';
-                    const iconBg = typeIconBg[effectiveType] || '#f1f5f9';
-                    const typeColor = typeColors[effectiveType] || '#64748b';
-                    const statusBadge = t.status === 'pending' ? `<span style="background:#fef3c7;color:#b45309;font-size:0.65rem;padding:1px 5px;border-radius:8px;font-weight:700;margin-left:4px;">Pendente</span>` :
-                        t.status === 'scheduled' ? `<span style="background:#dbeafe;color:#1e40af;font-size:0.65rem;padding:1px 5px;border-radius:8px;font-weight:700;margin-left:4px;">Agendada</span>` : '';
-                    const transferNote = isTransferIn ? ` <span style="font-size:0.72rem;color:#8b5cf6">(de: ${otherAcc ? otherAcc.name : '?'})</span>` :
-                        (t.type === 'transfer' && otherAcc) ? ` <span style="font-size:0.72rem;color:#8b5cf6">(para: ${otherAcc.name})</span>` : '';
-
-                    html += `
-                    <div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid #f1f5f9;">
-                        <div style="width:36px;height:36px;border-radius:9px;background:${iconBg};color:${typeColor};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.85rem;">
-                            <i class="${icon}"></i>
-                        </div>
+                    const sign=impact>0?'+':'', color=impact>=0?'#10b981':'#ef4444';
+                    const icon=TI[eff]||'fas fa-circle', iconBg=TB[eff]||'#f1f5f9', tc=TC[eff]||'#64748b';
+                    const sb = t.status==='pending'?'<span style="background:#fef3c7;color:#b45309;font-size:0.62rem;padding:1px 5px;border-radius:8px;font-weight:700;margin-left:4px;">Pendente</span>':
+                               t.status==='scheduled'?'<span style="background:#dbeafe;color:#1e40af;font-size:0.62rem;padding:1px 5px;border-radius:8px;font-weight:700;margin-left:4px;">Agendada</span>':'';
+                    const tn = isIn?` <span style="font-size:0.7rem;color:#8b5cf6">(de: ${otherAcc?otherAcc.name:'?'})</span>`:(t.type==='transfer'&&otherAcc)?` <span style="font-size:0.7rem;color:#8b5cf6">(para: ${otherAcc.name})</span>`:'';
+                    html += `<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid #f1f5f9;">
+                        <div style="width:36px;height:36px;border-radius:9px;background:${iconBg};color:${tc};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.85rem;"><i class="${icon}"></i></div>
                         <div style="flex:1;min-width:0;">
-                            <div style="font-weight:600;font-size:0.88rem;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.description}${statusBadge}${transferNote}</div>
-                            <div style="font-size:0.73rem;color:#64748b;">${cat ? cat.name : typeLabels[effectiveType] || '—'}</div>
+                            <div style="font-weight:600;font-size:0.88rem;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.description}${sb}${tn}</div>
+                            <div style="font-size:0.73rem;color:#64748b;">${cat?cat.name:TL[eff]||'—'}</div>
                         </div>
                         <div style="text-align:right;flex-shrink:0;">
                             <div style="font-weight:700;font-size:0.92rem;color:${color};">${sign}${Utils.formatCurrency(t.amount)}</div>
-                            <div style="font-size:0.7rem;color:#94a3b8;">Saldo: ${Utils.formatCurrency(runningBalance)}</div>
+                            <div style="font-size:0.7rem;color:#94a3b8;">Saldo: ${Utils.formatCurrency(running)}</div>
                         </div>
                     </div>`;
                 });
             });
 
             bodyEl.innerHTML = html;
-            document.getElementById('stmt-total-income').textContent = Utils.formatCurrency(totalIncome);
-            document.getElementById('stmt-total-expense').textContent = Utils.formatCurrency(totalExpense);
-            const bal = totalIncome - totalExpense;
+            document.getElementById('stmt-total-income').textContent  = Utils.formatCurrency(totIn);
+            document.getElementById('stmt-total-expense').textContent = Utils.formatCurrency(totOut);
+            const bal = totIn - totOut;
             const balEl = document.getElementById('stmt-balance');
-            balEl.textContent = (bal >= 0 ? '+' : '') + Utils.formatCurrency(bal);
-            balEl.style.color = bal >= 0 ? '#10b981' : '#ef4444';
-        };
-
-        UI.filterStatement = () => {
-            const sel = document.getElementById('stmt-month-filter');
-            UI._renderStatement(sel ? sel.value : 'all');
+            balEl.textContent = (bal>=0?'+':'')+Utils.formatCurrency(bal);
+            balEl.style.color = bal>=0?'#10b981':'#ef4444';
         };
 
         UI.closeAccountStatement = () => {
-            const overlay = document.getElementById('overlay-account-statement');
-            const modal   = document.getElementById('sheet-account-statement');
-            if (overlay) overlay.classList.remove('active');
-            if (modal)   modal.classList.remove('active');
+            document.getElementById('overlay-account-statement').classList.remove('active');
+            document.getElementById('sheet-account-statement').classList.remove('active');
         };
 
         UI.downloadStatementPDF = () => {
-            const accountId = UI._stmtAccountId;
-            const account   = FinanceApp.data.accounts.find(a => a.id === accountId);
+            const { accountId, allTxs, dateFrom, dateTo } = UI._stmtState;
+            const account    = FinanceApp.data.accounts.find(a => a.id === accountId);
             const categories = FinanceApp.data.categories;
             const accounts   = FinanceApp.data.accounts;
-            const monthFilter = (document.getElementById('stmt-month-filter') || {}).value || 'all';
-            let txs = (UI._stmtAllTxs || []).filter(t => monthFilter === 'all' || t.date.startsWith(monthFilter));
+            let txs = allTxs;
+            if (dateFrom) txs = txs.filter(t => t.date >= dateFrom);
+            if (dateTo)   txs = txs.filter(t => t.date <= dateTo);
             if (!account || txs.length === 0) { Utils.toast('Nenhuma movimentação para exportar!'); return; }
 
-            const typeLabels = { income: 'Receita', expense: 'Despesa', investment: 'Investimento', transfer: 'Transferência' };
-            const statusColors = { cleared: '#10b981', pending: '#f59e0b', scheduled: '#3b82f6' };
-            const statusLabels = { cleared: 'Efetivada', pending: 'Pendente', scheduled: 'Agendada' };
+            const TL = { income:'Receita',expense:'Despesa',investment:'Investimento',transfer:'Transferência' };
+            const SC = { cleared:'#10b981',pending:'#f59e0b',scheduled:'#3b82f6' };
+            const SL = { cleared:'Efetivada',pending:'Pendente',scheduled:'Agendada' };
 
-            let runningBalance = 0;
-            const allBeforeFilter = (UI._stmtAllTxs || []).filter(t =>
-                monthFilter === 'all' ? false : t.date < monthFilter + '-01'
-            );
-            allBeforeFilter.forEach(t => {
+            let running = 0;
+            allTxs.filter(t => dateFrom ? t.date < dateFrom : false).forEach(t => {
                 if (t.status !== 'cleared') return;
-                const isTransferIn = t.type === 'transfer' && t.transferTo === accountId;
-                if (isTransferIn) runningBalance += t.amount;
+                const isIn = t.type==='transfer'&&t.transferTo===accountId;
+                if (isIn) running += t.amount;
                 else if (t.account === accountId) {
-                    if (t.type === 'income') runningBalance += t.amount;
-                    else if (t.type === 'expense' || t.type === 'investment') runningBalance -= t.amount;
-                    else if (t.type === 'transfer') runningBalance -= t.amount;
+                    if (t.type==='income') running += t.amount;
+                    else if (t.type==='expense'||t.type==='investment') running -= t.amount;
+                    else if (t.type==='transfer') running -= t.amount;
                 }
             });
 
-            let totalIncome = 0, totalExpense = 0, rowsHtml = '';
-            const grouped = {};
-            txs.forEach(t => { if (!grouped[t.date]) grouped[t.date] = []; grouped[t.date].push(t); });
-
-            Object.keys(grouped).sort().forEach(date => {
-                rowsHtml += `<tr><td colspan="5" style="background:#f8fafc;padding:6px 10px;font-weight:700;font-size:0.78rem;color:#475569;border-top:2px solid #e2e8f0;">${Utils.formatDate(date)}</td></tr>`;
-                grouped[date].forEach(t => {
-                    const isTransferIn = t.type === 'transfer' && t.transferTo === accountId;
-                    const cat = categories.find(c => c.id === t.category);
-                    const otherAcc = accounts.find(a => a.id === (isTransferIn ? t.account : t.transferTo));
-                    const effectiveType = isTransferIn ? 'transfer' : t.type;
-                    let impact = 0;
-                    if (isTransferIn) impact = +t.amount;
-                    else if (t.account === accountId) {
-                        if (t.type === 'income') impact = +t.amount;
-                        else if (t.type === 'expense' || t.type === 'investment') impact = -t.amount;
-                        else if (t.type === 'transfer') impact = -t.amount;
+            let totIn=0, totOut=0, rows='';
+            const grouped={};
+            txs.forEach(t=>{if(!grouped[t.date])grouped[t.date]=[];grouped[t.date].push(t);});
+            Object.keys(grouped).sort().forEach(date=>{
+                rows+=`<tr><td colspan="5" style="background:#f8fafc;padding:6px 10px;font-weight:700;font-size:0.78rem;color:#475569;border-top:2px solid #e2e8f0;">${Utils.formatDate(date)}</td></tr>`;
+                grouped[date].forEach(t=>{
+                    const isIn=t.type==='transfer'&&t.transferTo===accountId;
+                    const cat=categories.find(c=>c.id===t.category);
+                    const oa=accounts.find(a=>a.id===(isIn?t.account:t.transferTo));
+                    const eff=isIn?'transfer':t.type;
+                    let impact=0;
+                    if(isIn) impact=+t.amount;
+                    else if(t.account===accountId){
+                        if(t.type==='income') impact=+t.amount;
+                        else if(t.type==='expense'||t.type==='investment') impact=-t.amount;
+                        else if(t.type==='transfer') impact=-t.amount;
                     }
-                    if (t.status === 'cleared') {
-                        if (impact > 0) totalIncome += impact;
-                        else totalExpense += Math.abs(impact);
-                        runningBalance += impact;
-                    }
-                    const sign = impact > 0 ? '+' : '';
-                    const color = impact >= 0 ? '#10b981' : '#ef4444';
-                    const sc = statusColors[t.status] || '#64748b';
-                    const transferNote = isTransferIn ? ` (de: ${otherAcc ? otherAcc.name : '?'})` :
-                        (t.type === 'transfer' && otherAcc) ? ` (para: ${otherAcc.name})` : '';
-                    rowsHtml += `<tr>
-                        <td style="padding:8px 10px;"><strong style="display:block;">${t.description}${transferNote}</strong><span style="font-size:0.75rem;color:#64748b;">${cat ? cat.name : typeLabels[effectiveType] || '—'}</span></td>
-                        <td style="padding:8px 10px;font-size:0.8rem;">${typeLabels[effectiveType] || '—'}</td>
-                        <td style="padding:8px 10px;text-align:center;"><span style="background:${sc}22;color:${sc};padding:2px 8px;border-radius:8px;font-size:0.75rem;font-weight:700;">${statusLabels[t.status] || t.status}</span></td>
+                    if(t.status==='cleared'){if(impact>0)totIn+=impact;else totOut+=Math.abs(impact);running+=impact;}
+                    const sign=impact>0?'+':'', color=impact>=0?'#10b981':'#ef4444';
+                    const sc=SC[t.status]||'#64748b';
+                    const tn=isIn?` (de: ${oa?oa.name:'?'})`:(t.type==='transfer'&&oa)?` (para: ${oa.name})`:'';
+                    rows+=`<tr>
+                        <td style="padding:8px 10px;"><strong style="display:block;">${t.description}${tn}</strong><span style="font-size:0.75rem;color:#64748b;">${cat?cat.name:TL[eff]||'—'}</span></td>
+                        <td style="padding:8px 10px;font-size:0.8rem;">${TL[eff]||'—'}</td>
+                        <td style="padding:8px 10px;text-align:center;"><span style="background:${sc}22;color:${sc};padding:2px 8px;border-radius:8px;font-size:0.75rem;font-weight:700;">${SL[t.status]||t.status}</span></td>
                         <td style="padding:8px 10px;font-weight:700;color:${color};text-align:right;">${sign}${Utils.formatCurrency(t.amount)}</td>
-                        <td style="padding:8px 10px;font-size:0.82rem;color:#475569;text-align:right;">${Utils.formatCurrency(runningBalance)}</td>
+                        <td style="padding:8px 10px;font-size:0.82rem;color:#475569;text-align:right;">${Utils.formatCurrency(running)}</td>
                     </tr>`;
                 });
             });
 
-            const periodLabel = monthFilter === 'all' ? 'Todo o período' : (() => {
-                const [y,m] = monthFilter.split('-');
-                const lbl = new Date(+y,+m-1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-                return lbl.charAt(0).toUpperCase() + lbl.slice(1);
-            })();
-            const userName = Auth.currentUser ? (Auth.currentUser.name || Auth.currentUser.username) : 'Usuário';
-            const bal = totalIncome - totalExpense;
+            const fmtD = d => d?new Date(d+'T00:00:00').toLocaleDateString('pt-BR'):'?';
+            const period = (!dateFrom&&!dateTo)?'Todo o período':`${fmtD(dateFrom)} a ${fmtD(dateTo)}`;
+            const user = Auth.currentUser?(Auth.currentUser.name||Auth.currentUser.username):'Usuário';
+            const bal = totIn-totOut;
 
             const html = `<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Extrato — ${account.name}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:20px;}.no-print{margin-top:20px;text-align:center;}@media print{.no-print{display:none;}body{padding:0;}}
-.header-block{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #e2e8f0;padding-bottom:12px;}
+<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:20px;}
+.no-print{margin-top:20px;text-align:center;}@media print{.no-print{display:none;}body{padding:0;}}
+.hb{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #e2e8f0;padding-bottom:12px;}
 .brand{font-size:1.1rem;font-weight:800;color:#0f172a;}.brand span{color:#10b981;}
-.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
-.summary-card{background:#f8fafc;border-radius:8px;padding:12px;text-align:center;}
-.summary-label{font-size:0.72rem;color:#64748b;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;}
-.sval{font-size:1.1rem;font-weight:800;}
+.sg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+.sc{background:#f8fafc;border-radius:8px;padding:12px;text-align:center;}
+.sl{font-size:0.72rem;color:#64748b;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;}
+.sv{font-size:1.05rem;font-weight:800;}
 table{width:100%;border-collapse:collapse;margin-bottom:20px;}
 th{background:#f1f5f9;padding:8px 10px;font-size:0.78rem;color:#475569;text-align:left;border-bottom:2px solid #e2e8f0;}
 td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
-.footer{font-size:0.72rem;color:#94a3b8;text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid #e2e8f0;}
-</style></head><body>
-<div style="max-width:820px;margin:0 auto;">
-  <div class="header-block">
-    <div><div class="brand"><span>Finança</span>Pro</div><div style="font-size:0.8rem;color:#64748b;">Extrato gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
-    <div style="text-align:right;"><div style="font-weight:700;font-size:1rem;">${account.name}</div>
-      <div style="font-size:0.78rem;color:#64748b;">${account.institution || ''} ${account.number || ''}</div>
-      <div style="font-size:0.78rem;color:#64748b;">Titular: ${userName}</div>
-      <div style="font-size:0.78rem;color:#475569;font-weight:600;">Período: ${periodLabel}</div>
-    </div>
+.ft{font-size:0.72rem;color:#94a3b8;text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid #e2e8f0;}
+</style></head><body><div style="max-width:820px;margin:0 auto;">
+<div class="hb">
+  <div><div class="brand"><span>Finança</span>Pro</div><div style="font-size:0.8rem;color:#64748b;">Gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
+  <div style="text-align:right;"><div style="font-weight:700;font-size:1rem;">${account.name}</div>
+    <div style="font-size:0.78rem;color:#64748b;">${account.institution||''} ${account.number||''}</div>
+    <div style="font-size:0.78rem;color:#64748b;">Titular: ${user}</div>
+    <div style="font-size:0.78rem;color:#0f172a;font-weight:700;">Período: ${period}</div>
   </div>
-  <div class="summary-grid">
-    <div class="summary-card"><div class="summary-label">Entradas</div><div class="sval" style="color:#10b981;">${Utils.formatCurrency(totalIncome)}</div></div>
-    <div class="summary-card"><div class="summary-label">Saídas</div><div class="sval" style="color:#ef4444;">${Utils.formatCurrency(totalExpense)}</div></div>
-    <div class="summary-card"><div class="summary-label">Resultado</div><div class="sval" style="color:${bal>=0?'#10b981':'#ef4444'};">${bal>=0?'+':''}${Utils.formatCurrency(bal)}</div></div>
-  </div>
-  <table><thead><tr>
-    <th>Descrição / Categoria</th><th>Tipo</th><th style="text-align:center">Status</th><th style="text-align:right">Valor</th><th style="text-align:right">Saldo Acumulado</th>
-  </tr></thead><tbody>${rowsHtml}</tbody></table>
-  <div class="footer">FinançaPro • Extrato de ${account.name} • ${txs.length} movimentação(ões) • ${new Date().toLocaleString('pt-BR')}</div>
-  <div class="no-print">
-    <button onclick="window.print()" style="background:#10b981;color:white;border:none;padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;margin-right:12px;">🖨️ Imprimir / Salvar PDF</button>
-    <button onclick="window.close()" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;">✕ Fechar</button>
-  </div>
-</div></body></html>`;
+</div>
+<div class="sg">
+  <div class="sc"><div class="sl">Entradas</div><div class="sv" style="color:#10b981;">${Utils.formatCurrency(totIn)}</div></div>
+  <div class="sc"><div class="sl">Saídas</div><div class="sv" style="color:#ef4444;">${Utils.formatCurrency(totOut)}</div></div>
+  <div class="sc"><div class="sl">Resultado</div><div class="sv" style="color:${bal>=0?'#10b981':'#ef4444'};">${bal>=0?'+':''}${Utils.formatCurrency(bal)}</div></div>
+</div>
+<table><thead><tr>
+  <th>Descrição / Categoria</th><th>Tipo</th><th style="text-align:center">Status</th><th style="text-align:right">Valor</th><th style="text-align:right">Saldo Acumulado</th>
+</tr></thead><tbody>${rows}</tbody></table>
+<div class="ft">FinançaPro • Extrato de ${account.name} • ${txs.length} movimentação(ões) • ${new Date().toLocaleString('pt-BR')}</div>
+<div class="no-print">
+  <button onclick="window.print()" style="background:#10b981;color:white;border:none;padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;margin-right:12px;">🖨️ Imprimir / Salvar PDF</button>
+  <button onclick="window.close()" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;">✕ Fechar</button>
+</div></div></body></html>`;
 
             const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const win = window.open(url, '_blank');
+            const url  = URL.createObjectURL(blob);
+            const win  = window.open(url, '_blank');
             if (!win) Utils.toast('Permita pop-ups para baixar o extrato!');
             else Utils.toast('Extrato aberto! Use "Imprimir → Salvar como PDF".');
         };
@@ -10788,33 +10926,63 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
 
     <!-- ===== MODAL EXTRATO POR CONTA ===== -->
     <div class="modal-overlay" id="overlay-account-statement" onclick="UI.closeAccountStatement()"></div>
-    <div class="modal-sheet" id="sheet-account-statement" style="max-height:90vh;display:flex;flex-direction:column;">
+    <div class="modal-sheet" id="sheet-account-statement" style="max-height:92vh;display:flex;flex-direction:column;">
         <div class="sheet-handle"></div>
         <div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 12px;">
             <h3 class="section-title" id="stmt-account-title" style="margin:0;">Extrato</h3>
             <button class="icon-btn" onclick="UI.closeAccountStatement()"><i class="fas fa-times"></i></button>
         </div>
-        <!-- Filter -->
-        <div style="margin-bottom:12px;">
-            <select id="stmt-month-filter" class="form-control" onchange="UI.filterStatement()" style="font-size:0.88rem;"></select>
+
+        <!-- Filtros de período -->
+        <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:12px;border:1px solid #e2e8f0;">
+            <div style="font-size:0.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Período do extrato</div>
+
+            <!-- Atalhos rápidos -->
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;" id="stmt-quick-btns">
+                <button onclick="UI.stmtQuickPeriod('this_month',this)" class="stmt-qbtn stmt-qbtn-active">Este mês</button>
+                <button onclick="UI.stmtQuickPeriod('last_month',this)" class="stmt-qbtn">Mês passado</button>
+                <button onclick="UI.stmtQuickPeriod('last_3',this)" class="stmt-qbtn">3 meses</button>
+                <button onclick="UI.stmtQuickPeriod('last_6',this)" class="stmt-qbtn">6 meses</button>
+                <button onclick="UI.stmtQuickPeriod('this_year',this)" class="stmt-qbtn">Este ano</button>
+                <button onclick="UI.stmtQuickPeriod('all',this)" class="stmt-qbtn">Tudo</button>
+                <button onclick="UI.stmtQuickPeriod('custom',this)" class="stmt-qbtn">Personalizado</button>
+            </div>
+
+            <!-- Seletor de datas (aparece só no modo personalizado) -->
+            <div id="stmt-custom-dates" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                    <label style="font-size:0.72rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Data inicial</label>
+                    <input type="date" id="stmt-date-from" class="form-control" style="font-size:0.85rem;" onchange="UI.filterStatement()">
+                </div>
+                <div>
+                    <label style="font-size:0.72rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Data final</label>
+                    <input type="date" id="stmt-date-to" class="form-control" style="font-size:0.85rem;" onchange="UI.filterStatement()">
+                </div>
+            </div>
+
+            <!-- Label do período ativo -->
+            <div id="stmt-period-label" style="font-size:0.78rem;color:#059669;font-weight:600;margin-top:6px;"></div>
         </div>
+
         <!-- Summary -->
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
             <div style="background:#d1fae5;border-radius:10px;padding:10px;text-align:center;">
-                <div style="font-size:0.65rem;color:#065f46;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Entradas</div>
-                <div id="stmt-total-income" style="font-weight:800;font-size:0.95rem;color:#059669;">R$ 0,00</div>
+                <div style="font-size:0.62rem;color:#065f46;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Entradas</div>
+                <div id="stmt-total-income" style="font-weight:800;font-size:0.9rem;color:#059669;">R$ 0,00</div>
             </div>
             <div style="background:#fee2e2;border-radius:10px;padding:10px;text-align:center;">
-                <div style="font-size:0.65rem;color:#991b1b;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Saídas</div>
-                <div id="stmt-total-expense" style="font-weight:800;font-size:0.95rem;color:#ef4444;">R$ 0,00</div>
+                <div style="font-size:0.62rem;color:#991b1b;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Saídas</div>
+                <div id="stmt-total-expense" style="font-weight:800;font-size:0.9rem;color:#ef4444;">R$ 0,00</div>
             </div>
             <div style="background:#f1f5f9;border-radius:10px;padding:10px;text-align:center;">
-                <div style="font-size:0.65rem;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Resultado</div>
-                <div id="stmt-balance" style="font-weight:800;font-size:0.95rem;">R$ 0,00</div>
+                <div style="font-size:0.62rem;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Resultado</div>
+                <div id="stmt-balance" style="font-weight:800;font-size:0.9rem;">R$ 0,00</div>
             </div>
         </div>
+
         <!-- Transaction list -->
         <div id="stmt-body" style="flex:1;overflow-y:auto;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:12px;"></div>
+
         <!-- Actions -->
         <button onclick="UI.downloadStatementPDF()" style="width:100%;background:linear-gradient(135deg,#ef4444,#dc2626);color:white;border:none;border-radius:10px;padding:13px;font-size:0.95rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
             <i class="fas fa-file-pdf"></i> Baixar Extrato em PDF
@@ -10831,6 +10999,32 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
                 </div>
                 <button class="icon-btn" onclick="UI.closePdfSelectModal()"><i class="fas fa-times"></i></button>
             </div>
+
+            <!-- Filtro de período -->
+            <div class="pdf-period-bar">
+                <div class="pdf-period-bar-title">Período</div>
+                <div class="pdf-period-qbtns" id="pdf-period-qbtns">
+                    <button onclick="UI.pdfQuickPeriod('this_month',this)" class="stmt-qbtn stmt-qbtn-active">Este mês</button>
+                    <button onclick="UI.pdfQuickPeriod('last_month',this)" class="stmt-qbtn">Mês passado</button>
+                    <button onclick="UI.pdfQuickPeriod('last_3',this)" class="stmt-qbtn">3 meses</button>
+                    <button onclick="UI.pdfQuickPeriod('last_6',this)" class="stmt-qbtn">6 meses</button>
+                    <button onclick="UI.pdfQuickPeriod('this_year',this)" class="stmt-qbtn">Este ano</button>
+                    <button onclick="UI.pdfQuickPeriod('all',this)" class="stmt-qbtn">Tudo</button>
+                    <button onclick="UI.pdfQuickPeriod('custom',this)" class="stmt-qbtn">Personalizado</button>
+                </div>
+                <div class="pdf-period-dates" id="pdf-period-dates">
+                    <div>
+                        <label style="font-size:0.72rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">Data inicial</label>
+                        <input type="date" id="pdf-date-from" class="form-control" style="font-size:0.82rem;" onchange="UI.pdfApplyPeriod()">
+                    </div>
+                    <div>
+                        <label style="font-size:0.72rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">Data final</label>
+                        <input type="date" id="pdf-date-to" class="form-control" style="font-size:0.82rem;" onchange="UI.pdfApplyPeriod()">
+                    </div>
+                </div>
+                <div class="pdf-period-label" id="pdf-period-label"></div>
+            </div>
+
             <div class="pdf-modal-toolbar">
                 <div class="pdf-modal-toolbar-left">
                     <button class="pdf-select-all-btn active" id="pdf-btn-all" onclick="UI.pdfSelectAll()">Selecionar todas</button>
