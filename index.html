@@ -8227,6 +8227,15 @@
                         const nowHasCategory = !!category && !!FinanceApp.data.categories.find(c => c.id === category);
                         const isEditFlow = !!oldTransaction;
 
+                        // Preserva campos de grupo (parcelas/recorrência) que não estão no formulário
+                        if (oldTransaction) {
+                            if (oldTransaction.installmentGroup)      transaction.installmentGroup      = oldTransaction.installmentGroup;
+                            if (oldTransaction.installmentIndex)      transaction.installmentIndex      = oldTransaction.installmentIndex;
+                            if (oldTransaction.installmentTotal)      transaction.installmentTotal      = oldTransaction.installmentTotal;
+                            if (oldTransaction.installmentTotalValue) transaction.installmentTotalValue = oldTransaction.installmentTotalValue;
+                            if (oldTransaction.recurringParent)       transaction.recurringParent       = oldTransaction.recurringParent;
+                        }
+
                         // Salva a transação mestre
                         await DB.saveTransaction(transaction);
 
