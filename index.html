@@ -1729,6 +1729,66 @@
         body.dark-mode .savings-rate-ring::before { background: #1e293b; }
         .savings-rate-num { position: relative; z-index: 1; font-size: 0.7rem; font-weight: 800; color: var(--dark); }
 
+
+        /* ── Category Report Filters ── */
+        .cat-period-btn {
+            padding: 7px 13px;
+            border: 1.5px solid var(--border);
+            border-radius: 20px;
+            background: var(--surface);
+            color: var(--secondary);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all .15s;
+        }
+        .cat-period-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+        .cat-chip {
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all .15s;
+        }
+        .cat-chip.active {
+            color: #fff;
+            border-color: transparent;
+        }
+        .cat-chip-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        /* summary table */
+        .cat-sum-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 14px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .cat-sum-row:last-child { border-bottom: none; }
+        .cat-sum-bar-wrap {
+            flex: 1;
+            height: 6px;
+            background: #f1f5f9;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .cat-sum-bar { height: 100%; border-radius: 3px; }
     </style>
 </head>
 <body>
@@ -2202,10 +2262,49 @@
             </div>
             
             <div id="report-categories" class="report-tab" style="display: none;">
+
+                <!-- ── Filtros ────────────────────────────────────── -->
+                <div style="background:var(--surface);border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:var(--shadow-sm);">
+
+                    <!-- Categorias -->
+                    <div style="font-size:0.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Categorias</div>
+                    <div id="cat-filter-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
+
+                    <!-- Período -->
+                    <div style="font-size:0.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Período</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+                        <button class="cat-period-btn active" data-period="monthly"   onclick="UI.setCatPeriod('monthly',this)">Mensal</button>
+                        <button class="cat-period-btn"        data-period="bimonthly" onclick="UI.setCatPeriod('bimonthly',this)">Bimestral</button>
+                        <button class="cat-period-btn"        data-period="quarterly" onclick="UI.setCatPeriod('quarterly',this)">Trimestral</button>
+                        <button class="cat-period-btn"        data-period="biannual"  onclick="UI.setCatPeriod('biannual',this)">Semestral</button>
+                        <button class="cat-period-btn"        data-period="annual"    onclick="UI.setCatPeriod('annual',this)">Anual</button>
+                        <button class="cat-period-btn"        data-period="custom"    onclick="UI.setCatPeriod('custom',this)">Personalizado</button>
+                    </div>
+
+                    <!-- Intervalo personalizado -->
+                    <div id="cat-custom-dates" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;">
+                        <div>
+                            <label style="font-size:0.72rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Data inicial</label>
+                            <input type="date" id="cat-date-from" class="form-control" style="font-size:0.85rem;" onchange="UI.renderCategoryTrendChart()">
+                        </div>
+                        <div>
+                            <label style="font-size:0.72rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Data final</label>
+                            <input type="date" id="cat-date-to" class="form-control" style="font-size:0.85rem;" onchange="UI.renderCategoryTrendChart()">
+                        </div>
+                    </div>
+                    <div id="cat-period-label" style="font-size:0.78rem;color:#059669;font-weight:600;margin-top:4px;"></div>
+                </div>
+
+                <!-- ── Gráfico evolução ───────────────────────────── -->
                 <div class="section-title">Evolução por Categoria</div>
-                <div class="chart-container">
+                <div class="chart-container" style="height:280px;">
                     <canvas id="categoryTrendChart"></canvas>
                 </div>
+
+                <!-- ── Tabela resumo ──────────────────────────────── -->
+                <div class="section-title" style="margin-top:4px;">Resumo por Categoria</div>
+                <div id="cat-summary-table" style="background:var(--surface);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm);margin-bottom:16px;"></div>
+
             </div>
 
             <!-- ABA EXTRATO IR -->
@@ -5355,6 +5454,7 @@
                     return;
                 }
                 if (UI.reportTab === 'categories') {
+                    UI.buildCatChips();
                     UI.renderCategoryTrendChart();
                     return;
                 }
@@ -5773,89 +5873,225 @@
                 });
             },
             
-            renderCategoryTrendChart: () => {
-                const ctx = document.getElementById('categoryTrendChart').getContext('2d');
-                const transactions = FinanceApp.data.transactions;
-                const categories = FinanceApp.data.categories.filter(c => c.type === 'expense').slice(0, 5);
-                
-                const labels = [];
-                const datasets = [];
-                
-                for (let i = 5; i >= 0; i--) {
-                    const date = new Date();
-                    date.setMonth(date.getMonth() - i);
-                    const monthYear = Utils.getMonthYear(date);
-                    labels.push(monthYear.name.substring(0, 3));
+            // ── Category trend state ──────────────────────────────────
+            catFilterPeriod: 'monthly',
+            catFilterSelected: [], // [] = all
+
+            setCatPeriod: (period, btn) => {
+                UI.catFilterPeriod = period;
+                document.querySelectorAll('.cat-period-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const customDates = document.getElementById('cat-custom-dates');
+                if (period === 'custom') {
+                    customDates.style.display = 'grid';
+                    // default: last 30 days
+                    const to = new Date();
+                    const from = new Date(); from.setDate(from.getDate() - 29);
+                    if (!document.getElementById('cat-date-from').value)
+                        document.getElementById('cat-date-from').value = from.toISOString().split('T')[0];
+                    if (!document.getElementById('cat-date-to').value)
+                        document.getElementById('cat-date-to').value = to.toISOString().split('T')[0];
+                } else {
+                    customDates.style.display = 'none';
                 }
-                
-                categories.forEach(category => {
-                    const categoryData = [];
-                    
-                    for (let i = 5; i >= 0; i--) {
-                        const date = new Date();
-                        date.setMonth(date.getMonth() - i);
-                        const monthRange = Utils.getMonthRange(date.getMonth(), date.getFullYear());
-                        
-                        const monthTotal = transactions
-                            .filter(t => 
-                                t.category === category.id && 
-                                t.date >= monthRange.start && 
-                                t.date <= monthRange.end &&
-                                t.status === 'cleared'
-                            )
-                            .reduce((sum, t) => sum + t.amount, 0);
-                        
-                        categoryData.push(monthTotal);
+                UI.renderCategoryTrendChart();
+            },
+
+            // Build period buckets: returns [{label, start, end}]
+            getCatBuckets: () => {
+                const period = UI.catFilterPeriod;
+                const now = new Date();
+                const buckets = [];
+
+                if (period === 'custom') {
+                    const from = document.getElementById('cat-date-from').value;
+                    const to   = document.getElementById('cat-date-to').value;
+                    if (from && to) {
+                        buckets.push({ label: from.slice(5) + ' → ' + to.slice(5), start: from, end: to });
                     }
-                    
-                    datasets.push({
-                        label: category.name,
-                        data: categoryData,
-                        borderColor: category.color,
-                        backgroundColor: category.color + '40',
-                        fill: true,
-                        tension: 0.4
-                    });
+                    const lbl = document.getElementById('cat-period-label');
+                    if (lbl) lbl.textContent = from && to ? from + ' até ' + to : '';
+                    return buckets;
+                }
+
+                const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+                // How many buckets to show and grouping size
+                const cfg = {
+                    monthly:   { count: 6,  size: 1 },
+                    bimonthly: { count: 6,  size: 2 },
+                    quarterly: { count: 4,  size: 3 },
+                    biannual:  { count: 4,  size: 6 },
+                    annual:    { count: 3,  size: 12 },
+                }[period] || { count: 6, size: 1 };
+
+                // Walk backwards from current month
+                const totalMonths = cfg.count * cfg.size;
+                for (let b = cfg.count - 1; b >= 0; b--) {
+                    const offset = b * cfg.size;
+                    // First month of bucket (furthest back)
+                    const firstDate = new Date(now.getFullYear(), now.getMonth() - (totalMonths - cfg.size) + (cfg.count - 1 - b) * cfg.size, 1);
+                    const lastDate  = new Date(firstDate.getFullYear(), firstDate.getMonth() + cfg.size - 1, 1);
+
+                    const startStr = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1).toISOString().split('T')[0];
+                    const endStr   = new Date(lastDate.getFullYear(), lastDate.getMonth() + 1, 0).toISOString().split('T')[0];
+
+                    let label;
+                    if (cfg.size === 1) {
+                        label = monthNames[firstDate.getMonth()];
+                    } else if (cfg.size === 12) {
+                        label = String(firstDate.getFullYear());
+                    } else {
+                        label = monthNames[firstDate.getMonth()] + '–' + monthNames[lastDate.getMonth()];
+                    }
+                    buckets.push({ label, start: startStr, end: endStr });
+                }
+
+                // Update period label
+                const lbl = document.getElementById('cat-period-label');
+                if (lbl && buckets.length) lbl.textContent = buckets[0].start + ' até ' + buckets[buckets.length-1].end;
+                return buckets;
+            },
+
+            buildCatChips: () => {
+                const container = document.getElementById('cat-filter-chips');
+                if (!container) return;
+                const categories = FinanceApp.data.categories.filter(c => c.type === 'expense' || c.type === 'income');
+                if (!UI.catFilterSelected.length) UI.catFilterSelected = categories.map(c => c.id);
+
+                container.innerHTML = '';
+
+                // "Todas" chip
+                const allActive = UI.catFilterSelected.length === categories.length;
+                const allChip = document.createElement('div');
+                allChip.className = 'cat-chip' + (allActive ? ' active' : '');
+                allChip.style.cssText = allActive ? 'background:#64748b;color:#fff;border-color:#64748b;' : '';
+                allChip.innerHTML = 'Todas';
+                allChip.addEventListener('mousedown', () => {
+                    UI.catFilterSelected = categories.map(c => c.id);
+                    UI.buildCatChips();
+                    UI.renderCategoryTrendChart();
                 });
-                
+                container.appendChild(allChip);
+
+                categories.forEach(cat => {
+                    const isActive = UI.catFilterSelected.includes(cat.id);
+                    const chip = document.createElement('div');
+                    chip.className = 'cat-chip' + (isActive ? ' active' : '');
+                    if (isActive) chip.style.background = cat.color || '#64748b';
+                    chip.innerHTML = '<span class="cat-chip-dot" style="background:' + (cat.color || '#64748b') + ';"></span>' + cat.name;
+                    chip.addEventListener('mousedown', () => {
+                        if (isActive && UI.catFilterSelected.length === 1) return; // keep at least one
+                        if (isActive) {
+                            UI.catFilterSelected = UI.catFilterSelected.filter(id => id !== cat.id);
+                        } else {
+                            UI.catFilterSelected = [...UI.catFilterSelected, cat.id];
+                        }
+                        UI.buildCatChips();
+                        UI.renderCategoryTrendChart();
+                    });
+                    container.appendChild(chip);
+                });
+            },
+
+            renderCategoryTrendChart: () => {
+                const canvasEl = document.getElementById('categoryTrendChart');
+                if (!canvasEl) return;
+                const ctx = canvasEl.getContext('2d');
+
+                // Ensure chips are built
+                if (!document.getElementById('cat-filter-chips').children.length) {
+                    UI.buildCatChips();
+                }
+
+                const transactions = FinanceApp.data.transactions;
+                const allCategories = FinanceApp.data.categories.filter(c => c.type === 'expense' || c.type === 'income');
+                const selected = UI.catFilterSelected.length
+                    ? allCategories.filter(c => UI.catFilterSelected.includes(c.id))
+                    : allCategories;
+
+                const buckets = UI.getCatBuckets();
+                if (!buckets.length) return;
+
+                const labels = buckets.map(b => b.label);
+                const datasets = selected.map(cat => {
+                    const data = buckets.map(bucket => {
+                        return transactions
+                            .filter(t => t.category === cat.id && t.date >= bucket.start && t.date <= bucket.end && t.status === 'cleared')
+                            .reduce((s, t) => s + t.amount, 0);
+                    });
+                    return {
+                        label: cat.name,
+                        data,
+                        borderColor: cat.color || '#64748b',
+                        backgroundColor: (cat.color || '#64748b') + '30',
+                        fill: false,
+                        tension: 0.35,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        borderWidth: 2,
+                    };
+                });
+
                 if (UI.chartInstances.categoryTrendChart) {
                     UI.chartInstances.categoryTrendChart.destroy();
                 }
-                
                 UI.chartInstances.categoryTrendChart = new Chart(ctx, {
                     type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: datasets
-                    },
+                    data: { labels, datasets },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
                         plugins: {
-                            legend: { 
-                                display: true,
-                                position: 'bottom',
-                                labels: { boxWidth: 12, font: { size: 10 } }
+                            legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, padding: 8 } },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => ' ' + ctx.dataset.label + ': ' + Utils.formatCurrency(ctx.parsed.y)
+                                }
                             }
                         },
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                grid: { borderDash: [2, 4], color: '#e2e8f0' },
-                                ticks: {
-                                    callback: function(value) {
-                                        return Utils.formatCurrency(value);
-                                    },
-                                    font: { size: 10 }
-                                }
+                                grid: { borderDash: [2,4], color: '#e2e8f0' },
+                                ticks: { callback: v => Utils.formatCurrencyShort(v), font: { size: 10 } }
                             },
-                            x: {
-                                grid: { display: false },
-                                ticks: { font: { size: 10 } }
-                            }
+                            x: { grid: { display: false }, ticks: { font: { size: 10 } } }
                         }
                     }
                 });
+
+                // ── Summary table ──
+                UI.renderCatSummaryTable(selected, buckets, transactions);
+            },
+
+            renderCatSummaryTable: (categories, buckets, transactions) => {
+                const el = document.getElementById('cat-summary-table');
+                if (!el) return;
+                const rows = categories.map(cat => {
+                    const total = buckets.reduce((s, b) => {
+                        return s + transactions
+                            .filter(t => t.category === cat.id && t.date >= b.start && t.date <= b.end && t.status === 'cleared')
+                            .reduce((ss, t) => ss + t.amount, 0);
+                    }, 0);
+                    return { cat, total };
+                }).filter(r => r.total > 0).sort((a,b) => b.total - a.total);
+
+                if (!rows.length) {
+                    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--secondary);font-size:0.88rem;">Nenhuma transação no período</div>';
+                    return;
+                }
+                const maxVal = rows[0].total;
+                el.innerHTML = rows.map(r => {
+                    const pct = maxVal > 0 ? (r.total / maxVal * 100).toFixed(0) : 0;
+                    return '<div class="cat-sum-row">' +
+                        '<div style="width:10px;height:10px;border-radius:50%;background:' + (r.cat.color||'#64748b') + ';flex-shrink:0;"></div>' +
+                        '<div style="min-width:80px;font-size:0.85rem;font-weight:600;color:var(--dark);">' + r.cat.name + '</div>' +
+                        '<div class="cat-sum-bar-wrap"><div class="cat-sum-bar" style="width:' + pct + '%;background:' + (r.cat.color||'#64748b') + ';"></div></div>' +
+                        '<div style="min-width:80px;text-align:right;font-size:0.85rem;font-weight:700;color:var(--dark);">' + Utils.formatCurrency(r.total) + '</div>' +
+                    '</div>';
+                }).join('');
             },
 
             // ═══════════════════════════════════════════════════════
@@ -7251,6 +7487,7 @@
                     FinanceApp.data.categories.push(newCat);
                     document.getElementById('t-category').value = newCat.id;
                     document.getElementById('t-category-input').value = newCat.name;
+                    UI.catFilterSelected = [];
                     UI.cancelNewCategory();
                     UI.hideCategoryDropdown();
                     Utils.toast('Categoria "' + name + '" criada!');
@@ -8369,6 +8606,7 @@
                         }
                         
                         Utils.toast('Categoria salva!');
+                        UI.catFilterSelected = [];
                         UI.closeModals();
                         UI.renderCategories();
                         UI.renderDashboard();
