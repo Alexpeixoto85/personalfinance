@@ -7153,8 +7153,21 @@
                 const dropdown = document.getElementById('t-category-dropdown');
                 const hiddenInput = document.getElementById('t-category');
 
-                hiddenInput.value = '';
-                UI.cancelNewCategory();
+                // Só apaga o hidden se o texto não corresponde mais à categoria selecionada
+                const currentId = hiddenInput.value;
+                if (currentId) {
+                    const currentCat = categories.find(c => c.id === currentId);
+                    if (!currentCat || currentCat.name.trim().toLowerCase() !== val.trim().toLowerCase()) {
+                        hiddenInput.value = '';
+                        UI.cancelNewCategory();
+                    } else {
+                        // Texto ainda bate com a categoria selecionada — só exibe dropdown e sai
+                        UI.buildCategoryDropdown(categories, val, type);
+                        return;
+                    }
+                } else {
+                    UI.cancelNewCategory();
+                }
 
                 const filtered = q
                     ? categories.filter(c => c.name.toLowerCase().includes(q))
@@ -7170,22 +7183,30 @@
                         }
                     }, 600);
                 } else {
-                    const list = filtered.length > 0 ? filtered : categories;
-                    dropdown.style.display = list.length > 0 ? 'block' : 'none';
-                    dropdown.innerHTML = list.map(function(c) {
-                        var safeName = c.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-                        return '<div onclick="UI.selectCategory(' +
-                            JSON.stringify(c.id) + ',' +
-                            JSON.stringify(c.name) + ',' +
-                            JSON.stringify(type) +
-                            ')" style="padding:11px 14px;cursor:pointer;font-size:0.9rem;color:#0f172a;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:8px;"' +
-                            ' onmouseover="this.style.background=\'#f0fdf4\'"' +
-                            ' onmouseout="this.style.background=\'\'">'+
-                            '<i class="fas fa-tag" style="color:var(--primary);font-size:0.75rem;"></i>' +
-                            safeName + '</div>';
-                    }).join('');
+                    UI.buildCategoryDropdown(categories, val, type);
                 }
             },
+
+            buildCategoryDropdown: (categories, val, type) => {
+                const q = val.trim().toLowerCase();
+                const dropdown = document.getElementById('t-category-dropdown');
+                const list = q ? categories.filter(c => c.name.toLowerCase().includes(q)) : categories;
+                dropdown.style.display = list.length > 0 ? 'block' : 'none';
+                dropdown.innerHTML = '';
+                list.forEach(function(c) {
+                    var item = document.createElement('div');
+                    item.style.cssText = 'padding:11px 14px;cursor:pointer;font-size:0.9rem;color:#0f172a;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:8px;';
+                    item.innerHTML = '<i class="fas fa-tag" style="color:var(--primary);font-size:0.75rem;"></i>' + c.name.replace(/&/g,'&amp;');
+                    item.addEventListener('mouseenter', function(){ this.style.background='#f0fdf4'; });
+                    item.addEventListener('mouseleave', function(){ this.style.background=''; });
+                    item.addEventListener('mousedown', function(e){
+                        e.preventDefault();
+                        UI.selectCategory(c.id, c.name, type);
+                    });
+                    dropdown.appendChild(item);
+                });
+            },
+
 
             selectCategory: (id, name, type) => {
                 document.getElementById('t-category').value = id;
