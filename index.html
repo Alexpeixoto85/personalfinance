@@ -2439,9 +2439,32 @@
 
             <div class="form-group" id="t-category-group">
                 <label class="form-label">Categoria</label>
-                <select id="t-category" class="form-control" required>
-                    <option value="">Selecione...</option>
-                </select>
+                <div style="position:relative;">
+                    <input type="text" id="t-category-input" class="form-control" placeholder="Digite ou selecione uma categoria..." autocomplete="off"
+                        oninput="UI.onCategoryInput(this.value)"
+                        onfocus="UI.onCategoryInput(this.value)"
+                        onblur="setTimeout(()=>UI.hideCategoryDropdown(),180)">
+                    <input type="hidden" id="t-category">
+                    <div id="t-category-dropdown" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:999;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);max-height:200px;overflow-y:auto;margin-top:4px;"></div>
+                </div>
+            </div>
+
+            <!-- Mini-modal: confirmar nova categoria -->
+            <div id="t-new-category-confirm" style="display:none;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:14px 14px 12px;margin-bottom:12px;">
+                <div style="font-size:0.82rem;font-weight:700;color:#065f46;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                    <i class="fas fa-tag"></i> Categoria não encontrada
+                </div>
+                <div style="font-size:0.85rem;color:#374151;margin-bottom:12px;">
+                    Deseja criar a categoria <strong id="t-new-category-name-display"></strong>?
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" onclick="UI.confirmNewCategory()" style="flex:1;background:var(--primary);color:white;border:none;border-radius:8px;padding:10px;font-size:0.85rem;font-weight:700;cursor:pointer;">
+                        <i class="fas fa-plus"></i> Criar Categoria
+                    </button>
+                    <button type="button" onclick="UI.cancelNewCategory()" style="flex:1;background:#f1f5f9;color:#64748b;border:none;border-radius:8px;padding:10px;font-size:0.85rem;font-weight:600;cursor:pointer;">
+                        Cancelar
+                    </button>
+                </div>
             </div>
 
             <div class="form-group">
@@ -7116,13 +7139,104 @@
             },
             
             updateCategorySelect: async (type) => {
-                const select = document.getElementById('t-category');
+                // Clear current selection when type changes
+                document.getElementById('t-category').value = '';
+                document.getElementById('t-category-input').value = '';
+                UI.hideCategoryDropdown();
+                UI.cancelNewCategory();
+            },
+
+            onCategoryInput: (val) => {
+                const type = document.getElementById('t-type').value;
                 const categories = FinanceApp.data.categories.filter(c => c.type === type);
-                
-                select.innerHTML = '<option value="">Selecione...</option>';
-                categories.forEach(category => {
-                    select.innerHTML += `<option value="${category.id}">${category.name}</option>`;
-                });
+                const q = val.trim().toLowerCase();
+                const dropdown = document.getElementById('t-category-dropdown');
+                const hiddenInput = document.getElementById('t-category');
+
+                hiddenInput.value = '';
+                UI.cancelNewCategory();
+
+                const filtered = q
+                    ? categories.filter(c => c.name.toLowerCase().includes(q))
+                    : categories;
+
+                if (q.length > 0 && filtered.length === 0) {
+                    dropdown.style.display = 'block';
+                    dropdown.innerHTML = '<div style="padding:12px 14px;font-size:0.85rem;color:#94a3b8;font-style:italic;">Nenhuma categoria encontrada</div>';
+                    setTimeout(() => {
+                        const stillVal = document.getElementById('t-category-input').value.trim();
+                        if (stillVal === val.trim() && stillVal.length > 0 && !document.getElementById('t-category').value) {
+                            UI.showNewCategoryConfirm(stillVal);
+                        }
+                    }, 600);
+                } else {
+                    const list = filtered.length > 0 ? filtered : categories;
+                    dropdown.style.display = list.length > 0 ? 'block' : 'none';
+                    dropdown.innerHTML = list.map(function(c) {
+                        var safeName = c.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+                        return '<div onclick="UI.selectCategory(' +
+                            JSON.stringify(c.id) + ',' +
+                            JSON.stringify(c.name) + ',' +
+                            JSON.stringify(type) +
+                            ')" style="padding:11px 14px;cursor:pointer;font-size:0.9rem;color:#0f172a;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:8px;"' +
+                            ' onmouseover="this.style.background=\'#f0fdf4\'"' +
+                            ' onmouseout="this.style.background=\'\'">'+
+                            '<i class="fas fa-tag" style="color:var(--primary);font-size:0.75rem;"></i>' +
+                            safeName + '</div>';
+                    }).join('');
+                }
+            },
+
+            selectCategory: (id, name, type) => {
+                document.getElementById('t-category').value = id;
+                document.getElementById('t-category-input').value = name;
+                UI.hideCategoryDropdown();
+                UI.cancelNewCategory();
+            },
+
+            hideCategoryDropdown: () => {
+                const dd = document.getElementById('t-category-dropdown');
+                if (dd) dd.style.display = 'none';
+            },
+
+            showNewCategoryConfirm: (name) => {
+                const el = document.getElementById('t-new-category-confirm');
+                document.getElementById('t-new-category-name-display').textContent = '"' + name + '"';
+                if (el) el.style.display = 'block';
+            },
+
+            cancelNewCategory: () => {
+                const el = document.getElementById('t-new-category-confirm');
+                if (el) el.style.display = 'none';
+            },
+
+            confirmNewCategory: async () => {
+                const name = document.getElementById('t-category-input').value.trim();
+                if (!name) return;
+                const type = document.getElementById('t-type').value || 'expense';
+                const iconMap = { income: 'money-bill', expense: 'shopping-cart', investment: 'chart-line' };
+                const colorMap = { income: '#10b981', expense: '#ef4444', investment: '#3b82f6' };
+                const newCat = {
+                    id: Utils.id(),
+                    type,
+                    name,
+                    budget: 0,
+                    icon: iconMap[type] || 'tag',
+                    color: colorMap[type] || '#64748b',
+                    createdAt: new Date().toISOString()
+                };
+                try {
+                    await DB.saveCategory(newCat);
+                    FinanceApp.data.categories.push(newCat);
+                    document.getElementById('t-category').value = newCat.id;
+                    document.getElementById('t-category-input').value = newCat.name;
+                    UI.cancelNewCategory();
+                    UI.hideCategoryDropdown();
+                    Utils.toast('Categoria "' + name + '" criada!');
+                } catch (err) {
+                    console.error('Erro ao criar categoria:', err);
+                    Utils.toast('Erro ao criar categoria', 'error');
+                }
             },
             
             updateAccountSelect: () => {
@@ -7166,6 +7280,12 @@
                 document.getElementById('t-date').value = Utils.getToday();
                 document.getElementById('t-status-select').value = 'cleared';
                 
+                // Reset category text input
+                document.getElementById('t-category-input').value = '';
+                document.getElementById('t-category').value = '';
+                UI.hideCategoryDropdown();
+                UI.cancelNewCategory();
+                
                 UI.updateCategorySelect(type);
                 UI.updateAccountSelect();
                 
@@ -7203,6 +7323,11 @@
                 
                 await UI.updateCategorySelect(transaction.type);
                 document.getElementById('t-category').value = transaction.category;
+                // Populate text input for edit
+                if (transaction.category) {
+                    const cat = FinanceApp.data.categories.find(c => c.id === transaction.category);
+                    document.getElementById('t-category-input').value = cat ? cat.name : '';
+                }
                 
                 UI.updateAccountSelect();
                 document.getElementById('t-account').value = transaction.account;
@@ -7485,6 +7610,17 @@
                     const account = document.getElementById('t-account').value;
                     const category = type !== 'transfer' ? document.getElementById('t-category').value : null;
                     const transferTo = type === 'transfer' ? document.getElementById('t-transfer-to').value : null;
+
+                    // Validação de categoria (hidden input não tem validação nativa)
+                    if (type !== 'transfer' && !category) {
+                        const catInput = document.getElementById('t-category-input');
+                        catInput.focus();
+                        catInput.style.borderColor = 'var(--expense)';
+                        catInput.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.15)';
+                        setTimeout(() => { catInput.style.borderColor = ''; catInput.style.boxShadow = ''; }, 2000);
+                        Utils.toast('Selecione ou crie uma categoria', 'error');
+                        return;
+                    }
                     const paymentMethod = document.getElementById('t-payment-method').value;
                     const notes = document.getElementById('t-notes').value;
                     const status = document.getElementById('t-status-select').value;
