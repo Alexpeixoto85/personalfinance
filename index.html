@@ -1797,7 +1797,7 @@
     <div id="login-screen">
         <div class="login-logo">
             <i class="fas fa-wallet"></i>
-            <span>Finança</span>Pro
+            <span></span>
         </div>
         <p class="login-tagline">Controle financeiro completo no seu bolso</p>
 
@@ -6246,6 +6246,75 @@
             },
 
             // ═══════════════════════════════════════════════════════
+            // MODAL: PROPAGAÇÃO DE CATEGORIA PARA GRUPO
+            // ═══════════════════════════════════════════════════════
+            _pendingCategoryPropagation: null,
+
+            openCategoryPropagationModal: () => {
+                const data = UI._pendingCategoryPropagation;
+                if (!data) return;
+                const overlay = document.getElementById('overlay-cat-propagation');
+                const sheet   = document.getElementById('sheet-cat-propagation');
+                if (!overlay || !sheet) return;
+
+                document.getElementById('cat-prop-count').textContent = data.siblings.length;
+                document.getElementById('cat-prop-type').textContent = data.groupType;
+                document.getElementById('cat-prop-catname').textContent = data.catName;
+
+                // Preview das irmãs (máx 4)
+                const preview = document.getElementById('cat-prop-preview');
+                const shown = data.siblings.slice(0, 4);
+                preview.innerHTML = shown.map(t => {
+                    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#f8fafc;border-radius:8px;font-size:0.82rem;">
+                        <div>
+                            <div style="font-weight:600;color:var(--dark);">${t.description}</div>
+                            <div style="color:#94a3b8;font-size:0.74rem;">${Utils.formatDate(t.date)} · ${Utils.formatCurrency(t.amount)}</div>
+                        </div>
+                        <span style="font-size:0.7rem;background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:10px;">Sem cat.</span>
+                    </div>`;
+                }).join('') + (data.siblings.length > 4 ? `<div style="text-align:center;font-size:0.78rem;color:#94a3b8;padding:6px;">+ ${data.siblings.length - 4} mais...</div>` : '');
+
+                overlay.classList.add('active');
+                sheet.classList.add('active');
+            },
+
+            applyGroupCategory: async (applyAll) => {
+                const overlay = document.getElementById('overlay-cat-propagation');
+                const sheet   = document.getElementById('sheet-cat-propagation');
+                overlay.classList.remove('active');
+                sheet.classList.remove('active');
+
+                if (!applyAll) {
+                    UI._pendingCategoryPropagation = null;
+                    return;
+                }
+
+                const data = UI._pendingCategoryPropagation;
+                UI._pendingCategoryPropagation = null;
+                if (!data) return;
+
+                const btn = document.getElementById('cat-prop-btn-apply');
+                if (btn) { btn.disabled = true; btn.textContent = 'Aplicando...'; }
+
+                let count = 0;
+                for (const t of data.siblings) {
+                    t.category = data.categoryId;
+                    try {
+                        await DB.saveTransaction(t);
+                        count++;
+                    } catch(e) {
+                        console.error('Erro ao aplicar categoria:', e);
+                    }
+                }
+
+                Utils.toast(`✅ Categoria aplicada em ${count} ${data.groupType}!`);
+                UI.renderDashboard();
+                UI.renderTransactions();
+                UI.renderCategories();
+                UI.renderReports();
+            },
+
+            // ═══════════════════════════════════════════════════════
             // PROJEÇÃO AVANÇADA (MENSAL E ANUAL)
             // ═══════════════════════════════════════════════════════
             renderAdvancedProjection: () => {
@@ -8153,6 +8222,12 @@
                         // FLUXO NORMAL (sem parcelamento)
                         // ══════════════════════════════════════════════
 
+                        // Detecta se era sem categoria antes (edição) e agora recebeu categoria
+                        const oldTransaction = FinanceApp.data.transactions.find(t => t.id === id);
+                        const wasUncategorized = oldTransaction && (!oldTransaction.category || !FinanceApp.data.categories.find(c => c.id === oldTransaction.category));
+                        const nowHasCategory = !!category && !!FinanceApp.data.categories.find(c => c.id === category);
+                        const isEditFlow = !!oldTransaction;
+
                         // Salva a transação mestre
                         await DB.saveTransaction(transaction);
 
@@ -8212,6 +8287,48 @@
                         // Aplica saldo apenas se efetivado
                         if (status === 'cleared') {
                             await FinanceApp.account.updateBalance(transaction);
+                        }
+
+                        // ═══════════════════════════════════════════════════════════
+                        // PROPAGAÇÃO AUTOMÁTICA DE CATEGORIA PARA GRUPO
+                        // Se era sem categoria, agora tem categoria, e pertence a grupo
+                        // ═══════════════════════════════════════════════════════════
+                        if (isEditFlow && wasUncategorized && nowHasCategory) {
+                            // Identifica irmãos do grupo ainda sem categoria
+                            let siblings = [];
+
+                            if (transaction.installmentGroup) {
+                                // Parceladas: mesmo installmentGroup, exceto a própria
+                                siblings = FinanceApp.data.transactions.filter(t =>
+                                    t.id !== id &&
+                                    t.installmentGroup === transaction.installmentGroup &&
+                                    (!t.category || !FinanceApp.data.categories.find(c => c.id === t.category))
+                                );
+                            } else if (transaction.recurringParent || (transaction.recurring && !transaction.recurringParent)) {
+                                // Recorrentes: mesmo pai (recurringParent) ou filhos do mestre
+                                const parentId = transaction.recurringParent || transaction.id;
+                                siblings = FinanceApp.data.transactions.filter(t =>
+                                    t.id !== id &&
+                                    (t.recurringParent === parentId || t.id === parentId) &&
+                                    (!t.category || !FinanceApp.data.categories.find(c => c.id === t.category))
+                                );
+                            }
+
+                            if (siblings.length > 0) {
+                                const catName = FinanceApp.data.categories.find(c => c.id === category)?.name || category;
+                                const groupType = transaction.installmentGroup ? 'parcelas' : 'ocorrências recorrentes';
+                                Utils.toast('Transação salva!');
+                                UI.closeModals();
+                                UI.renderDashboard();
+                                UI.renderTransactions();
+                                UI.renderAccounts();
+                                UI.renderReports();
+
+                                // Mostra modal de propagação
+                                UI._pendingCategoryPropagation = { siblings, categoryId: category, catName, groupType };
+                                setTimeout(() => UI.openCategoryPropagationModal(), 350);
+                                return;
+                            }
                         }
                         
                         Utils.toast('Transação salva!');
@@ -12001,6 +12118,43 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
         </div>
         <div id="cat-tx-summary"></div>
         <div id="cat-tx-list" style="flex:1;overflow-y:auto;padding-bottom:8px;"></div>
+    </div>
+
+    <!-- ===== MODAL PROPAGAÇÃO DE CATEGORIA ===== -->
+    <div class="modal-overlay" id="overlay-cat-propagation"></div>
+    <div class="modal-sheet" id="sheet-cat-propagation" style="max-height:88vh;display:flex;flex-direction:column;">
+        <div class="sheet-handle"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-tags" style="color:white;font-size:1.1rem;"></i>
+            </div>
+            <div>
+                <div style="font-weight:800;font-size:1.05rem;color:var(--dark);">Aplicar a todo o grupo?</div>
+                <div style="font-size:0.8rem;color:var(--secondary);">Outras transações do mesmo grupo sem categoria</div>
+            </div>
+        </div>
+
+        <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:14px;margin-bottom:16px;">
+            <div style="font-size:0.85rem;color:#065f46;line-height:1.5;">
+                <i class="fas fa-info-circle" style="color:#10b981;"></i>
+                Foram encontradas <strong id="cat-prop-count">0</strong> <span id="cat-prop-type">transações</span> no mesmo grupo que também estão <strong>sem categoria</strong>.<br>
+                Deseja aplicar <strong style="color:#059669;">"<span id="cat-prop-catname"></span>"</strong> a todas elas automaticamente?
+            </div>
+        </div>
+
+        <div id="cat-prop-preview" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;max-height:200px;overflow-y:auto;"></div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:auto;">
+            <button id="cat-prop-btn-apply"
+                onclick="UI.applyGroupCategory(true)"
+                style="width:100%;padding:15px;background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                <i class="fas fa-check-double"></i> Sim, aplicar a todo o grupo
+            </button>
+            <button onclick="UI.applyGroupCategory(false)"
+                style="width:100%;padding:14px;background:var(--surface);color:var(--secondary);border:1.5px solid var(--border);border-radius:12px;font-size:0.95rem;font-weight:600;cursor:pointer;">
+                Não, apenas esta transação
+            </button>
+        </div>
     </div>
 
 </body>
