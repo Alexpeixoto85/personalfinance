@@ -5362,34 +5362,75 @@
                 const monthTransactions = FinanceApp.data.transactions.filter(t => 
                     t.date >= monthRange.start && t.date <= monthRange.end && t.status === 'cleared'
                 );
+
+                // ── Transações sem categoria ─────────────────────────
+                const allUncategorized = FinanceApp.data.transactions.filter(t =>
+                    !t.category || !FinanceApp.data.categories.find(c => c.id === t.category)
+                );
+                const monthUncategorized = monthTransactions.filter(t =>
+                    !t.category || !FinanceApp.data.categories.find(c => c.id === t.category)
+                );
+
+                // Render/update "Sem Categoria" warning card
+                let uncatEl = document.getElementById('uncategorized-warning-card');
+                if (!uncatEl) {
+                    uncatEl = document.createElement('div');
+                    uncatEl.id = 'uncategorized-warning-card';
+                    expenseList.parentElement.insertBefore(uncatEl, expenseList);
+                }
+                if (allUncategorized.length > 0) {
+                    uncatEl.innerHTML = `
+                        <div class="category-card" style="border-left:4px solid #f59e0b;background:#fffbeb;cursor:pointer;"
+                             onclick="UI.openCategoryTransactions(null)">
+                            <div class="category-info">
+                                <div class="category-icon" style="background:#fef3c7;color:#f59e0b;">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div>
+                                    <div class="category-name" style="color:#92400e;">⚠️ Sem Categoria</div>
+                                    <div class="category-percentage" style="color:#b45309;">${allUncategorized.length} transação(ões) — clique para categorizar</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+                                <div style="font-weight:700;color:#f59e0b;font-size:1rem;">${allUncategorized.length}</div>
+                                <div style="font-size:0.7rem;background:#f59e0b;color:white;padding:2px 8px;border-radius:10px;">Pendentes</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    uncatEl.innerHTML = '';
+                }
                 
                 if (expenseCategories.length === 0) {
                     expenseList.innerHTML = `<div class="empty-state"><i class="fas fa-tags"></i><p>Nenhuma categoria de despesa!</p></div>`;
                 } else {
                     let expenseHtml = '';
                     expenseCategories.forEach(category => {
-                        const categoryTotal = monthTransactions
-                            .filter(t => t.category === category.id && t.type === 'expense')
-                            .reduce((sum, t) => sum + t.amount, 0);
+                        const catTransactions = monthTransactions.filter(t => t.category === category.id && t.type === 'expense');
+                        const categoryTotal = catTransactions.reduce((sum, t) => sum + t.amount, 0);
+                        const txCount = catTransactions.length;
                         
                         const percentage = category.budget > 0 ? 
                             Math.min((categoryTotal / category.budget) * 100, 100) : 0;
                         
                         expenseHtml += `
-                            <div class="category-card" onclick="UI.editCategory('${category.id}')">
+                            <div class="category-card" style="cursor:pointer;" onclick="UI.openCategoryTransactions('${category.id}')">
                                 <div class="category-info">
                                     <div class="category-icon" style="background: ${category.color}22; color: ${category.color}">
                                         <i class="${Utils.getCategoryIcon(category.icon)}"></i>
                                     </div>
                                     <div>
                                         <div class="category-name">${category.name}</div>
-                                        ${category.budget > 0 ? 
-                                            `<div class="category-percentage">${percentage.toFixed(1)}% do orçamento</div>` : 
-                                            ''
-                                        }
+                                        <div class="category-percentage">
+                                            ${txCount} transação(ões) este mês
+                                            ${category.budget > 0 ? ` · ${percentage.toFixed(1)}% do orçamento` : ''}
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="category-amount">${Utils.formatCurrency(categoryTotal)}</div>
+                                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+                                    <div class="category-amount">${Utils.formatCurrency(categoryTotal)}</div>
+                                    <div style="font-size:0.7rem;color:var(--secondary);"><i class="fas fa-chevron-right"></i></div>
+                                </div>
                             </div>
                         `;
                     });
@@ -5401,19 +5442,25 @@
                 } else {
                     let incomeHtml = '';
                     incomeCategories.forEach(category => {
-                        const categoryTotal = monthTransactions
-                            .filter(t => t.category === category.id && t.type === 'income')
-                            .reduce((sum, t) => sum + t.amount, 0);
+                        const catTransactions = monthTransactions.filter(t => t.category === category.id && t.type === 'income');
+                        const categoryTotal = catTransactions.reduce((sum, t) => sum + t.amount, 0);
+                        const txCount = catTransactions.length;
                         
                         incomeHtml += `
-                            <div class="category-card" onclick="UI.editCategory('${category.id}')">
+                            <div class="category-card" style="cursor:pointer;" onclick="UI.openCategoryTransactions('${category.id}')">
                                 <div class="category-info">
                                     <div class="category-icon" style="background: ${category.color}22; color: ${category.color}">
                                         <i class="${Utils.getCategoryIcon(category.icon)}"></i>
                                     </div>
-                                    <div class="category-name">${category.name}</div>
+                                    <div>
+                                        <div class="category-name">${category.name}</div>
+                                        <div class="category-percentage">${txCount} transação(ões) este mês</div>
+                                    </div>
                                 </div>
-                                <div class="category-amount" style="color: var(--income)">${Utils.formatCurrency(categoryTotal)}</div>
+                                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+                                    <div class="category-amount" style="color: var(--income)">${Utils.formatCurrency(categoryTotal)}</div>
+                                    <div style="font-size:0.7rem;color:var(--secondary);"><i class="fas fa-chevron-right"></i></div>
+                                </div>
                             </div>
                         `;
                     });
@@ -5506,7 +5553,7 @@
                 const categories = {};
                 expenseTransactions.forEach(t => {
                     const category = FinanceApp.data.categories.find(c => c.id === t.category);
-                    const categoryName = category ? category.name : 'Outros';
+                    const categoryName = category ? category.name : '⚠️ Sem Categoria';
                     
                     if (!categories[categoryName]) {
                         categories[categoryName] = 0;
@@ -6078,20 +6125,124 @@
                     return { cat, total };
                 }).filter(r => r.total > 0).sort((a,b) => b.total - a.total);
 
-                if (!rows.length) {
+                // Check for uncategorized in the period
+                const startDate = buckets.length ? buckets[0].start : null;
+                const endDate = buckets.length ? buckets[buckets.length-1].end : null;
+                const uncatTotal = startDate ? transactions
+                    .filter(t => (!t.category || !FinanceApp.data.categories.find(c => c.id === t.category))
+                        && t.date >= startDate && t.date <= endDate && t.status === 'cleared')
+                    .reduce((s, t) => s + t.amount, 0) : 0;
+
+                if (!rows.length && !uncatTotal) {
                     el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--secondary);font-size:0.88rem;">Nenhuma transação no período</div>';
                     return;
                 }
-                const maxVal = rows[0].total;
-                el.innerHTML = rows.map(r => {
+                const maxVal = Math.max(rows.length ? rows[0].total : 0, uncatTotal);
+                let html = rows.map(r => {
                     const pct = maxVal > 0 ? (r.total / maxVal * 100).toFixed(0) : 0;
-                    return '<div class="cat-sum-row">' +
+                    return '<div class="cat-sum-row" style="cursor:pointer;" onclick="UI.openCategoryTransactions(\'' + r.cat.id + '\')">' +
                         '<div style="width:10px;height:10px;border-radius:50%;background:' + (r.cat.color||'#64748b') + ';flex-shrink:0;"></div>' +
                         '<div style="min-width:80px;font-size:0.85rem;font-weight:600;color:var(--dark);">' + r.cat.name + '</div>' +
                         '<div class="cat-sum-bar-wrap"><div class="cat-sum-bar" style="width:' + pct + '%;background:' + (r.cat.color||'#64748b') + ';"></div></div>' +
                         '<div style="min-width:80px;text-align:right;font-size:0.85rem;font-weight:700;color:var(--dark);">' + Utils.formatCurrency(r.total) + '</div>' +
+                        '<div style="color:#94a3b8;font-size:0.7rem;margin-left:4px;"><i class="fas fa-chevron-right"></i></div>' +
                     '</div>';
                 }).join('');
+
+                if (uncatTotal > 0) {
+                    const pct = maxVal > 0 ? (uncatTotal / maxVal * 100).toFixed(0) : 0;
+                    html += '<div class="cat-sum-row" style="cursor:pointer;background:#fffbeb;" onclick="UI.openCategoryTransactions(null)">' +
+                        '<div style="width:10px;height:10px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></div>' +
+                        '<div style="min-width:80px;font-size:0.85rem;font-weight:600;color:#92400e;">⚠️ Sem Cat.</div>' +
+                        '<div class="cat-sum-bar-wrap"><div class="cat-sum-bar" style="width:' + pct + '%;background:#f59e0b;"></div></div>' +
+                        '<div style="min-width:80px;text-align:right;font-size:0.85rem;font-weight:700;color:#92400e;">' + Utils.formatCurrency(uncatTotal) + '</div>' +
+                        '<div style="color:#94a3b8;font-size:0.7rem;margin-left:4px;"><i class="fas fa-chevron-right"></i></div>' +
+                    '</div>';
+                }
+                el.innerHTML = html;
+            },
+
+            // ═══════════════════════════════════════════════════════
+            // MODAL: TRANSAÇÕES POR CATEGORIA
+            // ═══════════════════════════════════════════════════════
+            openCategoryTransactions: (categoryId) => {
+                const overlay = document.getElementById('overlay-cat-transactions');
+                const sheet   = document.getElementById('sheet-cat-transactions');
+                const title   = document.getElementById('cat-tx-title');
+                const list    = document.getElementById('cat-tx-list');
+                const summary = document.getElementById('cat-tx-summary');
+
+                const isUncategorized = categoryId === null || categoryId === undefined;
+                const cat = isUncategorized ? null : FinanceApp.data.categories.find(c => c.id === categoryId);
+
+                if (!isUncategorized && !cat) return;
+
+                title.textContent = isUncategorized ? '⚠️ Sem Categoria' : (cat.name);
+
+                // Get all transactions (not just current month) for uncategorized; for categorized, show all time
+                let txs;
+                if (isUncategorized) {
+                    txs = FinanceApp.data.transactions.filter(t =>
+                        !t.category || !FinanceApp.data.categories.find(c => c.id === t.category)
+                    );
+                } else {
+                    txs = FinanceApp.data.transactions.filter(t => t.category === categoryId);
+                }
+                txs = txs.slice().sort((a, b) => b.date.localeCompare(a.date));
+
+                const total = txs.reduce((s, t) => s + t.amount, 0);
+                const cleared = txs.filter(t => t.status === 'cleared').reduce((s, t) => s + t.amount, 0);
+
+                summary.innerHTML = `
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+                        <div style="background:#f1f5f9;border-radius:10px;padding:10px;text-align:center;">
+                            <div style="font-size:0.62rem;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">${txs.length} Transações</div>
+                            <div style="font-weight:800;font-size:0.9rem;color:var(--dark);">${Utils.formatCurrency(total)}</div>
+                        </div>
+                        <div style="background:${isUncategorized ? '#fef3c7' : '#d1fae5'};border-radius:10px;padding:10px;text-align:center;">
+                            <div style="font-size:0.62rem;color:${isUncategorized ? '#92400e' : '#065f46'};font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Efetivado</div>
+                            <div style="font-weight:800;font-size:0.9rem;color:${isUncategorized ? '#b45309' : '#059669'};">${Utils.formatCurrency(cleared)}</div>
+                        </div>
+                    </div>
+                    ${isUncategorized ? '<div style="background:#fef3c7;border-radius:8px;padding:10px;font-size:0.8rem;color:#92400e;margin-bottom:8px;"><i class="fas fa-info-circle"></i> Clique em cada transação para definir uma categoria adequada.</div>' : ''}
+                `;
+
+                if (txs.length === 0) {
+                    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--secondary);"><i class="fas fa-check-circle" style="font-size:2rem;color:var(--primary);display:block;margin-bottom:8px;"></i>Nenhuma transação encontrada!</div>';
+                } else {
+                    const typeColors = { income: 'var(--income)', expense: 'var(--expense)', investment: 'var(--investment)', pending: 'var(--pending)', transfer: 'var(--transfer)' };
+                    const typeIcons = { income: 'fa-arrow-down', expense: 'fa-arrow-up', investment: 'fa-chart-line', transfer: 'fa-exchange-alt' };
+                    const typeIconBg = { income: 'icon-income', expense: 'icon-expense', investment: 'icon-investment', transfer: 'icon-transfer', pending: 'icon-pending' };
+
+                    list.innerHTML = txs.map(t => {
+                        const amtColor = t.type === 'income' ? 'amount-income' : t.type === 'expense' ? 'amount-expense' : t.type === 'investment' ? 'amount-investment' : 'amount-pending';
+                        const sign = t.type === 'income' ? '+' : '-';
+                        const icon = typeIcons[t.type] || 'fa-circle';
+                        const iconBg = typeIconBg[t.type] || 'icon-pending';
+                        const statusBadge = t.status === 'pending'
+                            ? '<span style="font-size:0.65rem;background:#fef3c7;color:#b45309;padding:2px 6px;border-radius:8px;margin-left:4px;">Pendente</span>' : '';
+                        const catName = isUncategorized
+                            ? '<span style="color:#f59e0b;font-weight:600;">Sem categoria — toque para definir</span>'
+                            : (FinanceApp.data.categories.find(c => c.id === t.category)?.name || 'Sem categoria');
+                        return `<div class="transaction-card ${t.type}" style="margin-bottom:8px;" onclick="UI.closeCategoryTransactions();setTimeout(()=>UI.editTransaction('${t.id}'),300);">
+                            <div class="transaction-icon ${iconBg}"><i class="fas ${icon}"></i></div>
+                            <div class="transaction-info">
+                                <div class="transaction-title">${t.description}</div>
+                                <div class="transaction-category">${catName}${statusBadge}</div>
+                                <div class="transaction-date">${Utils.formatDate(t.date)}</div>
+                            </div>
+                            <div class="transaction-amount ${amtColor}">${sign} ${Utils.formatCurrency(t.amount)}</div>
+                        </div>`;
+                    }).join('');
+                }
+
+                overlay.classList.add('active');
+                sheet.classList.add('active');
+            },
+
+            closeCategoryTransactions: () => {
+                document.getElementById('overlay-cat-transactions').classList.remove('active');
+                document.getElementById('sheet-cat-transactions').classList.remove('active');
             },
 
             // ═══════════════════════════════════════════════════════
@@ -11838,6 +11989,18 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- ===== MODAL TRANSAÇÕES POR CATEGORIA ===== -->
+    <div class="modal-overlay" id="overlay-cat-transactions" onclick="UI.closeCategoryTransactions()"></div>
+    <div class="modal-sheet" id="sheet-cat-transactions" style="max-height:92vh;display:flex;flex-direction:column;">
+        <div class="sheet-handle"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 12px;">
+            <h3 class="section-title" id="cat-tx-title" style="margin:0;">Transações</h3>
+            <button class="icon-btn" onclick="UI.closeCategoryTransactions()"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="cat-tx-summary"></div>
+        <div id="cat-tx-list" style="flex:1;overflow-y:auto;padding-bottom:8px;"></div>
     </div>
 
 </body>
