@@ -2586,6 +2586,24 @@
                 </select>
             </div>
 
+            <!-- Campo Confirmado/Não Confirmado -->
+            <div class="form-group" id="t-confirmed-group">
+                <label class="form-label" style="display:flex;align-items:center;justify-content:space-between;">
+                    <span style="display:flex;align-items:center;gap:6px;">
+                        <i class="fas fa-check-circle" style="color:var(--primary);"></i>
+                        Confirmado pelo cliente
+                    </span>
+                    <label class="switch" style="margin:0;">
+                        <input type="checkbox" id="t-confirmed" checked onchange="UI.onConfirmedChange(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </label>
+                <div id="t-confirmed-info" style="display:none;margin-top:8px;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:0.8rem;color:#92400e;line-height:1.5;">
+                    <i class="fas fa-info-circle" style="color:#f59e0b;"></i>
+                    <strong>Não confirmado:</strong> Esta transação será salva mas <strong>não entrará na projeção financeira</strong> até ser confirmada.
+                </div>
+            </div>
+
             <div class="form-group">
                 <label class="form-label">Observações</label>
                 <textarea id="t-notes" class="form-control" placeholder="Detalhes adicionais..."></textarea>
@@ -4779,8 +4797,9 @@
 
                 // --- PROJEÇÃO DO MÊS ABERTO ---
                 // Todas as transações do mês (efetivadas + pendentes) para calcular projeção
+                // Transações NÃO confirmadas são excluídas da projeção
                 const allMonthTx = transactions.filter(t =>
-                    t.date >= monthRange.start && t.date <= monthRange.end
+                    t.date >= monthRange.start && t.date <= monthRange.end && t.confirmed !== false
                 );
 
                 const projMonthIncome = allMonthTx
@@ -4794,9 +4813,9 @@
                 // Saldo projetado do mês = saldo atual + todas receitas do mês - todas despesas do mês pendentes ainda
                 // Para mês atual/futuro mostramos o resultado esperado ao fim do mês
                 const pendingMonthIncome = monthPendingTransactions
-                    .filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+                    .filter(t => t.confirmed !== false && t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
                 const pendingMonthExpense = monthPendingTransactions
-                    .filter(t => t.type === 'expense' || t.type === 'investment').reduce((sum, t) => sum + t.amount, 0);
+                    .filter(t => t.confirmed !== false && (t.type === 'expense' || t.type === 'investment')).reduce((sum, t) => sum + t.amount, 0);
 
                 // Projeção = saldo atual + receitas pendentes do mês - despesas pendentes do mês
                 const projectedMonthBalance = totalBalance + pendingMonthIncome - pendingMonthExpense;
@@ -5076,6 +5095,10 @@
                     ? '<span style="background:#f3e8ff;color:#7c3aed;font-size:0.68rem;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:4px;">⚙ Ajuste</span>'
                     : '';
 
+                const unconfirmedBadge = (!isAdj && transaction.confirmed === false)
+                    ? '<span style="background:#fef3c7;color:#b45309;font-size:0.68rem;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:4px;">❓ Não confirmado</span>'
+                    : '';
+
                 let description = transaction.description;
                 if (!isAdj && transaction.type === 'transfer' && transaction.transferTo) {
                     const toAccount = FinanceApp.data.accounts.find(a => a.id === transaction.transferTo);
@@ -5087,7 +5110,7 @@
                     : '';
 
                 return `
-                    <div class="transaction-card ${cardType}" onclick="UI.editTransaction('${transaction.id}')">
+                    <div class="transaction-card ${cardType}" onclick="UI.editTransaction('${transaction.id}')" style="${transaction.confirmed === false ? 'opacity:0.75;border-style:dashed;' : ''}">
                         <div class="transaction-icon ${iconClass}">
                             <i class="${Utils.getTransactionTypeIcon(isAdj ? 'adjustment' : transaction.type)}"></i>
                         </div>
@@ -5099,6 +5122,7 @@
                                 ${!isAdj && transaction.recurring ? '<span class="recurring-badge">Mestre</span>' : ''}
                                 ${!isAdj && transaction.installmentGroup ? `<span style="background:#dbeafe;color:#1e40af;font-size:0.7rem;padding:2px 6px;border-radius:10px;margin-left:4px;font-weight:700;"><i class="fas fa-layer-group" style="font-size:0.65rem;"></i> ${transaction.installmentIndex}/${transaction.installmentTotal}</span>` : ''}
                                 ${statusBadge}
+                                ${unconfirmedBadge}
                             </div>
                             <div class="transaction-date">${Utils.formatDate(transaction.date)}</div>
                             ${noteLine}
@@ -6322,9 +6346,10 @@
                 const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
 
                 // Helper: calcula receita e despesa projetada de um mês (inclui cleared + pending + scheduled)
+                // Transações NÃO confirmadas (confirmed === false) são excluídas da projeção
                 function getMonthProjection(year, month) {
                     const range = Utils.getMonthRange(month, year);
-                    const txs = transactions.filter(t => t.date >= range.start && t.date <= range.end);
+                    const txs = transactions.filter(t => t.date >= range.start && t.date <= range.end && t.confirmed !== false);
                     const income = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
                     const expense = txs.filter(t => t.type === 'expense' || t.type === 'investment').reduce((s, t) => s + t.amount, 0);
                     return { income, expense, net: income - expense };
@@ -6423,7 +6448,7 @@
                 const today = Utils.getToday();
                 const futureDate = Utils.getFutureDate(30);
                 const upcoming = transactions
-                    .filter(t => t.date >= today && t.date <= futureDate && t.type !== 'transfer')
+                    .filter(t => t.date >= today && t.date <= futureDate && t.type !== 'transfer' && t.confirmed !== false)
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 const timelineEl = document.getElementById('financial-timeline');
@@ -7601,6 +7626,11 @@
                 UI.cancelNewCategory();
             },
 
+            onConfirmedChange: (checked) => {
+                const info = document.getElementById('t-confirmed-info');
+                if (info) info.style.display = checked ? 'none' : 'block';
+            },
+
             onCategoryInput: (val) => {
                 const type = document.getElementById('t-type').value;
                 const categories = FinanceApp.data.categories.filter(c => c.type === type);
@@ -7756,6 +7786,8 @@
                 
                 document.getElementById('t-date').value = Utils.getToday();
                 document.getElementById('t-status-select').value = 'cleared';
+                document.getElementById('t-confirmed').checked = true;
+                document.getElementById('t-confirmed-info').style.display = 'none';
                 
                 // Reset category text input
                 document.getElementById('t-category-input').value = '';
@@ -7794,6 +7826,8 @@
                 document.getElementById('t-recurring-count').value = transaction.recurringCount || '0';
                 document.getElementById('t-recurring-end-date').value = transaction.recurringEndDate || '';
                 document.getElementById('t-status-select').value = transaction.status || 'cleared';
+                document.getElementById('t-confirmed').checked = transaction.confirmed !== false; // default true
+                document.getElementById('t-confirmed-info').style.display = transaction.confirmed === false ? 'block' : 'none';
                 document.getElementById('t-transfer-to').value = transaction.transferTo || '';
                 
                 UI.setTransactionType(transaction.type);
@@ -8101,6 +8135,7 @@
                     const paymentMethod = document.getElementById('t-payment-method').value;
                     const notes = document.getElementById('t-notes').value;
                     const status = document.getElementById('t-status-select').value;
+                    const confirmed = document.getElementById('t-confirmed').checked;
                     const recurring = document.getElementById('t-recurring').checked;
                     const recurringFrequency = recurring ? document.getElementById('t-recurring-frequency').value : null;
                     const recurringCount = recurring ? parseInt(document.getElementById('t-recurring-count').value) : 0;
@@ -8154,6 +8189,7 @@
                         paymentMethod,
                         notes,
                         status,
+                        confirmed,
                         recurring,
                         recurringFrequency,
                         recurringCount,
