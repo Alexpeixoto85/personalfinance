@@ -3788,14 +3788,43 @@
                 const categories = await DB.getAllCategories();
                 const goals = await DB.getAllGoals();
                 const settings = await DB.getSettings();
-                
+
+                // Exportar usuários e descritores faciais (banco separado)
+                let users = [];
+                let faceDescriptors = [];
+                try {
+                    await DB.initUsersDB();
+                    users = await DB.getAllUsers();
+                    faceDescriptors = await DB.getAllFaceUsers();
+                } catch(e) { /* ignora se banco não existir */ }
+
+                // Exportar cartões de todos os usuários do localStorage
+                const cards = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('fp_cards_')) {
+                        try { cards[key] = JSON.parse(localStorage.getItem(key)); } catch(e) {}
+                    }
+                }
+
+                // Exportar preferências globais do localStorage
+                const preferences = {
+                    fp_dark_mode: localStorage.getItem('fp_dark_mode'),
+                    fp_saldos_ocultos: localStorage.getItem('fp_saldos_ocultos')
+                };
+
                 return {
                     transactions,
                     accounts,
                     categories,
                     goals,
                     settings,
-                    exportDate: new Date().toISOString()
+                    users,
+                    faceDescriptors,
+                    cards,
+                    preferences,
+                    exportDate: new Date().toISOString(),
+                    version: 2
                 };
             },
             
@@ -3820,6 +3849,41 @@
                 
                 if (data.settings) {
                     await DB.saveSettings(data.settings);
+                }
+
+                // Restaurar usuários e descritores faciais
+                if (data.users && data.users.length > 0) {
+                    try {
+                        await DB.initUsersDB();
+                        for (const user of data.users) {
+                            await DB.saveUser(user);
+                        }
+                    } catch(e) { console.warn('Erro ao restaurar usuários:', e); }
+                }
+                if (data.faceDescriptors && data.faceDescriptors.length > 0) {
+                    try {
+                        await DB.initUsersDB();
+                        for (const fd of data.faceDescriptors) {
+                            await DB.saveFaceDescriptor(fd.username, fd.descriptors);
+                        }
+                    } catch(e) { console.warn('Erro ao restaurar descritores faciais:', e); }
+                }
+
+                // Restaurar cartões no localStorage
+                if (data.cards && typeof data.cards === 'object') {
+                    for (const [key, value] of Object.entries(data.cards)) {
+                        try { localStorage.setItem(key, JSON.stringify(value)); } catch(e) {}
+                    }
+                }
+
+                // Restaurar preferências no localStorage
+                if (data.preferences) {
+                    if (data.preferences.fp_dark_mode !== null && data.preferences.fp_dark_mode !== undefined) {
+                        localStorage.setItem('fp_dark_mode', data.preferences.fp_dark_mode);
+                    }
+                    if (data.preferences.fp_saldos_ocultos !== null && data.preferences.fp_saldos_ocultos !== undefined) {
+                        localStorage.setItem('fp_saldos_ocultos', data.preferences.fp_saldos_ocultos);
+                    }
                 }
             },
             
@@ -9083,6 +9147,16 @@
                             UI.renderCategories();
                             UI.renderGoals();
                             UI.renderReports();
+
+                            // Reaplicar preferências restauradas
+                            const darkMode = localStorage.getItem('fp_dark_mode');
+                            if (darkMode !== null) {
+                                document.documentElement.classList.toggle('dark-mode', darkMode === '1');
+                            }
+                            const saldosOcultos = localStorage.getItem('fp_saldos_ocultos');
+                            if (saldosOcultos !== null && typeof UI.applySaldosOcultos === 'function') {
+                                UI.applySaldosOcultos(saldosOcultos === '1');
+                            }
                             
                             Utils.toast('Backup importado com sucesso!');
                             input.value = '';
@@ -9099,7 +9173,15 @@
                     if (confirm('Tem certeza? Isso apagará TODOS os dados permanentemente!')) {
                         try {
                             await DB.clearAllData();
-                            
+
+                            // Limpar cartões do localStorage
+                            const keysToRemove = [];
+                            for (let i = 0; i < localStorage.length; i++) {
+                                const key = localStorage.key(i);
+                                if (key && key.startsWith('fp_cards_')) keysToRemove.push(key);
+                            }
+                            keysToRemove.forEach(k => localStorage.removeItem(k));
+
                             FinanceApp.data.transactions = [];
                             FinanceApp.data.accounts = [];
                             FinanceApp.data.categories = [];
