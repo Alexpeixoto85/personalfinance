@@ -3798,6 +3798,36 @@
                     faceDescriptors = await DB.getAllFaceUsers();
                 } catch(e) { /* ignora se banco não existir */ }
 
+                // Exportar dados de TODOS os usuários (cada um tem seu próprio DB)
+                const allUsersData = {};
+                for (const user of users) {
+                    try {
+                        const uname = user.username;
+                        // Não duplicar o usuário atual (já exportado acima)
+                        if (uname === DB.currentUsername) continue;
+                        await new Promise((resolve, reject) => {
+                            const req = indexedDB.open('FinancaProDB_' + uname, 7);
+                            req.onerror = () => resolve(); // silencia erro se DB não existir
+                            req.onsuccess = (e) => {
+                                const db = e.target.result;
+                                const stores = Array.from(db.objectStoreNames);
+                                const needed = ['transactions','accounts','categories','goals','settings'].filter(s => stores.includes(s));
+                                if (needed.length === 0) { db.close(); resolve(); return; }
+                                const tx = db.transaction(needed, 'readonly');
+                                const result = {};
+                                let pending = needed.length;
+                                const done = () => { if (--pending === 0) { db.close(); allUsersData[uname] = result; resolve(); } };
+                                needed.forEach(storeName => {
+                                    const r = tx.objectStore(storeName).getAll();
+                                    r.onsuccess = () => { result[storeName] = r.result; done(); };
+                                    r.onerror = () => { result[storeName] = []; done(); };
+                                });
+                            };
+                            req.onupgradeneeded = (e) => { e.target.transaction.abort(); resolve(); };
+                        });
+                    } catch(e) { /* continua para o próximo usuário */ }
+                }
+
                 // Exportar cartões de todos os usuários do localStorage
                 const cards = {};
                 for (let i = 0; i < localStorage.length; i++) {
@@ -3821,10 +3851,12 @@
                     settings,
                     users,
                     faceDescriptors,
+                    allUsersData,
                     cards,
                     preferences,
+                    currentUser: DB.currentUsername,
                     exportDate: new Date().toISOString(),
-                    version: 2
+                    version: 3
                 };
             },
             
@@ -3867,6 +3899,41 @@
                             await DB.saveFaceDescriptor(fd.username, fd.descriptors);
                         }
                     } catch(e) { console.warn('Erro ao restaurar descritores faciais:', e); }
+                }
+
+                // Restaurar dados de outros usuários em seus próprios bancos
+                if (data.allUsersData && typeof data.allUsersData === 'object') {
+                    for (const [uname, udata] of Object.entries(data.allUsersData)) {
+                        try {
+                            await new Promise((resolve, reject) => {
+                                const req = indexedDB.open('FinancaProDB_' + uname, 7);
+                                req.onerror = () => resolve();
+                                req.onsuccess = (e) => {
+                                    const db = e.target.result;
+                                    const stores = Array.from(db.objectStoreNames);
+                                    const needed = ['transactions','accounts','categories','goals','settings'].filter(s => stores.includes(s));
+                                    if (needed.length === 0) { db.close(); resolve(); return; }
+                                    const tx = db.transaction(needed, 'readwrite');
+                                    needed.forEach(storeName => {
+                                        const store = tx.objectStore(storeName);
+                                        store.clear();
+                                        (udata[storeName] || []).forEach(rec => store.put(rec));
+                                    });
+                                    tx.oncomplete = () => { db.close(); resolve(); };
+                                    tx.onerror = () => { db.close(); resolve(); };
+                                };
+                                req.onupgradeneeded = (e) => {
+                                    // recria as stores se necessário
+                                    const db = e.target.result;
+                                    if (!db.objectStoreNames.contains('transactions')) db.createObjectStore('transactions', { keyPath: 'id' });
+                                    if (!db.objectStoreNames.contains('accounts')) db.createObjectStore('accounts', { keyPath: 'id' });
+                                    if (!db.objectStoreNames.contains('categories')) db.createObjectStore('categories', { keyPath: 'id' });
+                                    if (!db.objectStoreNames.contains('goals')) db.createObjectStore('goals', { keyPath: 'id' });
+                                    if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
+                                };
+                            });
+                        } catch(e) { console.warn('Erro ao restaurar dados do usuário ' + uname + ':', e); }
+                    }
                 }
 
                 // Restaurar cartões no localStorage
@@ -9147,15 +9214,31 @@
                             UI.renderCategories();
                             UI.renderGoals();
                             UI.renderReports();
+                            UI.renderCards();
 
-                            // Reaplicar preferências restauradas
+                            // Reaplicar modo escuro
                             const darkMode = localStorage.getItem('fp_dark_mode');
-                            if (darkMode !== null) {
-                                document.documentElement.classList.toggle('dark-mode', darkMode === '1');
-                            }
-                            const saldosOcultos = localStorage.getItem('fp_saldos_ocultos');
-                            if (saldosOcultos !== null && typeof UI.applySaldosOcultos === 'function') {
-                                UI.applySaldosOcultos(saldosOcultos === '1');
+                            document.body.classList.toggle('dark-mode', darkMode === '1');
+                            const darkBtn = document.getElementById('dark-toggle-btn');
+                            if (darkBtn) darkBtn.innerHTML = darkMode === '1' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+
+                            // Reaplicar visibilidade de saldos
+                            const saldoPref = localStorage.getItem('fp_saldos_ocultos');
+                            if (saldoPref !== null && window.FinancaPro) {
+                                // força re-leitura da preferência e aplica
+                                const pref = saldoPref === '1';
+                                localStorage.setItem('fp_saldos_ocultos', pref ? '1' : '0');
+                                setTimeout(() => {
+                                    const elementos = document.querySelectorAll('.balance-sensivel, .account-balance');
+                                    const icone = document.getElementById('icone-olho');
+                                    if (pref) {
+                                        elementos.forEach(el => { el.classList.add('saldo-oculto'); el.classList.remove('saldo-visivel'); });
+                                        if (icone) icone.className = 'fas fa-eye-slash';
+                                    } else {
+                                        elementos.forEach(el => { el.classList.remove('saldo-oculto'); el.classList.add('saldo-visivel'); });
+                                        if (icone) icone.className = 'fas fa-eye';
+                                    }
+                                }, 300);
                             }
                             
                             Utils.toast('Backup importado com sucesso!');
@@ -9181,6 +9264,18 @@
                                 if (key && key.startsWith('fp_cards_')) keysToRemove.push(key);
                             }
                             keysToRemove.forEach(k => localStorage.removeItem(k));
+
+                            // Limpar usuários e descritores faciais do banco compartilhado
+                            try {
+                                await DB.initUsersDB();
+                                await new Promise((res) => {
+                                    const tx = DB._usersDB.transaction(['users', 'face_descriptors'], 'readwrite');
+                                    tx.objectStore('users').clear();
+                                    tx.objectStore('face_descriptors').clear();
+                                    tx.oncomplete = res;
+                                    tx.onerror = res;
+                                });
+                            } catch(e) { console.warn('Erro ao limpar banco de usuários:', e); }
 
                             FinanceApp.data.transactions = [];
                             FinanceApp.data.accounts = [];
