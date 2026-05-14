@@ -12759,6 +12759,19 @@ body.empresa-mode .fab{background:linear-gradient(135deg,#3b82f6,#1d4ed8);}
 .dre-line.red{color:#ef4444;}
 body.dark-mode .empresa-form-control{background:#1e293b;color:#f1f5f9;border-color:#334155;}
 body.dark-mode .empresa-kpi,body.dark-mode .empresa-card,body.dark-mode #empresa-modal-sheet{background:#1e293b;color:#f1f5f9;}
+
+.empresa-action-row{display:flex;gap:8px;margin-top:10px;width:100%;}
+.empresa-mini-btn{border:none;border-radius:8px;padding:7px 10px;font-size:0.72rem;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
+.empresa-mini-btn.blue{background:#dbeafe;color:#1d4ed8;}
+.empresa-mini-btn.green{background:#d1fae5;color:#047857;}
+.empresa-mini-btn.red{background:#fee2e2;color:#b91c1c;}
+.empresa-mini-btn.gray{background:#f1f5f9;color:#475569;}
+.empresa-panel-note{font-size:0.78rem;color:#64748b;line-height:1.45;margin:-6px 0 12px;}
+.empresa-summary-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;}
+.empresa-summary-card{background:var(--surface,#fff);border-radius:14px;padding:13px;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+.empresa-summary-card .label{font-size:0.67rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;}
+.empresa-summary-card .value{font-size:1.05rem;font-weight:900;margin-top:4px;}
+body.dark-mode .empresa-summary-card{background:#1e293b;color:#f1f5f9;}
         `;
         document.head.appendChild(style);
     };
@@ -12873,10 +12886,13 @@ body.dark-mode .empresa-kpi,body.dark-mode .empresa-card,body.dark-mode #empresa
                     <button class="empresa-tab-btn ${tab==='fluxo'?'active':''}" onclick="EmpresaMode.renderEmpresaTab('fluxo',this)">💸 Fluxo</button>
                     <button class="empresa-tab-btn ${tab==='cp'?'active':''}" onclick="EmpresaMode.renderEmpresaTab('cp',this)">📋 A Pagar</button>
                     <button class="empresa-tab-btn ${tab==='cr'?'active':''}" onclick="EmpresaMode.renderEmpresaTab('cr',this)">💰 A Receber</button>
+                    <button class="empresa-tab-btn ${tab==='bancos'?'active':''}" onclick="EmpresaMode.renderEmpresaTab('bancos',this)">🏦 Bancos</button>
                     <button class="empresa-tab-btn ${tab==='clientes'?'active':''}" onclick="EmpresaMode.renderEmpresaTab('clientes',this)">👥 Clientes</button>
                     <button class="empresa-tab-btn ${tab==='fornecedores'?'active':''}" onclick="EmpresaMode.renderEmpresaTab('fornecedores',this)">🚚 Fornecedores</button>
                     <button class="empresa-tab-btn ${tab==='centros'?'active':''}" onclick="EmpresaMode.renderEmpresaTab('centros',this)">🗂️ C. Custo</button>
+                    <button class="empresa-tab-btn ${tab==='projetos'?'active':''}" onclick="EmpresaMode.renderEmpresaTab('projetos',this)">📌 Projetos</button>
                     <button class="empresa-tab-btn ${tab==='funcionarios'?'active':''}" onclick="EmpresaMode.renderEmpresaTab('funcionarios',this)">👔 Funcionários</button>
+                    <button class="empresa-tab-btn ${tab==='relatorios'?'active':''}" onclick="EmpresaMode.renderEmpresaTab('relatorios',this)">📈 Relatórios</button>
                     <button class="empresa-tab-btn ${tab==='config'?'active':''}" onclick="EmpresaMode.renderEmpresaTab('config',this)">⚙️ Empresa</button>
                 </div>
                 <div id="empresa-tab-content"></div>
@@ -12894,10 +12910,13 @@ body.dark-mode .empresa-kpi,body.dark-mode .empresa-card,body.dark-mode #empresa
             case 'fluxo': _renderFluxo(c); break;
             case 'cp': _renderCP(c); break;
             case 'cr': _renderCR(c); break;
+            case 'bancos': _renderBancos(c); break;
             case 'clientes': _renderClientes(c); break;
             case 'fornecedores': _renderFornecedores(c); break;
             case 'centros': _renderCentros(c); break;
+            case 'projetos': _renderProjetos(c); break;
             case 'funcionarios': _renderFuncionarios(c); break;
+            case 'relatorios': _renderRelatorios(c); break;
             case 'config': _renderConfig(c); break;
         }
     };
@@ -13019,21 +13038,28 @@ body.dark-mode .empresa-kpi,body.dark-mode .empresa-card,body.dark-mode #empresa
 
     /* ── Contas a Pagar ── */
     const _renderCP = (c) => {
-        const list = eState.contas_pagar.sort((a,b)=>a.vencimento.localeCompare(b.vencimento));
+        const list = [...eState.contas_pagar].sort((a,b)=>a.vencimento.localeCompare(b.vencimento));
         const todayStr = today();
+        const pend = list.filter(cp=>cp.status==='pendente').reduce((s,cp)=>s+(cp.valor||0),0);
+        const venc = list.filter(cp=>cp.status==='pendente'&&cp.vencimento<todayStr).reduce((s,cp)=>s+(cp.valor||0),0);
         c.innerHTML = `<div class="empresa-section-title">📋 Contas a Pagar<button onclick="EmpresaMode.openNovaContaPagar()" style="background:#ef4444;color:white;border:none;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;"><i class="fas fa-plus"></i></button></div>
+        <div class="empresa-summary-grid"><div class="empresa-summary-card"><div class="label">Pendente</div><div class="value" style="color:#f59e0b;">${fmt(pend)}</div></div><div class="empresa-summary-card"><div class="label">Vencido</div><div class="value" style="color:#ef4444;">${fmt(venc)}</div></div></div>
         ${list.length===0?'<div class="empresa-empty"><i class="fas fa-file-invoice"></i><p>Nenhuma conta a pagar.</p></div>':
         list.map(cp=>{const isV=cp.status==='pendente'&&cp.vencimento<todayStr;const sc=cp.status==='pago'?'pago':isV?'vencido':'pendente';const sl=cp.status==='pago'?'Pago':isV?'Vencido':'Pendente';
-        return`<div class="empresa-card"><div style="width:40px;height:40px;border-radius:10px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-file-invoice-dollar" style="color:#ef4444;"></i></div><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:0.88rem;">${cp.descricao}</div><div style="font-size:0.72rem;color:#94a3b8;">Venc: ${new Date(cp.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}${cp.fornecedor?' · '+cp.fornecedor:''}</div><span class="status-chip ${sc}">${sl}</span></div><div style="text-align:right;flex-shrink:0;"><div style="font-weight:700;color:#ef4444;font-size:0.9rem;">${fmt(cp.valor)}</div>${cp.status==='pendente'?`<button onclick="EmpresaMode.pagarConta('${cp.id}')" style="background:#10b981;color:white;border:none;border-radius:6px;padding:4px 8px;font-size:0.68rem;font-weight:700;cursor:pointer;margin-top:4px;">Pagar</button>`:''}</div></div>`;}).join('')}`;
+        return`<div class="empresa-card" onclick="EmpresaMode.editContaPagar('${cp.id}')"><div style="width:40px;height:40px;border-radius:10px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-file-invoice-dollar" style="color:#ef4444;"></i></div><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:0.88rem;">${cp.descricao}</div><div style="font-size:0.72rem;color:#94a3b8;">Venc: ${new Date(cp.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}${cp.fornecedor?' · '+cp.fornecedor:''}</div><span class="status-chip ${sc}">${sl}</span></div><div style="text-align:right;flex-shrink:0;"><div style="font-weight:700;color:#ef4444;font-size:0.9rem;">${fmt(cp.valor)}</div>${cp.status==='pendente'?`<button onclick="event.stopPropagation();EmpresaMode.pagarConta('${cp.id}')" style="background:#10b981;color:white;border:none;border-radius:6px;padding:4px 8px;font-size:0.68rem;font-weight:700;cursor:pointer;margin-top:4px;">Pagar</button>`:''}</div></div>`;}).join('')}`;
     };
 
     /* ── Contas a Receber ── */
     const _renderCR = (c) => {
-        const list = eState.contas_receber.sort((a,b)=>a.vencimento.localeCompare(b.vencimento));
+        const list = [...eState.contas_receber].sort((a,b)=>a.vencimento.localeCompare(b.vencimento));
+        const todayStr = today();
+        const pend = list.filter(cr=>cr.status==='pendente').reduce((s,cr)=>s+(cr.valor||0),0);
+        const venc = list.filter(cr=>cr.status==='pendente'&&cr.vencimento<todayStr).reduce((s,cr)=>s+(cr.valor||0),0);
         c.innerHTML = `<div class="empresa-section-title">💰 Contas a Receber<button onclick="EmpresaMode.openNovaContaReceber()" style="background:#10b981;color:white;border:none;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;"><i class="fas fa-plus"></i></button></div>
+        <div class="empresa-summary-grid"><div class="empresa-summary-card"><div class="label">A receber</div><div class="value" style="color:#3b82f6;">${fmt(pend)}</div></div><div class="empresa-summary-card"><div class="label">Vencido</div><div class="value" style="color:#ef4444;">${fmt(venc)}</div></div></div>
         ${list.length===0?'<div class="empresa-empty"><i class="fas fa-hand-holding-usd"></i><p>Nenhuma conta a receber.</p></div>':
-        list.map(cr=>{const sc=cr.status==='recebido'?'pago':cr.status==='vencido'?'vencido':'a-receber';const sl=cr.status==='recebido'?'Recebido':cr.status==='vencido'?'Vencido':'A Receber';
-        return`<div class="empresa-card"><div style="width:40px;height:40px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-hand-holding-usd" style="color:#3b82f6;"></i></div><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:0.88rem;">${cr.descricao}</div><div style="font-size:0.72rem;color:#94a3b8;">Venc: ${new Date(cr.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}${cr.cliente?' · '+cr.cliente:''}</div><span class="status-chip ${sc}">${sl}</span></div><div style="text-align:right;flex-shrink:0;"><div style="font-weight:700;color:#3b82f6;font-size:0.9rem;">${fmt(cr.valor)}</div>${cr.status==='pendente'?`<button onclick="EmpresaMode.receberConta('${cr.id}')" style="background:#3b82f6;color:white;border:none;border-radius:6px;padding:4px 8px;font-size:0.68rem;font-weight:700;cursor:pointer;margin-top:4px;">Receber</button>`:''}</div></div>`;}).join('')}`;
+        list.map(cr=>{const isV=cr.status==='pendente'&&cr.vencimento<todayStr;const sc=cr.status==='recebido'?'pago':isV?'vencido':'a-receber';const sl=cr.status==='recebido'?'Recebido':isV?'Vencido':'A Receber';
+        return`<div class="empresa-card" onclick="EmpresaMode.editContaReceber('${cr.id}')"><div style="width:40px;height:40px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-hand-holding-usd" style="color:#3b82f6;"></i></div><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:0.88rem;">${cr.descricao}</div><div style="font-size:0.72rem;color:#94a3b8;">Venc: ${new Date(cr.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}${cr.cliente?' · '+cr.cliente:''}</div><span class="status-chip ${sc}">${sl}</span></div><div style="text-align:right;flex-shrink:0;"><div style="font-weight:700;color:#3b82f6;font-size:0.9rem;">${fmt(cr.valor)}</div>${cr.status==='pendente'?`<button onclick="event.stopPropagation();EmpresaMode.receberConta('${cr.id}')" style="background:#3b82f6;color:white;border:none;border-radius:6px;padding:4px 8px;font-size:0.68rem;font-weight:700;cursor:pointer;margin-top:4px;">Receber</button>`:''}</div></div>`;}).join('')}`;
     };
 
     /* ── Clientes ── */
@@ -13054,8 +13080,9 @@ body.dark-mode .empresa-kpi,body.dark-mode .empresa-card,body.dark-mode #empresa
     const _renderCentros = (c) => {
         const txs = eState.transactions.filter(t=>t.type==='expense'&&t.status==='cleared');
         c.innerHTML = `<div class="empresa-section-title">🗂️ Centros de Custo<button onclick="EmpresaMode.openNovoCentro()" style="background:#8b5cf6;color:white;border:none;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;"><i class="fas fa-plus"></i></button></div>
+        <div class="empresa-panel-note">Organize despesas por área, orçamento e responsável. Toque em um centro para editar ou excluir.</div>
         ${eState.centros_custo.length===0?'<div class="empresa-empty"><i class="fas fa-sitemap"></i><p>Nenhum centro de custo. Crie para organizar despesas por área.</p></div>':
-        eState.centros_custo.map(cc=>{const total=txs.filter(t=>t.centoCusto===cc.id).reduce((s,t)=>s+t.amount,0);const pct=cc.orcamento>0?Math.min(total/cc.orcamento*100,100):0;return`<div class="empresa-card" style="flex-direction:column;align-items:flex-start;gap:8px;"><div style="display:flex;justify-content:space-between;width:100%;align-items:center;"><div><div style="font-weight:700;">${cc.nome}</div><div style="font-size:0.72rem;color:#94a3b8;">${cc.responsavel||''}</div></div><div style="text-align:right;"><div style="font-weight:700;color:#8b5cf6;">${fmt(total)}</div>${cc.orcamento?`<div style="font-size:0.7rem;color:#94a3b8;">de ${fmt(cc.orcamento)}</div>`:''}</div></div>${cc.orcamento?`<div class="empresa-progress-bar" style="width:100%;"><div class="empresa-progress-fill" style="width:${pct}%;background:${pct>90?'#ef4444':pct>70?'#f59e0b':'#8b5cf6'};"></div></div>`:''}</div>`;}).join('')}`;
+        eState.centros_custo.map(cc=>{const total=txs.filter(t=>t.centoCusto===cc.id).reduce((s,t)=>s+t.amount,0);const pct=cc.orcamento>0?Math.min(total/cc.orcamento*100,100):0;return`<div class="empresa-card" onclick="EmpresaMode.editCentro('${cc.id}')" style="flex-direction:column;align-items:flex-start;gap:8px;"><div style="display:flex;justify-content:space-between;width:100%;align-items:center;"><div><div style="font-weight:700;">${cc.nome}</div><div style="font-size:0.72rem;color:#94a3b8;">${cc.responsavel||'Sem responsável'}</div></div><div style="text-align:right;"><div style="font-weight:700;color:#8b5cf6;">${fmt(total)}</div>${cc.orcamento?`<div style="font-size:0.7rem;color:#94a3b8;">de ${fmt(cc.orcamento)}</div>`:''}</div></div>${cc.orcamento?`<div class="empresa-progress-bar" style="width:100%;"><div class="empresa-progress-fill" style="width:${pct}%;background:${pct>90?'#ef4444':pct>70?'#f59e0b':'#8b5cf6'};"></div></div>`:''}</div>`;}).join('')}`;
     };
 
     /* ── Funcionários ── */
@@ -13167,6 +13194,7 @@ body.dark-mode .empresa-kpi,body.dark-mode .empresa-card,body.dark-mode #empresa
             <div class="empresa-form-group"><label class="empresa-form-label">Categoria</label><select id="etx-cat" class="empresa-form-control"><option value="">Selecione...</option>${allCats.map(cat=>`<option value="${cat.id}" ${tx&&tx.category===cat.id?'selected':''}>${cat.name}</option>`).join('')}</select></div>
             <div class="empresa-form-group"><label class="empresa-form-label">Status</label><select id="etx-status" class="empresa-form-control"><option value="cleared" ${!tx||tx.status==='cleared'?'selected':''}>✅ Efetivado</option><option value="pending" ${tx&&tx.status==='pending'?'selected':''}>⏳ Pendente</option></select></div>
             <div class="empresa-form-group"><label class="empresa-form-label">Centro de Custo</label><select id="etx-cc" class="empresa-form-control"><option value="">Nenhum</option>${eState.centros_custo.map(cc=>`<option value="${cc.id}" ${tx&&tx.centoCusto===cc.id?'selected':''}>${cc.nome}</option>`).join('')}</select></div>
+            <div class="empresa-form-group"><label class="empresa-form-label">Conta Empresarial</label><select id="etx-account" class="empresa-form-control"><option value="">Sem conta</option>${eState.accounts.map(a=>`<option value="${a.id}" ${tx&&tx.account===a.id?'selected':''}>${a.name}</option>`).join('')}</select></div>
             <div class="empresa-form-group"><label class="empresa-form-label">Nº NF-e / Documento</label><input id="etx-nfe" class="empresa-form-control" placeholder="Número da nota fiscal (opcional)" value="${tx&&tx.nfe?tx.nfe:''}"></div>
             <div class="empresa-form-group"><label class="empresa-form-label">Observações</label><input id="etx-notes" class="empresa-form-control" placeholder="Detalhes..." value="${tx&&tx.notes?tx.notes:''}"></div>
             <button onclick="EmpresaMode._saveTransacaoEmpresa(${id?`'${id}'`:'null'})" class="empresa-btn-primary"><i class="fas fa-save"></i> ${id?'Salvar Alterações':'Salvar Transação'}</button>
@@ -13181,7 +13209,7 @@ body.dark-mode .empresa-kpi,body.dark-mode .empresa-card,body.dark-mode #empresa
         if (amount <= 0) { Utils.toast('Informe um valor válido', 'error'); return; }
         const date = document.getElementById('etx-date').value;
         if (!date) { Utils.toast('Informe a data', 'error'); return; }
-        const tx = { id: editId||genId(), type: document.getElementById('etx-type').value, description: desc, amount, date, category: document.getElementById('etx-cat').value, status: document.getElementById('etx-status').value, centoCusto: document.getElementById('etx-cc').value, nfe: document.getElementById('etx-nfe').value.trim(), notes: document.getElementById('etx-notes').value.trim(), createdAt: editId?(eState.transactions.find(t=>t.id===editId)||{}).createdAt||new Date().toISOString():new Date().toISOString() };
+        const tx = { id: editId||genId(), type: document.getElementById('etx-type').value, description: desc, amount, date, category: document.getElementById('etx-cat').value, status: document.getElementById('etx-status').value, centoCusto: document.getElementById('etx-cc').value, account: document.getElementById('etx-account') ? document.getElementById('etx-account').value : '', nfe: document.getElementById('etx-nfe').value.trim(), notes: document.getElementById('etx-notes').value.trim(), createdAt: editId?(eState.transactions.find(t=>t.id===editId)||{}).createdAt||new Date().toISOString():new Date().toISOString() };
         await EmpresaDB.put('transactions', tx);
         if (editId) { const i=eState.transactions.findIndex(t=>t.id===editId); if(i>=0)eState.transactions[i]=tx; else eState.transactions.push(tx); } else eState.transactions.push(tx);
         closeModal(); Utils.toast(editId?'Transação atualizada!':'Transação salva!');
@@ -13196,57 +13224,75 @@ body.dark-mode .empresa-kpi,body.dark-mode .empresa-card,body.dark-mode #empresa
         renderEmpresaTab('fluxo');
     };
 
-    /* ── Contas a Pagar CRUD ── */
-    const openNovaContaPagar = () => {
-        openModal('📋 Nova Conta a Pagar', `
-            <div class="empresa-form-group"><label class="empresa-form-label">Descrição *</label><input id="cp-desc" class="empresa-form-control" placeholder="Ex: Aluguel, Fornecedor..."></div>
+    /* ── Contas a Pagar / Receber CRUD aprimorado ── */
+    const openNovaContaPagar = (id = null) => {
+        const cp = id ? eState.contas_pagar.find(c => c.id === id) : null;
+        openModal(cp ? '✏️ Editar Conta a Pagar' : '📋 Nova Conta a Pagar', `
+            <div class="empresa-form-group"><label class="empresa-form-label">Descrição *</label><input id="cp-desc" class="empresa-form-control" placeholder="Ex: Aluguel, fornecedor, imposto..." value="${cp?cp.descricao||'':''}"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                <div class="empresa-form-group"><label class="empresa-form-label">Valor *</label><input id="cp-valor" class="empresa-form-control" placeholder="0,00" type="text"></div>
-                <div class="empresa-form-group"><label class="empresa-form-label">Vencimento *</label><input id="cp-venc" class="empresa-form-control" type="date" value="${today()}"></div>
+                <div class="empresa-form-group"><label class="empresa-form-label">Valor *</label><input id="cp-valor" class="empresa-form-control" placeholder="0,00" type="text" value="${cp?(cp.valor||0).toFixed(2).replace('.',','):''}"></div>
+                <div class="empresa-form-group"><label class="empresa-form-label">Vencimento *</label><input id="cp-venc" class="empresa-form-control" type="date" value="${cp?cp.vencimento:today()}"></div>
             </div>
-            <div class="empresa-form-group"><label class="empresa-form-label">Fornecedor</label><select id="cp-forn" class="empresa-form-control"><option value="">Selecione...</option>${eState.fornecedores.map(f=>`<option value="${f.nome}">${f.nome}</option>`).join('')}</select></div>
-            <button onclick="EmpresaMode._saveContaPagar()" class="empresa-btn-primary"><i class="fas fa-save"></i> Salvar</button>`);
+            <div class="empresa-form-group"><label class="empresa-form-label">Fornecedor</label><select id="cp-forn" class="empresa-form-control"><option value="">Selecione...</option>${eState.fornecedores.map(f=>`<option value="${f.nome}" ${cp&&cp.fornecedor===f.nome?'selected':''}>${f.nome}</option>`).join('')}</select></div>
+            <div class="empresa-form-group"><label class="empresa-form-label">Categoria da despesa</label><select id="cp-cat" class="empresa-form-control"><option value="">Selecione...</option>${eState.categories.filter(c=>c.type==='expense').map(cat=>`<option value="${cat.id}" ${cp&&cp.category===cat.id?'selected':''}>${cat.name}</option>`).join('')}</select></div>
+            <div class="empresa-form-group"><label class="empresa-form-label">Centro de Custo</label><select id="cp-cc" class="empresa-form-control"><option value="">Nenhum</option>${eState.centros_custo.map(cc=>`<option value="${cc.id}" ${cp&&cp.centoCusto===cc.id?'selected':''}>${cc.nome}</option>`).join('')}</select></div>
+            <button onclick="EmpresaMode._saveContaPagar(${cp?`'${cp.id}'`:'null'})" class="empresa-btn-primary"><i class="fas fa-save"></i> ${cp?'Salvar Alterações':'Salvar'}</button>
+            ${cp?`<button onclick="EmpresaMode._deleteContaPagar('${cp.id}')" class="empresa-btn-danger" style="width:100%;margin-top:8px;"><i class="fas fa-trash"></i> Excluir</button>`:''}`);
     };
-    const _saveContaPagar = async () => {
+    const editContaPagar = (id) => openNovaContaPagar(id);
+    const _saveContaPagar = async (editId = null) => {
         const desc=document.getElementById('cp-desc').value.trim();
         const valor=parseFloat((document.getElementById('cp-valor').value||'0').replace(/\./g,'').replace(',','.'))||0;
         const venc=document.getElementById('cp-venc').value;
-        if(!desc||valor<=0||!venc){Utils.toast('Preencha todos os campos','error');return;}
-        const cp={id:genId(),descricao:desc,valor,vencimento:venc,fornecedor:document.getElementById('cp-forn').value,status:'pendente',criadoEm:new Date().toISOString()};
-        await EmpresaDB.put('contas_pagar',cp);eState.contas_pagar.push(cp);
-        closeModal();Utils.toast('Conta a pagar adicionada!');renderEmpresaTab('cp');
+        if(!desc||valor<=0||!venc){Utils.toast('Preencha descrição, valor e vencimento','error');return;}
+        const atual = editId ? (eState.contas_pagar.find(c=>c.id===editId)||{}) : {};
+        const cp={...atual,id:editId||genId(),descricao:desc,valor,vencimento:venc,fornecedor:document.getElementById('cp-forn').value,category:document.getElementById('cp-cat').value,centoCusto:document.getElementById('cp-cc').value,status:atual.status||'pendente',criadoEm:atual.criadoEm||new Date().toISOString()};
+        await EmpresaDB.put('contas_pagar',cp);
+        if(editId){const i=eState.contas_pagar.findIndex(c=>c.id===editId);if(i>=0)eState.contas_pagar[i]=cp;else eState.contas_pagar.push(cp);}else eState.contas_pagar.push(cp);
+        closeModal();Utils.toast('Conta a pagar salva!');renderEmpresaTab('cp');
     };
+    const _deleteContaPagar = async (id) => { if(!confirm('Excluir esta conta a pagar?'))return;await EmpresaDB.delete('contas_pagar',id);eState.contas_pagar=eState.contas_pagar.filter(c=>c.id!==id);closeModal();Utils.toast('Conta a pagar excluída!');renderEmpresaTab('cp'); };
     const pagarConta = async (id) => {
         const cp=eState.contas_pagar.find(c=>c.id===id);if(!cp)return;
         cp.status='pago';cp.pagoEm=today();await EmpresaDB.put('contas_pagar',cp);
-        Utils.toast('Conta marcada como paga! ✅');renderEmpresaTab('cp');
+        const existing=eState.transactions.find(t=>t.linkedContaPagar===id);
+        if(!existing){const tx={id:genId(),type:'expense',description:cp.descricao,amount:cp.valor,date:today(),category:cp.category||'ec_fornecedores',status:'cleared',centoCusto:cp.centoCusto||'',account:eState.accounts[0]?.id||'',linkedContaPagar:id,notes:`Baixa automática de conta a pagar${cp.fornecedor?' - '+cp.fornecedor:''}`,createdAt:new Date().toISOString()};await EmpresaDB.put('transactions',tx);eState.transactions.push(tx);}
+        Utils.toast('Conta marcada como paga e lançada no fluxo de caixa! ✅');renderEmpresaTab('cp');
     };
 
-    /* ── Contas a Receber CRUD ── */
-    const openNovaContaReceber = () => {
-        openModal('💰 Nova Conta a Receber', `
-            <div class="empresa-form-group"><label class="empresa-form-label">Descrição *</label><input id="cr-desc" class="empresa-form-control" placeholder="Ex: Fatura cliente, Serviço..."></div>
+    const openNovaContaReceber = (id = null) => {
+        const cr = id ? eState.contas_receber.find(c => c.id === id) : null;
+        openModal(cr ? '✏️ Editar Conta a Receber' : '💰 Nova Conta a Receber', `
+            <div class="empresa-form-group"><label class="empresa-form-label">Descrição *</label><input id="cr-desc" class="empresa-form-control" placeholder="Ex: Fatura cliente, serviço..." value="${cr?cr.descricao||'':''}"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                <div class="empresa-form-group"><label class="empresa-form-label">Valor *</label><input id="cr-valor" class="empresa-form-control" placeholder="0,00" type="text"></div>
-                <div class="empresa-form-group"><label class="empresa-form-label">Vencimento *</label><input id="cr-venc" class="empresa-form-control" type="date" value="${today()}"></div>
+                <div class="empresa-form-group"><label class="empresa-form-label">Valor *</label><input id="cr-valor" class="empresa-form-control" placeholder="0,00" type="text" value="${cr?(cr.valor||0).toFixed(2).replace('.',','):''}"></div>
+                <div class="empresa-form-group"><label class="empresa-form-label">Vencimento *</label><input id="cr-venc" class="empresa-form-control" type="date" value="${cr?cr.vencimento:today()}"></div>
             </div>
-            <div class="empresa-form-group"><label class="empresa-form-label">Cliente</label><select id="cr-cli" class="empresa-form-control"><option value="">Selecione...</option>${eState.clientes.map(cl=>`<option value="${cl.nome}">${cl.nome}</option>`).join('')}</select></div>
-            <div class="empresa-form-group"><label class="empresa-form-label">Nº NF / Documento</label><input id="cr-nfe" class="empresa-form-control" placeholder="Número da nota"></div>
-            <button onclick="EmpresaMode._saveContaReceber()" class="empresa-btn-primary"><i class="fas fa-save"></i> Salvar</button>`);
+            <div class="empresa-form-group"><label class="empresa-form-label">Cliente</label><select id="cr-cli" class="empresa-form-control"><option value="">Selecione...</option>${eState.clientes.map(cl=>`<option value="${cl.nome}" ${cr&&cr.cliente===cl.nome?'selected':''}>${cl.nome}</option>`).join('')}</select></div>
+            <div class="empresa-form-group"><label class="empresa-form-label">Categoria da receita</label><select id="cr-cat" class="empresa-form-control"><option value="">Selecione...</option>${eState.categories.filter(c=>c.type==='income').map(cat=>`<option value="${cat.id}" ${cr&&cr.category===cat.id?'selected':''}>${cat.name}</option>`).join('')}</select></div>
+            <div class="empresa-form-group"><label class="empresa-form-label">Nº NF / Documento</label><input id="cr-nfe" class="empresa-form-control" placeholder="Número da nota" value="${cr?cr.nfe||'':''}"></div>
+            <button onclick="EmpresaMode._saveContaReceber(${cr?`'${cr.id}'`:'null'})" class="empresa-btn-primary"><i class="fas fa-save"></i> ${cr?'Salvar Alterações':'Salvar'}</button>
+            ${cr?`<button onclick="EmpresaMode._deleteContaReceber('${cr.id}')" class="empresa-btn-danger" style="width:100%;margin-top:8px;"><i class="fas fa-trash"></i> Excluir</button>`:''}`);
     };
-    const _saveContaReceber = async () => {
+    const editContaReceber = (id) => openNovaContaReceber(id);
+    const _saveContaReceber = async (editId = null) => {
         const desc=document.getElementById('cr-desc').value.trim();
         const valor=parseFloat((document.getElementById('cr-valor').value||'0').replace(/\./g,'').replace(',','.'))||0;
         const venc=document.getElementById('cr-venc').value;
-        if(!desc||valor<=0||!venc){Utils.toast('Preencha todos os campos','error');return;}
-        const cr={id:genId(),descricao:desc,valor,vencimento:venc,cliente:document.getElementById('cr-cli').value,nfe:document.getElementById('cr-nfe').value.trim(),status:'pendente',criadoEm:new Date().toISOString()};
-        await EmpresaDB.put('contas_receber',cr);eState.contas_receber.push(cr);
-        closeModal();Utils.toast('Conta a receber adicionada!');renderEmpresaTab('cr');
+        if(!desc||valor<=0||!venc){Utils.toast('Preencha descrição, valor e vencimento','error');return;}
+        const atual = editId ? (eState.contas_receber.find(c=>c.id===editId)||{}) : {};
+        const cr={...atual,id:editId||genId(),descricao:desc,valor,vencimento:venc,cliente:document.getElementById('cr-cli').value,category:document.getElementById('cr-cat').value,nfe:document.getElementById('cr-nfe').value.trim(),status:atual.status||'pendente',criadoEm:atual.criadoEm||new Date().toISOString()};
+        await EmpresaDB.put('contas_receber',cr);
+        if(editId){const i=eState.contas_receber.findIndex(c=>c.id===editId);if(i>=0)eState.contas_receber[i]=cr;else eState.contas_receber.push(cr);}else eState.contas_receber.push(cr);
+        closeModal();Utils.toast('Conta a receber salva!');renderEmpresaTab('cr');
     };
+    const _deleteContaReceber = async (id) => { if(!confirm('Excluir esta conta a receber?'))return;await EmpresaDB.delete('contas_receber',id);eState.contas_receber=eState.contas_receber.filter(c=>c.id!==id);closeModal();Utils.toast('Conta a receber excluída!');renderEmpresaTab('cr'); };
     const receberConta = async (id) => {
         const cr=eState.contas_receber.find(c=>c.id===id);if(!cr)return;
         cr.status='recebido';cr.recebidoEm=today();await EmpresaDB.put('contas_receber',cr);
-        Utils.toast('Conta marcada como recebida! ✅');renderEmpresaTab('cr');
+        const existing=eState.transactions.find(t=>t.linkedContaReceber===id);
+        if(!existing){const tx={id:genId(),type:'income',description:cr.descricao,amount:cr.valor,date:today(),category:cr.category||'ec_recv_servicos',status:'cleared',account:eState.accounts[0]?.id||'',nfe:cr.nfe||'',linkedContaReceber:id,notes:`Baixa automática de conta a receber${cr.cliente?' - '+cr.cliente:''}`,createdAt:new Date().toISOString()};await EmpresaDB.put('transactions',tx);eState.transactions.push(tx);}
+        Utils.toast('Conta marcada como recebida e lançada no fluxo de caixa! ✅');renderEmpresaTab('cr');
     };
 
     /* ── Clientes CRUD ── */
@@ -13262,14 +13308,49 @@ body.dark-mode .empresa-kpi,body.dark-mode .empresa-card,body.dark-mode #empresa
     const _deleteFornecedor = async (id) => { if(!confirm('Excluir fornecedor?'))return;await EmpresaDB.delete('fornecedores',id);eState.fornecedores=eState.fornecedores.filter(f=>f.id!==id);closeModal();Utils.toast('Fornecedor excluído!');renderEmpresaTab('fornecedores'); };
 
     /* ── Centro de Custo CRUD ── */
-    const openNovoCentro = () => openModal('🗂️ Novo Centro de Custo',`<div class="empresa-form-group"><label class="empresa-form-label">Nome *</label><input id="cc-nome" class="empresa-form-control" placeholder="Ex: Marketing, TI, Vendas..."></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="empresa-form-group"><label class="empresa-form-label">Responsável</label><input id="cc-resp" class="empresa-form-control"></div><div class="empresa-form-group"><label class="empresa-form-label">Orçamento Mensal</label><input id="cc-orc" class="empresa-form-control" type="text" placeholder="0,00"></div></div><button onclick="EmpresaMode._saveCentro()" class="empresa-btn-primary"><i class="fas fa-save"></i> Salvar Centro</button>`);
-    const _saveCentro = async () => { const nome=document.getElementById('cc-nome').value.trim();if(!nome){Utils.toast('Informe o nome','error');return;}const orc=parseFloat((document.getElementById('cc-orc').value||'0').replace(/\./g,'').replace(',','.'))||0;const cc={id:genId(),nome,responsavel:document.getElementById('cc-resp').value.trim(),orcamento:orc,criadoEm:new Date().toISOString()};await EmpresaDB.put('centros_custo',cc);eState.centros_custo.push(cc);closeModal();Utils.toast('Centro de custo salvo!');renderEmpresaTab('centros'); };
+    const openNovoCentro = (id = null) => { const cc=id?eState.centros_custo.find(x=>x.id===id):null;openModal(cc?'✏️ Editar Centro de Custo':'🗂️ Novo Centro de Custo',`<div class="empresa-form-group"><label class="empresa-form-label">Nome *</label><input id="cc-nome" class="empresa-form-control" placeholder="Ex: Marketing, TI, Vendas..." value="${cc?cc.nome||'':''}"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="empresa-form-group"><label class="empresa-form-label">Responsável</label><input id="cc-resp" class="empresa-form-control" value="${cc?cc.responsavel||'':''}"></div><div class="empresa-form-group"><label class="empresa-form-label">Orçamento Mensal</label><input id="cc-orc" class="empresa-form-control" type="text" placeholder="0,00" value="${cc?(cc.orcamento||0).toFixed(2).replace('.',','):''}"></div></div><button onclick="EmpresaMode._saveCentro(${cc?`'${cc.id}'`:'null'})" class="empresa-btn-primary"><i class="fas fa-save"></i> Salvar Centro</button>${cc?`<button onclick="EmpresaMode._deleteCentro('${cc.id}')" class="empresa-btn-danger" style="width:100%;margin-top:8px;"><i class="fas fa-trash"></i> Excluir</button>`:''}`); };
+    const editCentro = (id) => openNovoCentro(id);
+    const _saveCentro = async (editId = null) => { const nome=document.getElementById('cc-nome').value.trim();if(!nome){Utils.toast('Informe o nome','error');return;}const orc=parseFloat((document.getElementById('cc-orc').value||'0').replace(/\./g,'').replace(',','.'))||0;const atual=editId?(eState.centros_custo.find(x=>x.id===editId)||{}):{};const cc={...atual,id:editId||genId(),nome,responsavel:document.getElementById('cc-resp').value.trim(),orcamento:orc,criadoEm:atual.criadoEm||new Date().toISOString()};await EmpresaDB.put('centros_custo',cc);if(editId){const i=eState.centros_custo.findIndex(x=>x.id===editId);if(i>=0)eState.centros_custo[i]=cc;else eState.centros_custo.push(cc);}else eState.centros_custo.push(cc);closeModal();Utils.toast('Centro de custo salvo!');renderEmpresaTab('centros'); };
+    const _deleteCentro = async (id) => { if(!confirm('Excluir centro de custo? As transações vinculadas ficarão sem centro.'))return;await EmpresaDB.delete('centros_custo',id);eState.centros_custo=eState.centros_custo.filter(c=>c.id!==id);eState.transactions.filter(t=>t.centoCusto===id).forEach(async t=>{t.centoCusto='';await EmpresaDB.put('transactions',t);});closeModal();Utils.toast('Centro de custo excluído!');renderEmpresaTab('centros'); };
 
     /* ── Funcionários CRUD ── */
     const openNovoFuncionario = () => openModal('👔 Novo Funcionário',`<div class="empresa-form-group"><label class="empresa-form-label">Nome *</label><input id="func-nome" class="empresa-form-control"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="empresa-form-group"><label class="empresa-form-label">Cargo</label><input id="func-cargo" class="empresa-form-control"></div><div class="empresa-form-group"><label class="empresa-form-label">Departamento</label><input id="func-depto" class="empresa-form-control"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="empresa-form-group"><label class="empresa-form-label">Salário Bruto</label><input id="func-sal" class="empresa-form-control" type="text" placeholder="0,00"></div><div class="empresa-form-group"><label class="empresa-form-label">Regime</label><select id="func-reg" class="empresa-form-control"><option>CLT</option><option>PJ</option><option>Freelancer</option><option>Estágio</option></select></div></div><button onclick="EmpresaMode._saveFuncionario(null)" class="empresa-btn-primary"><i class="fas fa-save"></i> Salvar Funcionário</button>`);
     const editFuncionario = (id) => { const f=eState.funcionarios.find(x=>x.id===id);if(!f)return;openModal('✏️ Editar Funcionário',`<div class="empresa-form-group"><label class="empresa-form-label">Nome *</label><input id="func-nome" class="empresa-form-control" value="${f.nome||''}"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="empresa-form-group"><label class="empresa-form-label">Cargo</label><input id="func-cargo" class="empresa-form-control" value="${f.cargo||''}"></div><div class="empresa-form-group"><label class="empresa-form-label">Departamento</label><input id="func-depto" class="empresa-form-control" value="${f.departamento||''}"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="empresa-form-group"><label class="empresa-form-label">Salário Bruto</label><input id="func-sal" class="empresa-form-control" type="text" value="${(f.salario||0).toFixed(2).replace('.',',')}"></div><div class="empresa-form-group"><label class="empresa-form-label">Regime</label><select id="func-reg" class="empresa-form-control"><option ${f.regime==='CLT'?'selected':''}>CLT</option><option ${f.regime==='PJ'?'selected':''}>PJ</option><option ${f.regime==='Freelancer'?'selected':''}>Freelancer</option><option ${f.regime==='Estágio'?'selected':''}>Estágio</option></select></div></div><button onclick="EmpresaMode._saveFuncionario('${id}')" class="empresa-btn-primary"><i class="fas fa-save"></i> Salvar</button><button onclick="EmpresaMode._deleteFuncionario('${id}')" class="empresa-btn-danger" style="width:100%;margin-top:8px;"><i class="fas fa-trash"></i> Excluir</button>`); };
     const _saveFuncionario = async (editId) => { const nome=document.getElementById('func-nome').value.trim();if(!nome){Utils.toast('Informe o nome','error');return;}const sal=parseFloat((document.getElementById('func-sal').value||'0').replace(/\./g,'').replace(',','.'))||0;const f={id:editId||genId(),nome,cargo:document.getElementById('func-cargo').value.trim(),departamento:document.getElementById('func-depto').value.trim(),salario:sal,regime:document.getElementById('func-reg').value,criadoEm:new Date().toISOString()};await EmpresaDB.put('funcionarios',f);if(editId){const i=eState.funcionarios.findIndex(x=>x.id===editId);if(i>=0)eState.funcionarios[i]=f;else eState.funcionarios.push(f);}else eState.funcionarios.push(f);closeModal();Utils.toast('Funcionário salvo!');renderEmpresaTab('funcionarios'); };
     const _deleteFuncionario = async (id) => { if(!confirm('Excluir funcionário?'))return;await EmpresaDB.delete('funcionarios',id);eState.funcionarios=eState.funcionarios.filter(f=>f.id!==id);closeModal();Utils.toast('Funcionário excluído!');renderEmpresaTab('funcionarios'); };
+
+    /* ── Bancos / Contas Empresariais ── */
+    const _renderBancos = (c) => {
+        const total = eState.accounts.reduce((s,a)=>s+(a.balance||0),0);
+        const txByAccount = id => eState.transactions.filter(t=>t.account===id).length;
+        c.innerHTML = `<div class="empresa-section-title">🏦 Bancos e Contas<button onclick="EmpresaMode.openNovaContaEmpresa()" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;"><i class="fas fa-plus"></i></button></div>
+        <div class="empresa-panel-note">Cadastre contas empresariais separadas do perfil pessoal para controlar caixa, banco, cartão corporativo e reservas.</div>
+        <div class="empresa-summary-grid"><div class="empresa-summary-card"><div class="label">Saldo total</div><div class="value" style="color:#3b82f6;">${fmt(total)}</div></div><div class="empresa-summary-card"><div class="label">Contas</div><div class="value">${eState.accounts.length}</div></div></div>
+        ${eState.accounts.length===0?'<div class="empresa-empty"><i class="fas fa-university"></i><p>Nenhuma conta empresarial cadastrada.</p></div>':eState.accounts.map(a=>`<div class="empresa-card" onclick="EmpresaMode.editContaEmpresa('${a.id}')"><div style="width:42px;height:42px;border-radius:12px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-${a.type==='credit'?'credit-card':'university'}" style="color:#2563eb;"></i></div><div style="flex:1;min-width:0;"><div style="font-weight:700;">${a.name}</div><div style="font-size:0.72rem;color:#94a3b8;">${a.institution||'Instituição não informada'} · ${a.type==='credit'?'Cartão/Crédito':'Conta/Caixa'} · ${txByAccount(a.id)} lançamentos</div></div><div style="font-weight:900;color:${(a.balance||0)>=0?'#10b981':'#ef4444'};">${fmt(a.balance||0)}</div></div>`).join('')}`;
+    };
+    const openNovaContaEmpresa = (id = null) => { const a=id?eState.accounts.find(x=>x.id===id):null;openModal(a?'✏️ Editar Conta':'🏦 Nova Conta Empresarial',`<div class="empresa-form-group"><label class="empresa-form-label">Nome da conta *</label><input id="acc-name" class="empresa-form-control" placeholder="Ex: Conta PJ Banco X" value="${a?a.name||'':''}"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="empresa-form-group"><label class="empresa-form-label">Instituição</label><input id="acc-inst" class="empresa-form-control" value="${a?a.institution||'':''}"></div><div class="empresa-form-group"><label class="empresa-form-label">Tipo</label><select id="acc-type" class="empresa-form-control"><option value="checking" ${!a||a.type==='checking'?'selected':''}>Conta Corrente</option><option value="cash" ${a&&a.type==='cash'?'selected':''}>Caixa</option><option value="savings" ${a&&a.type==='savings'?'selected':''}>Reserva</option><option value="credit" ${a&&a.type==='credit'?'selected':''}>Cartão/Crédito</option></select></div></div><div class="empresa-form-group"><label class="empresa-form-label">Saldo atual</label><input id="acc-balance" class="empresa-form-control" type="text" placeholder="0,00" value="${a?(a.balance||0).toFixed(2).replace('.',','):''}"></div><button onclick="EmpresaMode._saveContaEmpresa(${a?`'${a.id}'`:'null'})" class="empresa-btn-primary"><i class="fas fa-save"></i> Salvar Conta</button>${a?`<button onclick="EmpresaMode._deleteContaEmpresa('${a.id}')" class="empresa-btn-danger" style="width:100%;margin-top:8px;"><i class="fas fa-trash"></i> Excluir</button>`:''}`); };
+    const editContaEmpresa = (id) => openNovaContaEmpresa(id);
+    const _saveContaEmpresa = async (editId = null) => { const name=document.getElementById('acc-name').value.trim();if(!name){Utils.toast('Informe o nome da conta','error');return;}const balance=parseFloat((document.getElementById('acc-balance').value||'0').replace(/\./g,'').replace(',','.'))||0;const atual=editId?(eState.accounts.find(x=>x.id===editId)||{}):{};const acc={...atual,id:editId||genId(),name,institution:document.getElementById('acc-inst').value.trim(),type:document.getElementById('acc-type').value,balance,createdAt:atual.createdAt||new Date().toISOString()};await EmpresaDB.put('accounts',acc);if(editId){const i=eState.accounts.findIndex(x=>x.id===editId);if(i>=0)eState.accounts[i]=acc;else eState.accounts.push(acc);}else eState.accounts.push(acc);closeModal();Utils.toast('Conta empresarial salva!');renderEmpresaTab('bancos'); };
+    const _deleteContaEmpresa = async (id) => { if(eState.transactions.some(t=>t.account===id)){Utils.toast('Não é possível excluir conta com transações vinculadas','error');return;}if(!confirm('Excluir esta conta empresarial?'))return;await EmpresaDB.delete('accounts',id);eState.accounts=eState.accounts.filter(a=>a.id!==id);closeModal();Utils.toast('Conta excluída!');renderEmpresaTab('bancos'); };
+
+    /* ── Projetos Empresariais ── */
+    const _renderProjetos = (c) => {
+        c.innerHTML = `<div class="empresa-section-title">📌 Projetos<button onclick="EmpresaMode.openNovoProjeto()" style="background:#06b6d4;color:white;border:none;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:700;cursor:pointer;"><i class="fas fa-plus"></i></button></div>
+        <div class="empresa-panel-note">Use projetos para acompanhar contratos, entregas e iniciativas internas da empresa.</div>
+        ${eState.projetos.length===0?'<div class="empresa-empty"><i class="fas fa-clipboard-list"></i><p>Nenhum projeto cadastrado.</p></div>':eState.projetos.map(p=>{const pct=p.orcamento>0?Math.min(((p.realizado||0)/p.orcamento)*100,100):0;return`<div class="empresa-card" onclick="EmpresaMode.editProjeto('${p.id}')" style="flex-direction:column;align-items:flex-start;gap:8px;"><div style="display:flex;justify-content:space-between;width:100%;"><div><div style="font-weight:800;">${p.nome}</div><div style="font-size:0.72rem;color:#94a3b8;">${p.cliente||'Sem cliente'} · ${p.status||'Planejado'}</div></div><div style="text-align:right;"><div style="font-weight:800;color:#06b6d4;">${fmt(p.orcamento||0)}</div><div style="font-size:0.7rem;color:#94a3b8;">orçamento</div></div></div>${p.orcamento?`<div class="empresa-progress-bar" style="width:100%;"><div class="empresa-progress-fill" style="width:${pct}%;background:#06b6d4;"></div></div>`:''}</div>`;}).join('')}`;
+    };
+    const openNovoProjeto = (id = null) => { const p=id?eState.projetos.find(x=>x.id===id):null;openModal(p?'✏️ Editar Projeto':'📌 Novo Projeto',`<div class="empresa-form-group"><label class="empresa-form-label">Nome *</label><input id="proj-nome" class="empresa-form-control" value="${p?p.nome||'':''}"></div><div class="empresa-form-group"><label class="empresa-form-label">Cliente</label><select id="proj-cliente" class="empresa-form-control"><option value="">Selecione...</option>${eState.clientes.map(cl=>`<option value="${cl.nome}" ${p&&p.cliente===cl.nome?'selected':''}>${cl.nome}</option>`).join('')}</select></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="empresa-form-group"><label class="empresa-form-label">Orçamento</label><input id="proj-orc" class="empresa-form-control" type="text" value="${p?(p.orcamento||0).toFixed(2).replace('.',','):''}"></div><div class="empresa-form-group"><label class="empresa-form-label">Realizado</label><input id="proj-real" class="empresa-form-control" type="text" value="${p?(p.realizado||0).toFixed(2).replace('.',','):''}"></div></div><div class="empresa-form-group"><label class="empresa-form-label">Status</label><select id="proj-status" class="empresa-form-control"><option ${!p||p.status==='Planejado'?'selected':''}>Planejado</option><option ${p&&p.status==='Em andamento'?'selected':''}>Em andamento</option><option ${p&&p.status==='Concluído'?'selected':''}>Concluído</option><option ${p&&p.status==='Pausado'?'selected':''}>Pausado</option></select></div><button onclick="EmpresaMode._saveProjeto(${p?`'${p.id}'`:'null'})" class="empresa-btn-primary"><i class="fas fa-save"></i> Salvar Projeto</button>${p?`<button onclick="EmpresaMode._deleteProjeto('${p.id}')" class="empresa-btn-danger" style="width:100%;margin-top:8px;"><i class="fas fa-trash"></i> Excluir</button>`:''}`); };
+    const editProjeto = (id) => openNovoProjeto(id);
+    const _saveProjeto = async (editId = null) => { const nome=document.getElementById('proj-nome').value.trim();if(!nome){Utils.toast('Informe o nome do projeto','error');return;}const money=id=>parseFloat((document.getElementById(id).value||'0').replace(/\./g,'').replace(',','.'))||0;const atual=editId?(eState.projetos.find(x=>x.id===editId)||{}):{};const p={...atual,id:editId||genId(),nome,cliente:document.getElementById('proj-cliente').value,orcamento:money('proj-orc'),realizado:money('proj-real'),status:document.getElementById('proj-status').value,criadoEm:atual.criadoEm||new Date().toISOString()};await EmpresaDB.put('projetos',p);if(editId){const i=eState.projetos.findIndex(x=>x.id===editId);if(i>=0)eState.projetos[i]=p;else eState.projetos.push(p);}else eState.projetos.push(p);closeModal();Utils.toast('Projeto salvo!');renderEmpresaTab('projetos'); };
+    const _deleteProjeto = async (id) => { if(!confirm('Excluir projeto?'))return;await EmpresaDB.delete('projetos',id);eState.projetos=eState.projetos.filter(p=>p.id!==id);closeModal();Utils.toast('Projeto excluído!');renderEmpresaTab('projetos'); };
+
+    /* ── Relatórios Empresariais ── */
+    const _renderRelatorios = (c) => {
+        const now=new Date();const range=mRange(now.getMonth(),now.getFullYear());const txs=eState.transactions.filter(t=>t.date>=range.start&&t.date<=range.end&&t.status==='cleared');
+        const rec=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);const desp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);const lucro=rec-desp;const cp=eState.contas_pagar.filter(x=>x.status==='pendente').reduce((s,x)=>s+x.valor,0);const cr=eState.contas_receber.filter(x=>x.status==='pendente').reduce((s,x)=>s+x.valor,0);
+        const porCentro=eState.centros_custo.map(cc=>({nome:cc.nome,total:txs.filter(t=>t.type==='expense'&&t.centoCusto===cc.id).reduce((s,t)=>s+t.amount,0)})).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+        c.innerHTML=`<div class="empresa-section-title">📈 Relatórios Empresariais</div><div class="empresa-panel-note">Resumo gerencial do mês atual, integrado ao DRE, fluxo de caixa, contas a pagar e contas a receber.</div><div class="empresa-kpi-grid"><div class="empresa-kpi"><div class="kpi-label">Receita</div><div class="kpi-value" style="color:#10b981;">${fmt(rec)}</div></div><div class="empresa-kpi"><div class="kpi-label">Despesa</div><div class="kpi-value" style="color:#ef4444;">${fmt(desp)}</div></div><div class="empresa-kpi"><div class="kpi-label">Resultado</div><div class="kpi-value" style="color:${lucro>=0?'#10b981':'#ef4444'};">${fmt(lucro)}</div></div><div class="empresa-kpi"><div class="kpi-label">Compromissos</div><div class="kpi-value" style="color:#f59e0b;">${fmt(cp-cr)}</div><div class="kpi-sub">A pagar - a receber</div></div></div><button onclick="EmpresaMode.exportDREPDF(${now.getMonth()},${now.getFullYear()})" class="empresa-btn-secondary"><i class="fas fa-file-pdf"></i> Exportar DRE do mês</button><div class="empresa-section-title">Despesas por Centro de Custo</div>${porCentro.length?porCentro.map(x=>`<div class="empresa-card"><div style="flex:1;"><div style="font-weight:700;">${x.nome}</div><div class="empresa-progress-bar"><div class="empresa-progress-fill" style="width:${Math.min((x.total/(desp||1))*100,100)}%;background:#8b5cf6;"></div></div></div><strong style="color:#ef4444;">${fmt(x.total)}</strong></div>`).join(''):'<div class="empresa-empty"><i class="fas fa-chart-pie"></i><p>Sem despesas por centro de custo neste mês.</p></div>'}`;
+    };
 
     /* ── Exportar DRE PDF ── */
     const exportDREPDF = (m, y) => {
@@ -13301,9 +13382,41 @@ body.dark-mode .empresa-kpi,body.dark-mode .empresa-card,body.dark-mode #empresa
         switchProfile('personal');
     };
 
+
+    /* ── Isolamento da navegação no Modo Empresa ── */
+    const patchEnterpriseNavigation = () => {
+        if (typeof UI === 'undefined' || UI._empresaSwitchTabPatched) return;
+        UI._empresaOriginalSwitchTab = UI.switchTab.bind(UI);
+        UI.switchTab = (el) => {
+            if (document.body.classList.contains('empresa-mode') && state.currentProfile !== 'personal') {
+                const target = el && el.getAttribute ? el.getAttribute('data-target') : 'dashboard-view';
+                const map = {
+                    'dashboard-view': 'dashboard',
+                    'transactions-view': 'fluxo',
+                    'goals-view': 'projetos',
+                    'analysis-view': 'dre',
+                    'reports-view': 'relatorios',
+                    'accounts-view': 'bancos',
+                    'cards-view': 'cp',
+                    'education-view': 'config'
+                };
+                showEmpresaView();
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                if (el && el.classList) el.classList.add('active');
+                renderEmpresaTab(map[target] || 'dashboard');
+                const fab = document.getElementById('main-fab');
+                if (fab) { fab.style.display = 'flex'; fab.onclick = () => openNovaTransacaoEmpresa(); }
+                return;
+            }
+            return UI._empresaOriginalSwitchTab(el);
+        };
+        UI._empresaSwitchTabPatched = true;
+    };
+
     /* ── Init ── */
     const init = () => {
         injectCSS();
+        patchEnterpriseNavigation();
         document.body.classList.add('empresa-bar-visible');
         buildToggleBar();
         const saved = Profiles.getActive();
@@ -13322,13 +13435,15 @@ body.dark-mode .empresa-kpi,body.dark-mode .empresa-card,body.dark-mode #empresa
         openNewEmpresaModal, _saveNovaEmpresa,
         openEditEmpresa, _updateEmpresa,
         openNovaTransacaoEmpresa, editTransacaoEmpresa, _saveTransacaoEmpresa, _deleteTransacaoEmpresa,
-        openNovaContaPagar, _saveContaPagar, pagarConta,
-        openNovaContaReceber, _saveContaReceber, receberConta,
+        openNovaContaPagar, editContaPagar, _saveContaPagar, _deleteContaPagar, pagarConta,
+        openNovaContaReceber, editContaReceber, _saveContaReceber, _deleteContaReceber, receberConta,
+        openNovaContaEmpresa, editContaEmpresa, _saveContaEmpresa, _deleteContaEmpresa,
         openNovoCliente, editCliente, _saveCliente, _deleteCliente,
         openNovoFornecedor, editFornecedor, _saveFornecedor, _deleteFornecedor,
-        openNovoCentro, _saveCentro,
+        openNovoCentro, editCentro, _saveCentro, _deleteCentro,
+        openNovoProjeto, editProjeto, _saveProjeto, _deleteProjeto,
         openNovoFuncionario, editFuncionario, _saveFuncionario, _deleteFuncionario,
-        exportDREPDF, confirmDeleteEmpresa, closeModal,
+        exportDREPDF, confirmDeleteEmpresa, closeModal, patchEnterpriseNavigation,
         _dreNav: null,
     };
 })();
