@@ -2364,6 +2364,7 @@
             <div class="tab-nav">
                 <button class="tab-btn active" onclick="UI.setReportTab('overview', this)">Visão Geral</button>
                 <button class="tab-btn" onclick="UI.setReportTab('projection', this)">Projeção</button>
+                <button class="tab-btn" onclick="UI.setReportTab('smart-forecast', this)">🔮 Inteligente</button>
                 <button class="tab-btn" onclick="UI.setReportTab('accounts', this)">Contas</button>
                 <button class="tab-btn" onclick="UI.setReportTab('categories', this)">Categorias</button>
                 <button class="tab-btn" onclick="UI.setReportTab('ir', this)">📋 IR</button>
@@ -2454,6 +2455,21 @@
 
                 <div class="section-title">Comparativo Mês Anterior</div>
                 <div class="projection-card" id="monthly-comparison"></div>
+            </div>
+
+            <!-- ABA PROJEÇÃO INTELIGENTE (baseada em histórico) -->
+            <div id="report-smart-forecast" class="report-tab" style="display:none;">
+                <div id="smart-forecast-content">
+                    <div style="text-align:center;padding:40px 16px;color:var(--secondary);">
+                        <i class="fas fa-brain" style="font-size:2rem;margin-bottom:8px;display:block;"></i>
+                        Carregando projeção inteligente...
+                    </div>
+                </div>
+                <div class="chart-container" style="height:280px;margin-top:16px;display:none;" id="smart-forecast-chart-wrap">
+                    <canvas id="smartForecastChart"></canvas>
+                </div>
+                <div id="smart-forecast-months"></div>
+                <div id="smart-forecast-categories"></div>
             </div>
             
             <div id="report-accounts" class="report-tab" style="display: none;">
@@ -5059,6 +5075,8 @@
                     UI.renderCategoryTrendChart();
                 } else if (tab === 'projection') {
                     UI.renderAdvancedProjection();
+                } else if (tab === 'smart-forecast') {
+                    UI.renderSmartForecast();
                 } else {
                     UI.renderReports();
                 }
@@ -7081,6 +7099,216 @@
                         </div>
                     </div>`;
                 }).join('');
+            },
+
+            // ═══════════════════════════════════════════════════════
+            // PROJEÇÃO INTELIGENTE — analisa histórico e projeta futuro
+            // ═══════════════════════════════════════════════════════
+            renderSmartForecast: () => {
+                const content = document.getElementById('smart-forecast-content');
+                const chartWrap = document.getElementById('smart-forecast-chart-wrap');
+                const monthsEl = document.getElementById('smart-forecast-months');
+                const catsEl = document.getElementById('smart-forecast-categories');
+                if (!content) return;
+
+                const { transactions, accounts, categories } = FinanceApp.data;
+                const now = new Date();
+                const totalBalance = accounts.reduce((s, a) => s + (a.balance || 0), 0);
+                const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+                const monthShort = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+                // ── Coleta histórico dos últimos 12 meses ──
+                const history = [];
+                for (let i = 12; i >= 1; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    const range = Utils.getMonthRange(d.getMonth(), d.getFullYear());
+                    const txs = transactions.filter(t => t.date >= range.start && t.date <= range.end && t.status === 'cleared');
+                    const income  = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                    const expense = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+                    const invest  = txs.filter(t => t.type === 'investment').reduce((s, t) => s + t.amount, 0);
+                    history.push({ label: monthShort[d.getMonth()]+'/'+ String(d.getFullYear()).slice(-2), month: d.getMonth(), year: d.getFullYear(), income, expense, invest, net: income - expense - invest });
+                }
+
+                const active = history.filter(h => h.income > 0 || h.expense > 0);
+                if (active.length === 0) {
+                    content.innerHTML = `<div style="text-align:center;padding:40px 16px;color:var(--secondary);"><i class="fas fa-database" style="font-size:2rem;margin-bottom:8px;display:block;"></i><p>Nenhum dado histórico confirmado encontrado.<br>Confirme suas transações para gerar projeções.</p></div>`;
+                    return;
+                }
+
+                // ── Tendência linear simples (regressão) ──
+                function linReg(vals) {
+                    const n = vals.length;
+                    if (n < 2) return { slope: 0, intercept: vals[0] || 0 };
+                    const sumX = vals.reduce((s, _, i) => s + i, 0);
+                    const sumY = vals.reduce((s, v) => s + v, 0);
+                    const sumXY = vals.reduce((s, v, i) => s + i * v, 0);
+                    const sumX2 = vals.reduce((s, _, i) => s + i * i, 0);
+                    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+                    const intercept = (sumY - slope * sumX) / n;
+                    return { slope, intercept };
+                }
+
+                const incomeVals  = active.map(h => h.income);
+                const expenseVals = active.map(h => h.expense);
+                const incReg  = linReg(incomeVals);
+                const expReg  = linReg(expenseVals);
+
+                const avgIncome  = incomeVals.reduce((s, v) => s + v, 0) / incomeVals.length;
+                const avgExpense = expenseVals.reduce((s, v) => s + v, 0) / expenseVals.length;
+                const avgNet     = avgIncome - avgExpense;
+
+                // Tendência de crescimento/queda (% ao mês)
+                const incomeTrend  = avgIncome  > 0 ? (incReg.slope / avgIncome  * 100) : 0;
+                const expenseTrend = avgExpense > 0 ? (expReg.slope / avgExpense * 100) : 0;
+
+                // ── Projeção dos próximos 6 meses com tendência ──
+                const projMonths = [];
+                let runBal = totalBalance;
+                for (let i = 1; i <= 6; i++) {
+                    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                    const range = Utils.getMonthRange(d.getMonth(), d.getFullYear());
+                    // Verifica se há dados reais agendados
+                    const real = transactions.filter(t => t.date >= range.start && t.date <= range.end);
+                    const realInc = real.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                    const realExp = real.filter(t => t.type === 'expense' || t.type === 'investment').reduce((s, t) => s + t.amount, 0);
+                    // Usa tendência: média + slope * passos futuros
+                    const trendInc = Math.max(0, avgIncome  + incReg.slope  * (active.length + i - 1));
+                    const trendExp = Math.max(0, avgExpense + expReg.slope  * (active.length + i - 1));
+                    const pInc = realInc > 0 ? realInc : trendInc;
+                    const pExp = realExp > 0 ? realExp : trendExp;
+                    const net = pInc - pExp;
+                    runBal += net;
+                    projMonths.push({
+                        label: monthShort[d.getMonth()]+'/'+String(d.getFullYear()).slice(-2),
+                        fullName: monthNames[d.getMonth()]+' '+d.getFullYear(),
+                        pInc, pExp, net, runBal,
+                        hasReal: realInc > 0 || realExp > 0
+                    });
+                }
+
+                // ── Top categorias de despesa (últimos 3 meses) ──
+                const last3Range = (() => {
+                    const start3 = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+                    const r = Utils.getMonthRange(start3.getMonth(), start3.getFullYear());
+                    return { start: r.start, end: Utils.getMonthRange(now.getMonth(), now.getFullYear()).end };
+                })();
+                const last3Txs = transactions.filter(t => t.date >= last3Range.start && t.date <= last3Range.end && t.status === 'cleared' && t.type === 'expense');
+                const catMap = {};
+                last3Txs.forEach(t => {
+                    const catObj = categories.find(c => c.id === t.category);
+                    const name = catObj ? catObj.name : 'Sem categoria';
+                    catMap[name] = (catMap[name] || 0) + t.amount;
+                });
+                const topCats = Object.entries(catMap).sort((a,b) => b[1]-a[1]).slice(0, 6);
+                const totalLast3 = last3Txs.reduce((s, t) => s + t.amount, 0);
+
+                // ── Renderiza painel de resumo ──
+                const trendIncLabel = incomeTrend > 0.5 ? `<span style="color:#10b981;">▲ ${incomeTrend.toFixed(1)}%/mês</span>` : incomeTrend < -0.5 ? `<span style="color:#ef4444;">▼ ${Math.abs(incomeTrend).toFixed(1)}%/mês</span>` : `<span style="color:#64748b;">→ estável</span>`;
+                const trendExpLabel = expenseTrend > 0.5 ? `<span style="color:#ef4444;">▲ ${expenseTrend.toFixed(1)}%/mês</span>` : expenseTrend < -0.5 ? `<span style="color:#10b981;">▼ ${Math.abs(expenseTrend).toFixed(1)}%/mês</span>` : `<span style="color:#64748b;">→ estável</span>`;
+
+                const finalBal6 = projMonths[5] ? projMonths[5].runBal : totalBalance;
+                const balChange = finalBal6 - totalBalance;
+
+                content.innerHTML = `
+                <div style="background:linear-gradient(135deg,#1e293b,#0f172a);border-radius:14px;padding:16px;color:white;margin-bottom:16px;">
+                    <div style="font-size:0.85rem;opacity:0.7;margin-bottom:6px;">🔮 Projeção Inteligente — baseada em ${active.length} meses de histórico</div>
+                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px;">
+                        <div style="background:rgba(16,185,129,0.15);border-radius:10px;padding:10px;">
+                            <div style="font-size:0.68rem;opacity:0.7;">Receita Média</div>
+                            <div style="font-size:1rem;font-weight:800;color:#6ee7b7;">${Utils.formatCurrency(avgIncome)}</div>
+                            <div style="font-size:0.72rem;margin-top:2px;">${trendIncLabel}</div>
+                        </div>
+                        <div style="background:rgba(239,68,68,0.15);border-radius:10px;padding:10px;">
+                            <div style="font-size:0.68rem;opacity:0.7;">Despesa Média</div>
+                            <div style="font-size:1rem;font-weight:800;color:#fca5a5;">${Utils.formatCurrency(avgExpense)}</div>
+                            <div style="font-size:0.72rem;margin-top:2px;">${trendExpLabel}</div>
+                        </div>
+                        <div style="background:rgba(139,92,246,0.15);border-radius:10px;padding:10px;">
+                            <div style="font-size:0.68rem;opacity:0.7;">Saldo em 6 meses</div>
+                            <div style="font-size:1rem;font-weight:800;color:${finalBal6>=0?'#6ee7b7':'#fca5a5'};">${Utils.formatCurrency(finalBal6)}</div>
+                            <div style="font-size:0.72rem;margin-top:2px;color:${balChange>=0?'#6ee7b7':'#fca5a5'};">${balChange>=0?'▲ +':'▼ '}${Utils.formatCurrency(Math.abs(balChange))}</div>
+                        </div>
+                        <div style="background:rgba(59,130,246,0.15);border-radius:10px;padding:10px;">
+                            <div style="font-size:0.68rem;opacity:0.7;">Resultado Médio/Mês</div>
+                            <div style="font-size:1rem;font-weight:800;color:${avgNet>=0?'#6ee7b7':'#fca5a5'};">${avgNet>=0?'+':''}${Utils.formatCurrency(avgNet)}</div>
+                            <div style="font-size:0.72rem;margin-top:2px;opacity:0.7;">${avgIncome>0?((avgNet/avgIncome)*100).toFixed(1):0}% de poupança</div>
+                        </div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.06);border-radius:8px;padding:10px;font-size:0.78rem;">
+                        <strong>Saldo atual:</strong> ${Utils.formatCurrency(totalBalance)} &nbsp;|&nbsp; <strong>Horizonte:</strong> 6 meses &nbsp;|&nbsp; <strong>Método:</strong> Regressão linear
+                    </div>
+                </div>`;
+
+                if (chartWrap) {
+                    chartWrap.style.display = 'block';
+                    if (UI.chartInstances.smartForecastChart) UI.chartInstances.smartForecastChart.destroy();
+                    const ctx = document.getElementById('smartForecastChart');
+                    if (ctx) {
+                        UI.chartInstances.smartForecastChart = new Chart(ctx.getContext('2d'), {
+                            type: 'line',
+                            data: {
+                                labels: projMonths.map(p => p.label),
+                                datasets: [
+                                    { label: 'Receita Projetada', data: projMonths.map(p => p.pInc), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', borderWidth: 2, tension: 0.4, pointBackgroundColor: '#10b981', fill: true },
+                                    { label: 'Despesa Projetada', data: projMonths.map(p => p.pExp), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 2, tension: 0.4, pointBackgroundColor: '#ef4444', fill: true },
+                                    { label: 'Saldo Acumulado', data: projMonths.map(p => p.runBal), borderColor: '#8b5cf6', backgroundColor: 'transparent', borderWidth: 2.5, tension: 0.4, pointBackgroundColor: '#8b5cf6', borderDash: [6, 3] }
+                                ]
+                            },
+                            options: {
+                                responsive: true, maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
+                                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${Utils.formatCurrency(ctx.raw)}` } }
+                                },
+                                scales: {
+                                    y: { ticks: { callback: v => Utils.formatCurrencyShort(v), font: { size: 10 } }, grid: { color: '#e2e8f0' } },
+                                    x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                                }
+                            }
+                        });
+                    }
+                }
+
+                // ── Cards mês a mês ──
+                if (monthsEl) {
+                    monthsEl.innerHTML = `<div class="section-title" style="margin-top:8px;">Projeção Detalhada — Próximos 6 Meses</div>` +
+                        projMonths.map(p => {
+                            const pos = p.net >= 0;
+                            return `<div class="projection-card" style="margin-bottom:10px;border-left:4px solid ${pos?'#10b981':'#ef4444'};">
+                                <div class="projection-header">
+                                    <div>
+                                        <div class="projection-title">${p.fullName} ${p.hasReal ? '<span style="font-size:0.7rem;background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:8px;">dados reais</span>' : '<span style="font-size:0.7rem;background:#f3e8ff;color:#6b21a8;padding:2px 6px;border-radius:8px;">estimado</span>'}</div>
+                                        <div style="font-size:0.78rem;color:var(--secondary);margin-top:2px;">Saldo acumulado: <strong style="color:${p.runBal>=0?'#059669':'#dc2626'};">${Utils.formatCurrency(p.runBal)}</strong></div>
+                                    </div>
+                                    <div class="projection-value ${pos?'projection-positive':'projection-negative'}">${pos?'+':''}${Utils.formatCurrency(p.net)}</div>
+                                </div>
+                                <div class="projection-details">
+                                    <div><div class="proj-label">Receita</div><div class="projection-positive">${Utils.formatCurrency(p.pInc)}</div></div>
+                                    <div><div class="proj-label">Despesa</div><div class="projection-negative">${Utils.formatCurrency(p.pExp)}</div></div>
+                                </div>
+                            </div>`;
+                        }).join('');
+                }
+
+                // ── Top categorias de gasto ──
+                if (catsEl && topCats.length > 0) {
+                    catsEl.innerHTML = `<div class="section-title" style="margin-top:8px;">🔥 Principais Gastos (últimos 3 meses)</div>
+                    <div style="background:var(--surface);border-radius:14px;padding:16px;box-shadow:var(--shadow-sm);">` +
+                        topCats.map(([name, val]) => {
+                            const pct = totalLast3 > 0 ? ((val / totalLast3) * 100).toFixed(1) : 0;
+                            const projVal = (val / 3); // média mensal
+                            return `<div style="margin-bottom:12px;">
+                                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                                    <span style="font-size:0.88rem;font-weight:600;color:var(--dark);">${name}</span>
+                                    <span style="font-size:0.88rem;font-weight:700;color:#ef4444;">${Utils.formatCurrency(val)}</span>
+                                </div>
+                                <div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;margin-bottom:3px;">
+                                    <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#ef4444,#f87171);border-radius:3px;"></div>
+                                </div>
+                                <div style="font-size:0.72rem;color:var(--secondary);">${pct}% do total • ~${Utils.formatCurrency(projVal)}/mês projetado</div>
+                            </div>`;
+                        }).join('') + `</div>`;
+                }
             },
 
             renderDashboardDJProjection: (transactions) => {
@@ -11136,24 +11364,29 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
                 }
             }
 
-            // Sumarizar por categoria
+            // Sumarizar por categoria — resolve ID → nome
             function sumByCategory(txs, type) {
+                const categories = FinanceApp.data.categories || [];
                 const map = {};
                 txs.filter(t => t.type === type).forEach(t => {
-                    const cat = t.category || 'Sem Categoria';
-                    if (!map[cat]) map[cat] = 0;
-                    map[cat] += t.amount || 0;
+                    // t.category pode ser um ID gerado (mk...) ou já um nome legível
+                    const catObj = categories.find(c => c.id === t.category);
+                    const catName = catObj ? catObj.name : (t.category ? t.category : 'Sem Categoria');
+                    if (!map[catName]) map[catName] = 0;
+                    map[catName] += t.amount || 0;
                 });
                 return Object.entries(map).sort((a,b) => b[1]-a[1]);
             }
 
-            // Sumarizar por conta
+            // Sumarizar por conta — resolve ID → nome
             function sumByAccount(txs, type) {
+                const accounts = FinanceApp.data.accounts || [];
                 const map = {};
                 txs.filter(t => t.type === type).forEach(t => {
-                    const acc = t.account || 'Conta não especificada';
-                    if (!map[acc]) map[acc] = 0;
-                    map[acc] += t.amount || 0;
+                    const accObj = accounts.find(a => a.id === t.account);
+                    const accName = accObj ? accObj.name : (t.account ? t.account : 'Conta não especificada');
+                    if (!map[accName]) map[accName] = 0;
+                    map[accName] += t.amount || 0;
                 });
                 return Object.entries(map).sort((a,b) => b[1]-a[1]);
             }
@@ -11262,8 +11495,14 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
 
                 // === DESPESAS DEDUTÍVEIS / DETALHADAS ===
                 const DEDUTIVEIS = ['saúde','educação','médico','hospital','plano de saúde','odontológico','faculdade','escola','pensão','previdência'];
+                const categories_irpf = FinanceApp.data.categories || [];
                 const expTxs = txs.filter(t => t.type === 'expense');
-                const dedutiveis = expTxs.filter(t => DEDUTIVEIS.some(d => (t.category||'').toLowerCase().includes(d) || (t.description||'').toLowerCase().includes(d)));
+                // Resolve o nome da categoria antes de checar deduções (t.category pode ser um ID)
+                const dedutiveis = expTxs.filter(t => {
+                    const catObj = categories_irpf.find(c => c.id === t.category);
+                    const catName = catObj ? catObj.name : (t.category || '');
+                    return DEDUTIVEIS.some(d => catName.toLowerCase().includes(d) || (t.description||'').toLowerCase().includes(d));
+                });
                 const totalDedutiveis = dedutiveis.reduce((s,t) => s+t.amount, 0);
 
                 html += `
@@ -11303,14 +11542,18 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
                         <div style="font-weight:800;font-size:1rem;margin-bottom:14px;color:#1e40af;display:flex;align-items:center;gap:8px;">
                             <i class="fas fa-file-medical" style="color:#3b82f6;"></i> Despesas Dedutíveis Detalhadas
                         </div>
-                        ${dedutiveis.map(t => `
+                        ${dedutiveis.map(t => {
+                            const catObjD = categories_irpf.find(c => c.id === t.category);
+                            const catNameD = catObjD ? catObjD.name : (t.category || 'Sem categoria');
+                            return `
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
                                 <div>
                                     <div style="font-size:0.9rem;font-weight:600;color:var(--dark);">${t.description || 'Sem descrição'}</div>
-                                    <div style="font-size:0.75rem;color:var(--secondary);">${t.date || ''} • ${t.category || ''}</div>
+                                    <div style="font-size:0.75rem;color:var(--secondary);">${t.date || ''} • ${catNameD}</div>
                                 </div>
                                 <div style="font-weight:700;color:#2563eb;">${fmt(t.amount)}</div>
-                            </div>`).join('')}
+                            </div>`;
+                        }).join('')}
                     </div>`;
                 }
 
@@ -11431,6 +11674,8 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
                         const icons = {income:'arrow-up',expense:'arrow-down',investment:'chart-line',transfer:'exchange-alt'};
                         const color = colors[t.type] || '#64748b';
                         const icon = icons[t.type] || 'circle';
+                        const catObjTx = categories_irpf.find(c => c.id === t.category);
+                        const catNameTx = catObjTx ? catObjTx.name : (t.category ? t.category : 'Sem categoria');
                         return `
                         <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
                             <div style="display:flex;align-items:center;gap:8px;">
@@ -11439,7 +11684,7 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
                                 </div>
                                 <div>
                                     <div style="font-size:0.85rem;font-weight:600;color:var(--dark);">${t.description || 'Sem descrição'}</div>
-                                    <div style="font-size:0.72rem;color:var(--secondary);">${t.date||''} • ${t.category||''} ${t.status==='pending'?'• <span style="color:#f59e0b;">Pendente</span>':''}</div>
+                                    <div style="font-size:0.72rem;color:var(--secondary);">${t.date||''} • ${catNameTx} ${t.status==='pending'?'• <span style="color:#f59e0b;">Pendente</span>':''}</div>
                                 </div>
                             </div>
                             <div style="font-weight:700;color:${color};white-space:nowrap;margin-left:8px;">${t.type==='expense'?'-':''}${fmt(t.amount||0)}</div>
@@ -11472,8 +11717,13 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
                 const totalAssets = accounts.reduce((s,a) => s + (a.balance||0), 0);
 
                 const DEDUTIVEIS = ['saúde','educação','médico','hospital','plano de saúde','odontológico','faculdade','escola','pensão','previdência'];
+                const categories_pdf = FinanceApp.data.categories || [];
                 const expTxs = txs.filter(t => t.type === 'expense');
-                const dedutiveis = expTxs.filter(t => DEDUTIVEIS.some(d => (t.category||'').toLowerCase().includes(d) || (t.description||'').toLowerCase().includes(d)));
+                const dedutiveis = expTxs.filter(t => {
+                    const catObj = categories_pdf.find(c => c.id === t.category);
+                    const catName = catObj ? catObj.name : (t.category || '');
+                    return DEDUTIVEIS.some(d => catName.toLowerCase().includes(d) || (t.description||'').toLowerCase().includes(d));
+                });
                 const totalDedutiveis = dedutiveis.reduce((s,t) => s+t.amount, 0);
 
                 const incByCat = sumByCategory(txs, 'income');
@@ -11589,7 +11839,11 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
                     ${dedutiveis.length > 0 ? `
                     <div class="section-title">Despesas Dedutíveis — Detalhamento</div>
                     <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody>
-                    ${dedutiveis.map(t => `<tr><td>${t.date||''}</td><td>${t.description||''}</td><td>${t.category||''}</td><td class="blue">${fmt(t.amount||0)}</td></tr>`).join('')}
+                    ${dedutiveis.map(t => {
+                        const catObjPdf = categories_pdf.find(c => c.id === t.category);
+                        const catNamePdf = catObjPdf ? catObjPdf.name : (t.category || 'Sem categoria');
+                        return `<tr><td>${t.date||''}</td><td>${t.description||''}</td><td>${catNamePdf}</td><td class="blue">${fmt(t.amount||0)}</td></tr>`;
+                    }).join('')}
                     <tr class="total-row"><td colspan="3">TOTAL DEDUTÍVEIS</td><td class="blue">${fmt(totalDedutiveis)}</td></tr>
                     </tbody></table>` : ''}
 
@@ -11616,7 +11870,11 @@ td{border-bottom:1px solid #f1f5f9;vertical-align:middle;}
                         const typeLabel = {income:'Receita',expense:'Despesa',investment:'Investimento',transfer:'Transferência',pending:'Pendente'}[t.type]||t.type;
                         const colorClass = {income:'green',expense:'red',investment:'blue',transfer:'purple'}[t.type]||'';
                         const prefix = t.type==='expense'?'-':'';
-                        return `<tr><td>${t.date||''}</td><td>${t.description||''}</td><td>${t.category||''}</td><td>${t.account||''}</td><td class="${colorClass}">${typeLabel}</td><td class="${colorClass}">${prefix}${fmt(t.amount||0)}</td></tr>`;
+                        const catObjFull = categories_pdf.find(c => c.id === t.category);
+                        const catNameFull = catObjFull ? catObjFull.name : (t.category || 'Sem categoria');
+                        const accObjFull = (FinanceApp.data.accounts||[]).find(a => a.id === t.account);
+                        const accNameFull = accObjFull ? accObjFull.name : (t.account || '');
+                        return `<tr><td>${t.date||''}</td><td>${t.description||''}</td><td>${catNameFull}</td><td>${accNameFull}</td><td class="${colorClass}">${typeLabel}</td><td class="${colorClass}">${prefix}${fmt(t.amount||0)}</td></tr>`;
                     }).join('')}
                     </tbody></table>
 
