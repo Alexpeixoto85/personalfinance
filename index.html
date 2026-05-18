@@ -1982,249 +1982,218 @@
        ===================================================== */
     @media (min-width: 900px) {
 
-        /* ── Body: layout lateral ── */
+        /* ── Body vira row ── */
         body {
-            overflow: hidden;
-            flex-direction: row;
+            flex-direction: row !important;
+            overflow: hidden !important;
         }
 
-        /* ── Sidebar fixa à esquerda ── */
+        /* ── Sidebar (era bottom-nav) ── */
         .bottom-nav {
-            position: fixed;
-            left: 0; top: 0; bottom: 0; right: auto;
-            width: 220px;
-            height: 100vh;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: stretch;
-            padding: 0 0 24px 0;
-            border-top: none;
-            border-right: 1px solid var(--border);
-            background: rgba(255,255,255,0.98);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            z-index: 60;
-            gap: 2px;
-            overflow-y: auto;
-            overflow-x: hidden;
+            /* sobrescreve tudo do mobile */
+            position: fixed !important;
+            top: 0 !important; left: 0 !important;
+            bottom: 0 !important; right: auto !important;
+            width: 220px !important;
+            height: 100vh !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important;
+            align-items: stretch !important;
+            padding: 72px 0 24px !important; /* 72px = espaço do logo no topo */
+            border-top: none !important;
+            border-right: 1px solid var(--border) !important;
+            background: #ffffff !important;
+            z-index: 55 !important;
+            gap: 2px !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            /* remove padding-bottom do safe-area */
+            padding-bottom: 24px !important;
         }
 
-        /* Logo no topo da sidebar */
+        /* Logo no topo da sidebar — pseudo-elemento */
         .bottom-nav::before {
-            content: 'Finança Pro';
+            content: '💰 FinançaPro';
+            position: absolute;
+            top: 0; left: 0; right: 0;
             display: block;
-            font-size: 1.15rem;
+            font-size: 1.05rem;
             font-weight: 800;
             color: var(--dark);
-            padding: 22px 20px 18px;
+            padding: 20px 20px 16px;
             border-bottom: 1px solid var(--border);
-            margin-bottom: 10px;
-            letter-spacing: -0.5px;
-            flex-shrink: 0;
+            letter-spacing: -0.3px;
+            background: #ffffff;
+            z-index: 1;
         }
 
-        /* Nav items viram linhas verticais */
+        /* Nav items — linhas da sidebar */
         .nav-item {
-            flex-direction: row;
-            justify-content: flex-start;
-            align-items: center;
-            gap: 12px;
-            padding: 11px 20px;
-            font-size: 0.88rem;
-            font-weight: 500;
-            border-radius: 10px;
-            margin: 1px 10px;
-            color: var(--secondary);
-            transition: background 0.15s, color 0.15s;
-            width: auto;
+            flex-direction: row !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            gap: 11px !important;
+            padding: 10px 16px !important;
+            font-size: 0.875rem !important;
+            font-weight: 500 !important;
+            border-radius: 10px !important;
+            margin: 1px 10px !important;
+            color: var(--secondary) !important;
+            transition: background 0.15s, color 0.15s !important;
+            width: auto !important;
+            text-decoration: none !important;
         }
         .nav-item i {
-            font-size: 1.05rem;
-            width: 20px;
-            text-align: center;
-            flex-shrink: 0;
-            margin-bottom: 0;
+            font-size: 1rem !important;
+            width: 18px !important;
+            text-align: center !important;
+            flex-shrink: 0 !important;
+            margin-bottom: 0 !important;
         }
-        .nav-item:hover { background: #f1f5f9; color: var(--dark); }
+        .nav-item span { display: inline !important; }
+        .nav-item:hover { background: #f1f5f9 !important; color: var(--dark) !important; }
         .nav-item.active {
-            background: #ecfdf5;
-            color: var(--primary);
-            font-weight: 700;
+            background: #ecfdf5 !important;
+            color: var(--primary) !important;
+            font-weight: 700 !important;
         }
-        .nav-item.active i { color: var(--primary); }
 
-        /* ── Header: esticado, deixa espaço para sidebar ── */
+        /* ── Header: começa depois da sidebar ── */
         header {
-            left: 220px;
-            padding-left: 28px;
-            padding-right: 28px;
+            left: 220px !important;
+            padding-left: 28px !important;
+            padding-right: 28px !important;
         }
 
-        /* ── Main: margem esquerda = largura da sidebar ── */
+        /* ── Main: ocupa o espaço restante ── */
         main {
-            margin-left: 220px;
-            padding-top: calc(var(--header-height) + 24px);
-            padding-bottom: 40px;
-            padding-left: 0;
-            padding-right: 0;
-            height: 100vh;
-            overflow-y: auto;
+            margin-left: 220px !important;
+            padding-top: calc(var(--header-height) + 24px) !important;
+            padding-bottom: 48px !important;
+            padding-left: 32px !important;
+            padding-right: 32px !important;
+            height: 100vh !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            width: calc(100vw - 220px) !important;
+            flex: 1 !important;
         }
 
-        /* Container centralizado com max-width */
-        .view {
-            max-width: 960px;
-            margin: 0 auto;
-            padding: 0 28px;
+        /* Views: max-width para não esticar demais */
+        .view.active {
+            max-width: 900px !important;
+            margin: 0 auto !important;
         }
 
-        /* FAB: reposicionar para não ficar sobre conteúdo */
+        /* FAB repositionado */
         .fab {
-            bottom: 32px;
-            right: 32px;
+            bottom: 32px !important;
+            right: 32px !important;
         }
 
-        /* ── Dashboard: 2 colunas ── */
-        #dashboard-view .balance-card {
-            /* card full-width no topo */
-        }
+        /* Stats: 4 colunas */
+        .stats-grid { grid-template-columns: repeat(4, 1fr) !important; }
 
-        /* Stats grid: 4 colunas no desktop */
-        .stats-grid {
-            grid-template-columns: repeat(4, 1fr);
-        }
-
-        /* Accounts: 2 colunas */
+        /* Contas: 2 colunas */
         #accounts-list {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
         }
-        #accounts-list .account-card { margin-bottom: 0; }
+        #accounts-list .account-card { margin-bottom: 0 !important; }
 
-        /* Dashboard: projeção + quick-actions lado a lado */
-        #dashboard-view .projection-card {
-            /* permanece full-width */
-        }
+        /* Quick actions: 4 por linha */
+        .quick-actions { grid-template-columns: repeat(4, 1fr) !important; }
 
-        /* Ações rápidas: 4 por linha no desktop */
-        .quick-actions {
-            grid-template-columns: repeat(4, 1fr);
-        }
+        /* Charts maiores */
+        .chart-container { height: 300px !important; }
 
-        /* Transações recentes: lista fica mais larga */
-        #dashboard-view #recent-transactions .transaction-card {
-            /* já ok */
-        }
-
-        /* ── Transações view: coluna única centrada ── */
-
-        /* ── Relatórios: chart containers maiores ── */
-        .chart-container { height: 320px; }
-
-        /* Projection months grid: mais colunas */
-        .projection-months-grid {
-            grid-template-columns: repeat(6, 1fr) !important;
-        }
-
-        /* ── Metas: 2 colunas ── */
+        /* Metas: 2 colunas */
         #goals-list {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
         }
-        #goals-list .goal-card { margin-bottom: 0; }
+        #goals-list .goal-card { margin-bottom: 0 !important; }
 
-        /* ── Análise: score em grid ── */
-        .score-details {
-            grid-template-columns: repeat(4, 1fr);
-        }
-
-        /* Analysis cards em 2 colunas */
+        /* Analysis cards: 2 colunas */
         #expense-analysis-list,
         #savings-list {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
         }
         #expense-analysis-list .analysis-card,
-        #savings-list .analysis-card { margin-bottom: 0; }
+        #savings-list .analysis-card { margin-bottom: 0 !important; }
 
-        /* ── Modais: centralizados no desktop ── */
+        /* Score details: 4 colunas */
+        .score-details { grid-template-columns: repeat(4, 1fr) !important; }
+
+        /* Projection months: 6 colunas */
+        .projection-months-grid { grid-template-columns: repeat(6, 1fr) !important; }
+
+        /* Modais: centralizados com max-width */
         .modal-overlay.active {
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            padding-left: 220px; /* compensa sidebar */
+            align-items: flex-end !important;
+            justify-content: center !important;
+            padding-left: 220px !important;
         }
         .modal-sheet {
-            position: relative;
-            left: auto; right: auto; bottom: auto;
-            width: 100%;
-            max-width: 640px;
-            margin: 0 auto;
-            border-radius: 20px 20px 0 0;
-            transform: translateY(100%);
+            position: relative !important;
+            left: auto !important; right: auto !important; bottom: auto !important;
+            width: 100% !important;
+            max-width: 680px !important;
+            border-radius: 20px 20px 0 0 !important;
+            transform: translateY(100%) !important;
         }
-        .modal-sheet.active {
-            transform: translateY(0);
-        }
+        .modal-sheet.active { transform: translateY(0) !important; }
 
-        /* ── Empresa mode: sidebar também empurra ── */
-        #empresa-view { margin-left: 0; }
+        /* Profile bar e notif alinhados à sidebar */
+        #profile-toggle-bar { left: 220px !important; }
+        .notif-panel { left: auto !important; right: 16px !important; }
 
-        /* Tab navs: melhor espaçamento */
-        .tab-nav { gap: 4px; padding: 4px; }
-        .tab-btn { padding: 8px 16px; font-size: 0.85rem; }
-
-        /* Section titles com mais margem */
-        .section-title { margin-bottom: 16px; font-size: 1.15rem; }
-
-        /* Cards com transições suaves no hover */
-        .transaction-card:hover {
-            transform: translateX(4px);
-            box-shadow: var(--shadow-md);
-        }
+        /* Hover effects */
+        .transaction-card:hover { transform: translateX(3px); box-shadow: var(--shadow-md); }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
         .account-card:hover { box-shadow: var(--shadow-md); }
         .goal-card:hover { box-shadow: var(--shadow-md); }
-        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 
-        /* Scrollbar estilizado no main */
-        main::-webkit-scrollbar { width: 6px; }
+        /* Scrollbar fina no main */
+        main::-webkit-scrollbar { width: 5px; }
         main::-webkit-scrollbar-track { background: transparent; }
         main::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         main::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        /* ── Empresa toggle bar: ajuste de posição ── */
-        #profile-toggle-bar { left: 220px; }
+        /* User greeting: mostra nome completo */
+        .user-greeting { max-width: 220px !important; }
+        .user-greeting strong { max-width: 160px !important; }
 
-        /* ── Dark mode sidebar ── */
+        /* Dark mode sidebar */
         body.dark-mode .bottom-nav {
-            background: rgba(15,23,42,0.98) !important;
+            background: #0f172a !important;
             border-right-color: #1e293b !important;
         }
-        body.dark-mode .bottom-nav::before { color: #f1f5f9 !important; border-bottom-color: #1e293b !important; }
-        body.dark-mode .nav-item:hover { background: #1e293b !important; }
-        body.dark-mode .nav-item.active { background: #064e3b !important; }
-
-        /* ── Notif panel alinhado ── */
-        .notif-panel { left: 220px; }
-
-        /* User greeting: mostra nome completo */
-        .user-greeting { max-width: 200px; }
-        .user-greeting strong { max-width: 150px; }
+        body.dark-mode .bottom-nav::before {
+            background: #0f172a !important;
+            color: #f1f5f9 !important;
+            border-bottom-color: #1e293b !important;
+        }
+        body.dark-mode .nav-item:hover { background: #1e293b !important; color: #f1f5f9 !important; }
+        body.dark-mode .nav-item.active { background: #064e3b !important; color: var(--primary) !important; }
+        body.dark-mode header { background: rgba(15,23,42,0.97) !important; }
     }
 
-    /* Intermediate breakpoint: tablet landscape */
+    /* Tablet (900–1200px): sidebar menor */
     @media (min-width: 900px) and (max-width: 1200px) {
-        .bottom-nav { width: 180px; }
-        header { left: 180px; }
-        main { margin-left: 180px; }
-        .view { max-width: 820px; }
-        #profile-toggle-bar { left: 180px; }
-        .notif-panel { left: 180px; }
-        .stats-grid { grid-template-columns: repeat(2, 1fr); }
-        #expense-analysis-list, #savings-list { grid-template-columns: 1fr; }
+        .bottom-nav { width: 190px !important; padding-top: 68px !important; }
+        .bottom-nav::before { font-size: 0.95rem !important; }
+        header { left: 190px !important; }
+        main { margin-left: 190px !important; width: calc(100vw - 190px) !important; }
+        .view.active { max-width: 760px !important; }
+        #profile-toggle-bar { left: 190px !important; }
+        .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        #expense-analysis-list, #savings-list { grid-template-columns: 1fr !important; }
+        .score-details { grid-template-columns: repeat(2, 1fr) !important; }
     }
     </style>
 
