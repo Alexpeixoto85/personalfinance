@@ -1976,125 +1976,121 @@
     body:not(.dark-mode) #dark-toggle-btn i.fa-moon::before { content: "\f186"; }
     body.dark-mode #dark-toggle-btn i { color: #fbbf24 !important; }
 
+
     /* =====================================================
-       DESKTOP LAYOUT — ativa em telas >= 900px
-       Mobile continua 100% igual abaixo de 900px
+       DESKTOP LAYOUT — telas >= 900px
+       Mobile inalterado abaixo de 900px
        ===================================================== */
     @media (min-width: 900px) {
 
-        /* ── Body vira row ── */
         body {
             flex-direction: row !important;
             overflow: hidden !important;
+            height: 100vh !important;
         }
 
-        /* ── Sidebar (era bottom-nav) ── */
+        /* ── Sidebar (transforma a bottom-nav) ── */
         .bottom-nav {
-            /* sobrescreve tudo do mobile */
             position: fixed !important;
             top: 0 !important; left: 0 !important;
-            bottom: 0 !important; right: auto !important;
-            width: 220px !important;
+            right: auto !important; bottom: 0 !important;
+            width: 216px !important;
             height: 100vh !important;
             flex-direction: column !important;
             justify-content: flex-start !important;
             align-items: stretch !important;
-            padding: 72px 0 24px !important; /* 72px = espaço do logo no topo */
+            padding: 64px 0 24px !important;
             border-top: none !important;
-            border-right: 1px solid var(--border) !important;
-            background: #ffffff !important;
+            border-right: 1px solid #e2e8f0 !important;
+            background: #fff !important;
             z-index: 55 !important;
             gap: 2px !important;
             overflow-y: auto !important;
             overflow-x: hidden !important;
-            /* remove padding-bottom do safe-area */
-            padding-bottom: 24px !important;
         }
 
-        /* Logo no topo da sidebar — pseudo-elemento */
+        /* Logo no topo via pseudo-elemento */
         .bottom-nav::before {
             content: '💰 FinançaPro';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            display: block;
-            font-size: 1.05rem;
-            font-weight: 800;
-            color: var(--dark);
-            padding: 20px 20px 16px;
-            border-bottom: 1px solid var(--border);
-            letter-spacing: -0.3px;
-            background: #ffffff;
-            z-index: 1;
+            position: absolute !important;
+            top: 0 !important; left: 0 !important; right: 0 !important;
+            height: 60px !important;
+            display: flex !important;
+            align-items: center !important;
+            padding: 0 16px !important;
+            font-size: 1rem !important;
+            font-weight: 800 !important;
+            color: #0f172a !important;
+            background: #fff !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            z-index: 2 !important;
+            box-sizing: border-box !important;
         }
 
-        /* Nav items — linhas da sidebar */
+        /* Itens da sidebar */
         .nav-item {
             flex-direction: row !important;
             justify-content: flex-start !important;
             align-items: center !important;
-            gap: 11px !important;
-            padding: 10px 16px !important;
+            gap: 10px !important;
+            padding: 10px 14px !important;
+            margin: 1px 8px !important;
+            width: auto !important;
+            flex: none !important;
             font-size: 0.875rem !important;
             font-weight: 500 !important;
-            border-radius: 10px !important;
-            margin: 1px 10px !important;
-            color: var(--secondary) !important;
-            transition: background 0.15s, color 0.15s !important;
-            width: auto !important;
+            border-radius: 9px !important;
+            color: #64748b !important;
             text-decoration: none !important;
+            transition: background 0.15s, color 0.15s !important;
         }
         .nav-item i {
             font-size: 1rem !important;
             width: 18px !important;
             text-align: center !important;
-            flex-shrink: 0 !important;
             margin-bottom: 0 !important;
+            flex-shrink: 0 !important;
         }
         .nav-item span { display: inline !important; }
-        .nav-item:hover { background: #f1f5f9 !important; color: var(--dark) !important; }
+        .nav-item:hover { background: #f1f5f9 !important; color: #0f172a !important; }
         .nav-item.active {
             background: #ecfdf5 !important;
-            color: var(--primary) !important;
-            font-weight: 700 !important;
+            color: #10b981 !important;
+            font-weight: 600 !important;
         }
 
         /* ── Header: começa depois da sidebar ── */
         header {
-            left: 220px !important;
-            padding-left: 28px !important;
-            padding-right: 28px !important;
+            left: 216px !important;
+            right: 0 !important;
         }
 
-        /* ── Main: ocupa o espaço restante ── */
+        /* ── Main: área scrollável ── */
         main {
-            margin-left: 220px !important;
-            padding-top: calc(var(--header-height) + 24px) !important;
-            padding-bottom: 48px !important;
-            padding-left: 32px !important;
-            padding-right: 32px !important;
+            margin-left: 216px !important;
+            width: calc(100vw - 216px) !important;
             height: 100vh !important;
             overflow-y: auto !important;
             overflow-x: hidden !important;
-            width: calc(100vw - 220px) !important;
-            flex: 1 !important;
+            padding: calc(var(--header-height) + 20px) 32px 48px 32px !important;
         }
 
-        /* Views: max-width para não esticar demais */
+        /* View ativa: centralizada com max-width */
         .view.active {
-            max-width: 900px !important;
-            margin: 0 auto !important;
+            max-width: 880px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
         }
 
-        /* FAB repositionado */
+        /* FAB */
         .fab {
-            bottom: 32px !important;
-            right: 32px !important;
+            bottom: 28px !important;
+            right: 28px !important;
         }
 
-        /* Stats: 4 colunas */
+        /* Grids */
         .stats-grid { grid-template-columns: repeat(4, 1fr) !important; }
 
-        /* Contas: 2 colunas */
         #accounts-list {
             display: grid !important;
             grid-template-columns: repeat(2, 1fr) !important;
@@ -2102,13 +2098,9 @@
         }
         #accounts-list .account-card { margin-bottom: 0 !important; }
 
-        /* Quick actions: 4 por linha */
         .quick-actions { grid-template-columns: repeat(4, 1fr) !important; }
-
-        /* Charts maiores */
         .chart-container { height: 300px !important; }
 
-        /* Metas: 2 colunas */
         #goals-list {
             display: grid !important;
             grid-template-columns: repeat(2, 1fr) !important;
@@ -2116,7 +2108,6 @@
         }
         #goals-list .goal-card { margin-bottom: 0 !important; }
 
-        /* Analysis cards: 2 colunas */
         #expense-analysis-list,
         #savings-list {
             display: grid !important;
@@ -2126,75 +2117,62 @@
         #expense-analysis-list .analysis-card,
         #savings-list .analysis-card { margin-bottom: 0 !important; }
 
-        /* Score details: 4 colunas */
         .score-details { grid-template-columns: repeat(4, 1fr) !important; }
-
-        /* Projection months: 6 colunas */
         .projection-months-grid { grid-template-columns: repeat(6, 1fr) !important; }
 
-        /* Modais: centralizados com max-width */
+        /* Modais */
         .modal-overlay.active {
             align-items: flex-end !important;
             justify-content: center !important;
-            padding-left: 220px !important;
+            padding-left: 216px !important;
+            padding-right: 0 !important;
         }
         .modal-sheet {
             position: relative !important;
-            left: auto !important; right: auto !important; bottom: auto !important;
+            inset: auto !important;
             width: 100% !important;
-            max-width: 680px !important;
+            max-width: 660px !important;
             border-radius: 20px 20px 0 0 !important;
             transform: translateY(100%) !important;
         }
         .modal-sheet.active { transform: translateY(0) !important; }
 
-        /* Profile bar e notif alinhados à sidebar */
-        #profile-toggle-bar { left: 220px !important; }
-        .notif-panel { left: auto !important; right: 16px !important; }
+        /* Elementos fixos */
+        #profile-toggle-bar { left: 216px !important; }
+        .notif-panel { left: auto !important; right: 20px !important; }
 
-        /* Hover effects */
-        .transaction-card:hover { transform: translateX(3px); box-shadow: var(--shadow-md); }
-        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .account-card:hover { box-shadow: var(--shadow-md); }
-        .goal-card:hover { box-shadow: var(--shadow-md); }
+        /* Hover */
+        .transaction-card:hover { transform: translateX(3px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .account-card:hover, .goal-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 
-        /* Scrollbar fina no main */
+        /* Scrollbar */
         main::-webkit-scrollbar { width: 5px; }
         main::-webkit-scrollbar-track { background: transparent; }
         main::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        main::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        /* User greeting: mostra nome completo */
-        .user-greeting { max-width: 220px !important; }
-        .user-greeting strong { max-width: 160px !important; }
+        .user-greeting { max-width: 200px !important; }
+        .user-greeting strong { max-width: 150px !important; }
 
-        /* Dark mode sidebar */
-        body.dark-mode .bottom-nav {
-            background: #0f172a !important;
-            border-right-color: #1e293b !important;
-        }
-        body.dark-mode .bottom-nav::before {
-            background: #0f172a !important;
-            color: #f1f5f9 !important;
-            border-bottom-color: #1e293b !important;
-        }
+        /* Dark mode */
+        body.dark-mode .bottom-nav { background: #0f172a !important; border-right-color: #1e293b !important; }
+        body.dark-mode .bottom-nav::before { background: #0f172a !important; color: #f1f5f9 !important; border-bottom-color: #1e293b !important; }
         body.dark-mode .nav-item:hover { background: #1e293b !important; color: #f1f5f9 !important; }
-        body.dark-mode .nav-item.active { background: #064e3b !important; color: var(--primary) !important; }
-        body.dark-mode header { background: rgba(15,23,42,0.97) !important; }
+        body.dark-mode .nav-item.active { background: #064e3b !important; color: #10b981 !important; }
     }
 
-    /* Tablet (900–1200px): sidebar menor */
+    /* Tablet (900–1200px) */
     @media (min-width: 900px) and (max-width: 1200px) {
-        .bottom-nav { width: 190px !important; padding-top: 68px !important; }
-        .bottom-nav::before { font-size: 0.95rem !important; }
-        header { left: 190px !important; }
-        main { margin-left: 190px !important; width: calc(100vw - 190px) !important; }
-        .view.active { max-width: 760px !important; }
-        #profile-toggle-bar { left: 190px !important; }
+        .bottom-nav { width: 188px !important; }
+        header { left: 188px !important; }
+        main { margin-left: 188px !important; width: calc(100vw - 188px) !important; }
+        .view.active { max-width: 740px !important; }
+        #profile-toggle-bar { left: 188px !important; }
         .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-        #expense-analysis-list, #savings-list { grid-template-columns: 1fr !important; }
         .score-details { grid-template-columns: repeat(2, 1fr) !important; }
+        #expense-analysis-list, #savings-list { grid-template-columns: 1fr !important; }
     }
+
     </style>
 
     <script id="dark-mode-persist-early">
