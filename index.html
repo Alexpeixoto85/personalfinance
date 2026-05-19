@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -8158,6 +8157,8 @@
                 const accountGroup = document.getElementById('t-account-group');
                 const transferToGroup = document.getElementById('t-transfer-to-group');
                 
+                const confirmedGroup = document.getElementById('t-confirmed-group');
+
                 if (type === 'transfer') {
                     categoryGroup.style.display = 'none';
                     accountGroup.style.display = 'block';
@@ -8169,6 +8170,8 @@
                     document.getElementById('t-installment-toggle-group').style.display = 'none';
                     document.getElementById('t-installment').checked = false;
                     document.getElementById('t-installment-group').style.display = 'none';
+                    // Ocultar confirmação do cliente em transferências
+                    if (confirmedGroup) confirmedGroup.style.display = 'none';
                     
                     UI.updateAccountSelects();
                 } else {
@@ -8180,6 +8183,8 @@
                     document.getElementById('t-transfer-to').removeAttribute('required');
                     // Mostrar parcelamento para outros tipos
                     document.getElementById('t-installment-toggle-group').style.display = 'block';
+                    // Ocultar confirmação do cliente em despesas; mostrar nos demais tipos
+                    if (confirmedGroup) confirmedGroup.style.display = (type === 'expense') ? 'none' : 'block';
                     
                     UI.updateCategorySelect(type);
                     UI.updateAccountSelect();
