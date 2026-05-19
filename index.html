@@ -8184,7 +8184,7 @@
                     // Mostrar parcelamento para outros tipos
                     document.getElementById('t-installment-toggle-group').style.display = 'block';
                     // Ocultar confirmação do cliente em despesas; mostrar nos demais tipos
-                    if (confirmedGroup) confirmedGroup.style.display = (type === 'expense') ? 'none' : 'block';
+                    if (confirmedGroup) confirmedGroup.style.display = (type === 'expense' || type === 'investment') ? 'none' : 'block';
                     
                     UI.updateCategorySelect(type);
                     UI.updateAccountSelect();
