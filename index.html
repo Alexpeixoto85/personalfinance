@@ -4006,168 +4006,242 @@
                 });
             },
             
-            exportAllData: async () => {
-                const transactions = await DB.getAllTransactions();
-                const accounts = await DB.getAllAccounts();
-                const categories = await DB.getAllCategories();
-                const goals = await DB.getAllGoals();
-                const settings = await DB.getSettings();
+            // ===== BACKUP GLOBAL (todos os usuários, empresas e preferências) =====
 
-                // Exportar usuários e descritores faciais (banco separado)
-                let users = [];
-                let faceDescriptors = [];
+            // Esquema canônico de cada tipo de banco, usado para recriar stores/índices
+            // ao restaurar em um dispositivo onde o banco ainda não existe.
+            _storeSchemaFor: (name) => {
+                if (name === 'FinancaProDB_users') {
+                    return { version: 1, stores: {
+                        users: { keyPath: 'username', indices: [{ name: 'username', key: 'username', unique: true }] },
+                        face_descriptors: { keyPath: 'username', indices: [] }
+                    }};
+                }
+                if (/_empresa_/.test(name)) {
+                    const simples = ['accounts','categories','goals','settings','clientes','fornecedores',
+                                     'centros_custo','projetos','funcionarios','contas_pagar','contas_receber'];
+                    const stores = {
+                        transactions: { keyPath: 'id', indices: ['date','type','category','status','account'].map(k => ({ name: k, key: k, unique: false })) }
+                    };
+                    simples.forEach(s => { stores[s] = { keyPath: 'id', indices: [] }; });
+                    return { version: 1, stores };
+                }
+                // Banco principal de um usuário (FinancaProDB_<username>)
+                return { version: DB.version, stores: {
+                    transactions: { keyPath: 'id', indices: ['date','type','category','status','account','recurringParent'].map(k => ({ name: k, key: k, unique: false })) },
+                    accounts:   { keyPath: 'id', indices: [{ name: 'type', key: 'type', unique: false }] },
+                    categories: { keyPath: 'id', indices: [{ name: 'type', key: 'type', unique: false }] },
+                    goals:      { keyPath: 'id', indices: [{ name: 'deadline', key: 'deadline', unique: false }] },
+                    settings:   { keyPath: 'id', indices: [] }
+                }};
+            },
+
+            // Lê todos os object stores de um banco já existente (sem disparar upgrade).
+            _dumpDatabase: (name) => new Promise((resolve) => {
+                let req;
+                try { req = indexedDB.open(name); } catch(e) { resolve(null); return; }
+                req.onerror = () => resolve(null);
+                req.onsuccess = (e) => {
+                    const db = e.target.result;
+                    const storeNames = Array.from(db.objectStoreNames);
+                    if (storeNames.length === 0) { db.close(); resolve({ stores: {} }); return; }
+                    const out = { stores: {} };
+                    let tx;
+                    try { tx = db.transaction(storeNames, 'readonly'); }
+                    catch(err) { db.close(); resolve({ stores: {} }); return; }
+                    let pending = storeNames.length;
+                    const done = () => { if (--pending === 0) { db.close(); resolve(out); } };
+                    storeNames.forEach(s => {
+                        const r = tx.objectStore(s).getAll();
+                        r.onsuccess = () => { out.stores[s] = r.result; done(); };
+                        r.onerror = () => { out.stores[s] = []; done(); };
+                    });
+                };
+            }),
+
+            // Recria (se necessário) e regrava todos os registros de um banco.
+            _restoreDatabase: (name, dbDump) => new Promise((resolve) => {
+                const schema = DB._storeSchemaFor(name);
+                let open;
+                try { open = indexedDB.open(name, schema.version); } catch(e) { resolve(); return; }
+                open.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    const upgradeTx = e.target.transaction;
+                    for (const [storeName, def] of Object.entries(schema.stores)) {
+                        let store;
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            store = db.createObjectStore(storeName, { keyPath: def.keyPath });
+                        } else {
+                            store = upgradeTx.objectStore(storeName);
+                        }
+                        (def.indices || []).forEach(idx => {
+                            if (!store.indexNames.contains(idx.name)) {
+                                try { store.createIndex(idx.name, idx.key, { unique: idx.unique }); } catch(_) {}
+                            }
+                        });
+                    }
+                };
+                open.onerror = () => resolve();
+                open.onblocked = () => resolve();
+                open.onsuccess = (e) => {
+                    const db = e.target.result;
+                    const dumpStores = (dbDump && dbDump.stores) ? dbDump.stores : {};
+                    const targets = Object.keys(schema.stores).filter(s => db.objectStoreNames.contains(s));
+                    if (targets.length === 0) { db.close(); resolve(); return; }
+                    let tx;
+                    try { tx = db.transaction(targets, 'readwrite'); }
+                    catch(err) { db.close(); resolve(); return; }
+                    targets.forEach(s => {
+                        const os = tx.objectStore(s);
+                        os.clear();
+                        const recs = dumpStores[s];
+                        const arr = Array.isArray(recs) ? recs : (recs && Array.isArray(recs.records) ? recs.records : []);
+                        arr.forEach(rec => { try { os.put(rec); } catch(_) {} });
+                    });
+                    tx.oncomplete = () => { db.close(); resolve(); };
+                    tx.onerror = () => { db.close(); resolve(); };
+                };
+            }),
+
+            // Descobre todos os bancos do FinançaPro (principais, compartilhado e por empresa).
+            _discoverDatabaseNames: async () => {
+                const names = new Set();
+                // Caminho preferido: API nativa (Chromium, Safari 14+)
+                if (typeof indexedDB.databases === 'function') {
+                    try {
+                        const list = await indexedDB.databases();
+                        list.forEach(d => { if (d && d.name && d.name.indexOf('FinancaProDB') === 0) names.add(d.name); });
+                    } catch(e) { /* segue para o fallback */ }
+                }
+                // Fallback / garantia: deriva nomes a partir da lista de usuários e perfis
+                names.add('FinancaProDB_users');
+                if (DB.currentUsername) names.add('FinancaProDB_' + DB.currentUsername);
                 try {
                     await DB.initUsersDB();
-                    users = await DB.getAllUsers();
-                    faceDescriptors = await DB.getAllFaceUsers();
-                } catch(e) { /* ignora se banco não existir */ }
+                    const users = await DB.getAllUsers();
+                    users.forEach(u => {
+                        if (!u || !u.username) return;
+                        names.add('FinancaProDB_' + u.username);
+                        // Bancos de empresas a partir dos perfis salvos no localStorage
+                        try {
+                            const perfis = JSON.parse(localStorage.getItem('fp_perfis_' + u.username) || '[]');
+                            perfis.forEach(p => { if (p && p.id) names.add('FinancaProDB_' + u.username + '_empresa_' + p.id); });
+                        } catch(_) {}
+                    });
+                } catch(e) { /* ignora */ }
+                return Array.from(names);
+            },
 
-                // Exportar dados de TODOS os usuários (cada um tem seu próprio DB)
-                const allUsersData = {};
-                for (const user of users) {
+            // Exporta TUDO de forma global: todos os bancos IndexedDB + todo localStorage fp_*
+            exportAllData: async () => {
+                const dump = {
+                    version: 4,
+                    exportDate: new Date().toISOString(),
+                    currentUser: DB.currentUsername,
+                    databases: {},
+                    localStorage: {}
+                };
+
+                const dbNames = await DB._discoverDatabaseNames();
+                for (const name of dbNames) {
                     try {
-                        const uname = user.username;
-                        // Não duplicar o usuário atual (já exportado acima)
-                        if (uname === DB.currentUsername) continue;
-                        await new Promise((resolve, reject) => {
-                            const req = indexedDB.open('FinancaProDB_' + uname, 7);
-                            req.onerror = () => resolve(); // silencia erro se DB não existir
-                            req.onsuccess = (e) => {
-                                const db = e.target.result;
-                                const stores = Array.from(db.objectStoreNames);
-                                const needed = ['transactions','accounts','categories','goals','settings'].filter(s => stores.includes(s));
-                                if (needed.length === 0) { db.close(); resolve(); return; }
-                                const tx = db.transaction(needed, 'readonly');
-                                const result = {};
-                                let pending = needed.length;
-                                const done = () => { if (--pending === 0) { db.close(); allUsersData[uname] = result; resolve(); } };
-                                needed.forEach(storeName => {
-                                    const r = tx.objectStore(storeName).getAll();
-                                    r.onsuccess = () => { result[storeName] = r.result; done(); };
-                                    r.onerror = () => { result[storeName] = []; done(); };
-                                });
-                            };
-                            req.onupgradeneeded = (e) => { e.target.transaction.abort(); resolve(); };
-                        });
-                    } catch(e) { /* continua para o próximo usuário */ }
+                        const d = await DB._dumpDatabase(name);
+                        if (d) dump.databases[name] = d;
+                    } catch(e) { /* ignora banco problemático e continua */ }
                 }
 
-                // Exportar cartões de todos os usuários do localStorage
-                const cards = {};
+                // Todas as preferências/dados em localStorage (cards, perfis, perfil ativo, tema, etc.)
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
-                    if (key && key.startsWith('fp_cards_')) {
-                        try { cards[key] = JSON.parse(localStorage.getItem(key)); } catch(e) {}
+                    if (key && key.indexOf('fp_') === 0) {
+                        dump.localStorage[key] = localStorage.getItem(key);
                     }
                 }
 
-                // Exportar preferências globais do localStorage
-                const preferences = {
-                    fp_dark_mode: localStorage.getItem('fp_dark_mode'),
-                    fp_saldos_ocultos: localStorage.getItem('fp_saldos_ocultos')
-                };
-
-                return {
-                    transactions,
-                    accounts,
-                    categories,
-                    goals,
-                    settings,
-                    users,
-                    faceDescriptors,
-                    allUsersData,
-                    cards,
-                    preferences,
-                    currentUser: DB.currentUsername,
-                    exportDate: new Date().toISOString(),
-                    version: 3
-                };
+                return dump;
             },
-            
+
+            // Importa de forma global. Suporta o formato novo (v4+) e backups antigos (v3-).
             importAllData: async (data) => {
-                await DB.clearAllData();
-                
-                for (const account of data.accounts || []) {
-                    await DB.saveAccount(account);
-                }
-                
-                for (const transaction of data.transactions || []) {
-                    await DB.saveTransaction(transaction);
-                }
-                
-                for (const category of data.categories || []) {
-                    await DB.saveCategory(category);
-                }
-                
-                for (const goal of data.goals || []) {
-                    await DB.saveGoal(goal);
-                }
-                
-                if (data.settings) {
-                    await DB.saveSettings(data.settings);
+                if (!data || typeof data !== 'object') throw new Error('Backup inválido');
+
+                // ===== Formato global novo (v4+) =====
+                if (data.databases && typeof data.databases === 'object') {
+                    // Limpa o localStorage fp_* para um restore limpo (remove órfãos)
+                    const lsKeys = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const k = localStorage.key(i);
+                        if (k && k.indexOf('fp_') === 0) lsKeys.push(k);
+                    }
+                    lsKeys.forEach(k => localStorage.removeItem(k));
+
+                    // Restaura cada banco no seu próprio IndexedDB
+                    for (const [name, dbDump] of Object.entries(data.databases)) {
+                        if (!name || name.indexOf('FinancaProDB') !== 0) continue;
+                        try { await DB._restoreDatabase(name, dbDump); }
+                        catch(e) { console.warn('Falha ao restaurar banco', name, e); }
+                    }
+
+                    // Restaura localStorage
+                    if (data.localStorage && typeof data.localStorage === 'object') {
+                        for (const [k, v] of Object.entries(data.localStorage)) {
+                            if (v !== null && v !== undefined) { try { localStorage.setItem(k, v); } catch(_) {} }
+                        }
+                    }
+
+                    // Reabre os bancos em memória para refletir os dados restaurados
+                    DB._usersDB = null;
+                    if (DB.currentUsername) {
+                        try { await DB.initForUser(DB.currentUsername); } catch(e) {}
+                    }
+                    return;
                 }
 
-                // Restaurar usuários e descritores faciais
+                // ===== Compatibilidade: formato antigo (v3 e anteriores) =====
+                // Restaura usuários e descritores faciais primeiro
                 if (data.users && data.users.length > 0) {
                     try {
                         await DB.initUsersDB();
-                        for (const user of data.users) {
-                            await DB.saveUser(user);
-                        }
+                        for (const user of data.users) { await DB.saveUser(user); }
                     } catch(e) { console.warn('Erro ao restaurar usuários:', e); }
                 }
                 if (data.faceDescriptors && data.faceDescriptors.length > 0) {
                     try {
                         await DB.initUsersDB();
-                        for (const fd of data.faceDescriptors) {
-                            await DB.saveFaceDescriptor(fd.username, fd.descriptors);
-                        }
+                        for (const fd of data.faceDescriptors) { await DB.saveFaceDescriptor(fd.username, fd.descriptors); }
                     } catch(e) { console.warn('Erro ao restaurar descritores faciais:', e); }
                 }
 
-                // Restaurar dados de outros usuários em seus próprios bancos
+                // Dados do "dono" do backup vão para o banco DELE, não para o usuário logado
+                const owner = data.currentUser || DB.currentUsername;
+                if (owner) {
+                    try {
+                        await DB._restoreDatabase('FinancaProDB_' + owner, { stores: {
+                            transactions: data.transactions || [],
+                            accounts:     data.accounts || [],
+                            categories:   data.categories || [],
+                            goals:        data.goals || [],
+                            settings:     data.settings ? [data.settings] : []
+                        }});
+                    } catch(e) { console.warn('Erro ao restaurar dados do dono:', e); }
+                }
+
+                // Demais usuários, cada um em seu próprio banco
                 if (data.allUsersData && typeof data.allUsersData === 'object') {
                     for (const [uname, udata] of Object.entries(data.allUsersData)) {
-                        try {
-                            await new Promise((resolve, reject) => {
-                                const req = indexedDB.open('FinancaProDB_' + uname, 7);
-                                req.onerror = () => resolve();
-                                req.onsuccess = (e) => {
-                                    const db = e.target.result;
-                                    const stores = Array.from(db.objectStoreNames);
-                                    const needed = ['transactions','accounts','categories','goals','settings'].filter(s => stores.includes(s));
-                                    if (needed.length === 0) { db.close(); resolve(); return; }
-                                    const tx = db.transaction(needed, 'readwrite');
-                                    needed.forEach(storeName => {
-                                        const store = tx.objectStore(storeName);
-                                        store.clear();
-                                        (udata[storeName] || []).forEach(rec => store.put(rec));
-                                    });
-                                    tx.oncomplete = () => { db.close(); resolve(); };
-                                    tx.onerror = () => { db.close(); resolve(); };
-                                };
-                                req.onupgradeneeded = (e) => {
-                                    // recria as stores se necessário
-                                    const db = e.target.result;
-                                    if (!db.objectStoreNames.contains('transactions')) db.createObjectStore('transactions', { keyPath: 'id' });
-                                    if (!db.objectStoreNames.contains('accounts')) db.createObjectStore('accounts', { keyPath: 'id' });
-                                    if (!db.objectStoreNames.contains('categories')) db.createObjectStore('categories', { keyPath: 'id' });
-                                    if (!db.objectStoreNames.contains('goals')) db.createObjectStore('goals', { keyPath: 'id' });
-                                    if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
-                                };
-                            });
-                        } catch(e) { console.warn('Erro ao restaurar dados do usuário ' + uname + ':', e); }
+                        try { await DB._restoreDatabase('FinancaProDB_' + uname, { stores: udata }); }
+                        catch(e) { console.warn('Erro ao restaurar dados do usuário ' + uname + ':', e); }
                     }
                 }
 
-                // Restaurar cartões no localStorage
+                // Cartões no localStorage
                 if (data.cards && typeof data.cards === 'object') {
                     for (const [key, value] of Object.entries(data.cards)) {
                         try { localStorage.setItem(key, JSON.stringify(value)); } catch(e) {}
                     }
                 }
 
-                // Restaurar preferências no localStorage
+                // Preferências no localStorage
                 if (data.preferences) {
                     if (data.preferences.fp_dark_mode !== null && data.preferences.fp_dark_mode !== undefined) {
                         localStorage.setItem('fp_dark_mode', data.preferences.fp_dark_mode);
@@ -4175,6 +4249,12 @@
                     if (data.preferences.fp_saldos_ocultos !== null && data.preferences.fp_saldos_ocultos !== undefined) {
                         localStorage.setItem('fp_saldos_ocultos', data.preferences.fp_saldos_ocultos);
                     }
+                }
+
+                // Reabre os bancos em memória
+                DB._usersDB = null;
+                if (DB.currentUsername) {
+                    try { await DB.initForUser(DB.currentUsername); } catch(e) {}
                 }
             },
             
