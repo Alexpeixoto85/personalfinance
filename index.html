@@ -14186,8 +14186,14 @@ const _waitEmpresa = setInterval(() => {
                 else { logo.style.display = 'none'; }
             }
             set('rp-emit-nome', em.nome || 'Configure seu nome');
-            set('rp-emit-doc', em.doc ? ('CPF/CNPJ: ' + em.doc) : '');
-            set('rp-emit-contato', [em.phone, em.email].filter(Boolean).join('  ·  '));
+            set('rp-emit-doc', ''); // CPF apenas na assinatura
+            const fmtPhone = (p) => {
+                const n = (p || '').replace(/\D/g, '');
+                if (n.length === 11) return '(' + n.slice(0,2) + ')' + n.slice(2,7) + '-' + n.slice(7);
+                if (n.length === 10) return '(' + n.slice(0,2) + ')' + n.slice(2,6) + '-' + n.slice(6);
+                return p;
+            };
+            set('rp-emit-contato', [em.phone ? fmtPhone(em.phone) : '', em.email].filter(Boolean).join('  ·  '));
             // Cabeçalho direito
             set('rp-numero', 'Nº ' + d.numero);
             set('rp-data', 'Emitido em ' + formatData(d.data));
@@ -14276,10 +14282,15 @@ const _waitEmpresa = setInterval(() => {
             doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
             doc.text(em.nome || 'Emitente', tx, cy + 13);
             doc.setFont('helvetica', 'normal'); doc.setFontSize(8.2); doc.setTextColor(225, 252, 243);
-            let ly2 = cy + 19.5;
-            if (em.doc) { doc.text('CPF/CNPJ: ' + em.doc, tx, ly2); ly2 += 4.6; }
-            const contato = [em.phone, em.email].filter(Boolean).join('  ·  ');
-            if (contato) doc.text(contato, tx, ly2);
+            // Cabeçalho: somente nome + telefone formatado + email (sem CPF)
+            const fmtPhone = (p) => {
+                const n = (p || '').replace(/\D/g, '');
+                if (n.length === 11) return '(' + n.slice(0,2) + ')' + n.slice(2,7) + '-' + n.slice(7);
+                if (n.length === 10) return '(' + n.slice(0,2) + ')' + n.slice(2,6) + '-' + n.slice(6);
+                return p;
+            };
+            const contatoHdr = [em.phone ? fmtPhone(em.phone) : '', em.email].filter(Boolean).join('  ·  ');
+            if (contatoHdr) doc.text(contatoHdr, tx, cy + 20);
 
             doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(17);
             doc.text('RECIBO', cx + cw - 10, cy + 13, { align: 'right' });
