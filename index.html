@@ -3147,6 +3147,46 @@
                 <label class="form-label">Nome do Usuário</label>
                 <input type="text" id="s-name" class="form-control" placeholder="Seu nome">
             </div>
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 16px 0;">
+            <label class="form-label" style="display:flex;align-items:center;gap:6px;font-size:0.95rem;">
+                <i class="fas fa-id-card" style="color:var(--primary);"></i> Dados do Emitente (para recibos)
+            </label>
+            <p style="font-size:0.76rem;color:var(--secondary);margin:-6px 0 12px;line-height:1.4;">Esses dados aparecem automaticamente nos recibos que você gerar.</p>
+
+            <div class="form-group">
+                <label class="form-label">CPF ou CNPJ</label>
+                <input type="text" id="s-doc" class="form-control" placeholder="000.000.000-00 ou 00.000.000/0000-00">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Telefone</label>
+                <input type="text" id="s-phone" class="form-control" inputmode="tel" placeholder="(00) 00000-0000">
+            </div>
+            <div class="form-group">
+                <label class="form-label">E-mail</label>
+                <input type="email" id="s-email" class="form-control" placeholder="seu@email.com">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Logomarca</label>
+                <input type="hidden" id="s-logo-data">
+                <input type="file" id="s-logo-file" accept="image/*" style="display:none;" onchange="FPConfig.handleLogo(this)">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div onclick="document.getElementById('s-logo-file').click()" style="cursor:pointer;width:64px;height:64px;border-radius:12px;border:1px solid var(--border);background:#f8fafc;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                        <img id="s-logo-preview" alt="logo" style="display:none;width:100%;height:100%;object-fit:contain;">
+                        <span id="s-logo-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--secondary);font-size:0.6rem;">
+                            <i class="fas fa-image" style="font-size:1.2rem;"></i> Logo
+                        </span>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <button type="button" class="btn-block" style="margin:0;background:var(--secondary);font-size:0.85rem;padding:10px;" onclick="document.getElementById('s-logo-file').click()">
+                            <i class="fas fa-upload"></i> Enviar logomarca
+                        </button>
+                        <button type="button" id="s-logo-remove" style="display:none;margin-top:6px;width:100%;background:none;border:none;color:var(--expense);font-size:0.78rem;cursor:pointer;align-items:center;justify-content:center;gap:5px;" onclick="FPConfig.removeLogo()">
+                            <i class="fas fa-trash"></i> Remover logomarca
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-group">
                 <label class="form-label">Moeda Principal</label>
                 <select id="s-currency" class="form-control">
@@ -3215,11 +3255,15 @@
     <style>
         #sheet-recibo .rec-grid { display: flex; gap: 10px; }
         #sheet-recibo .rec-grid .form-group { flex: 1; }
-        #sheet-recibo .rec-hint { font-size: 0.72rem; color: var(--secondary); margin-top: 4px; }
         #sheet-recibo .rec-actions { display: flex; gap: 10px; margin-top: 6px; }
         #sheet-recibo .rec-actions .btn-block { margin-top: 0; }
+        #sheet-recibo .rec-emit-hint {
+            font-size: 0.75rem; color: var(--secondary); background: #f8fafc;
+            border: 1px dashed var(--border); border-radius: 10px; padding: 9px 12px; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px; line-height: 1.4;
+        }
+        #sheet-recibo .rec-emit-hint i { color: var(--primary); }
 
-        /* Linha do toggle de assinatura */
         .rec-toggle {
             display: flex; align-items: center; justify-content: space-between;
             gap: 12px; padding: 12px 14px; margin-bottom: 16px;
@@ -3229,75 +3273,41 @@
         .rec-toggle .rt-sub { font-size: 0.72rem; color: #047857; font-weight: 400; margin-top: 2px; }
         .rec-switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
         .rec-switch input { opacity: 0; width: 0; height: 0; }
-        .rec-switch .slider {
-            position: absolute; inset: 0; background: #cbd5e1; border-radius: 26px;
-            transition: 0.25s; cursor: pointer;
-        }
-        .rec-switch .slider:before {
-            content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px;
-            background: #fff; border-radius: 50%; transition: 0.25s; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-        }
+        .rec-switch .slider { position: absolute; inset: 0; background: #cbd5e1; border-radius: 26px; transition: 0.25s; cursor: pointer; }
+        .rec-switch .slider:before { content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.25s; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
         .rec-switch input:checked + .slider { background: var(--primary); }
         .rec-switch input:checked + .slider:before { transform: translateX(20px); }
         body.dark-mode .rec-toggle { background: rgba(16,185,129,0.08); border-color: #065f46; }
         body.dark-mode .rec-toggle .rt-txt { color: #6ee7b7; }
         body.dark-mode .rec-toggle .rt-sub { color: #34d399; }
 
-        /* Preview "papel" do recibo */
-        .rec-preview {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            overflow: hidden;
-            box-shadow: 0 10px 25px -8px rgba(0,0,0,0.18);
-            margin: 4px 0 18px;
-            color: #0f172a;
-            font-family: 'Inter', sans-serif;
-        }
-        .rec-preview-head {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: #fff;
-            padding: 16px 18px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 10px;
-        }
-        .rec-preview-head .rp-title { font-size: 1.5rem; font-weight: 800; letter-spacing: 1px; line-height: 1; }
-        .rec-preview-head .rp-sub { font-size: 0.7rem; opacity: 0.9; margin-top: 5px; }
-        .rec-preview-head .rp-valor-wrap { text-align: right; }
-        .rec-preview-head .rp-valor-lb { font-size: 0.6rem; opacity: 0.85; letter-spacing: 0.5px; }
-        .rec-preview-head .rp-valor { font-size: 1.35rem; font-weight: 800; margin-top: 2px; }
-        .rec-preview-body { padding: 16px 18px; }
-        .rec-preview-body .rp-meta {
-            display: flex; justify-content: space-between;
-            font-size: 0.78rem; color: #64748b; font-weight: 600;
-            border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 12px;
-        }
-        .rec-preview-body .rp-meta b { color: #0f172a; }
-        .rec-preview-body .rp-corpo { font-size: 0.9rem; line-height: 1.6; color: #1e293b; }
-        .rec-preview-body .rp-extenso-box {
-            background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
-            padding: 10px 12px; margin: 14px 0;
-        }
-        .rec-preview-body .rp-extenso-lb { font-size: 0.6rem; font-weight: 700; color: #64748b; letter-spacing: 0.5px; }
-        .rec-preview-body .rp-extenso { font-size: 0.82rem; color: #0f172a; margin-top: 3px; }
-        .rec-preview-body .rp-local { font-size: 0.82rem; color: #1e293b; margin-top: 6px; }
-        .rec-preview-sign { text-align: center; margin: 18px 0 6px; }
-        .rec-preview-sign .rp-sig { display: block; height: 46px; margin: 0 auto -6px; object-fit: contain; }
+        /* Preview "papel" */
+        .rec-preview { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; box-shadow: 0 10px 25px -8px rgba(0,0,0,0.18); margin: 4px 0 18px; color: #0f172a; font-family: 'Inter', sans-serif; }
+        .rec-preview-head { background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 14px 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+        .rp-emit { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .rp-emit .rp-logo { width: 42px; height: 42px; border-radius: 8px; background: #fff; object-fit: contain; padding: 3px; flex-shrink: 0; }
+        .rp-emit .rp-emit-info { min-width: 0; }
+        .rp-emit .rp-emit-nome { font-size: 0.98rem; font-weight: 800; line-height: 1.15; }
+        .rp-emit .rp-emit-doc { font-size: 0.64rem; opacity: 0.92; margin-top: 3px; }
+        .rp-emit .rp-emit-contato { font-size: 0.64rem; opacity: 0.92; margin-top: 1px; }
+        .rec-preview-head .rp-right { text-align: right; flex-shrink: 0; }
+        .rec-preview-head .rp-right .rp-title { font-size: 1.2rem; font-weight: 800; letter-spacing: 0.5px; line-height: 1; }
+        .rec-preview-head .rp-right .rp-numero { font-size: 0.7rem; opacity: 0.95; margin-top: 5px; }
+        .rec-preview-head .rp-right .rp-data { font-size: 0.62rem; opacity: 0.88; margin-top: 2px; }
+        .rec-preview-body { padding: 14px 16px; }
+        .rp-valor-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .rp-valor-box .rp-vlb { font-size: 0.58rem; font-weight: 700; color: #64748b; letter-spacing: 0.5px; }
+        .rp-valor-box .rp-valor { font-size: 1.35rem; font-weight: 800; color: #10b981; margin-top: 2px; }
+        .rp-valor-box .rp-extenso { font-size: 0.7rem; color: #64748b; font-style: italic; text-align: right; max-width: 48%; }
+        .rec-preview-body .rp-corpo { font-size: 0.88rem; line-height: 1.6; color: #1e293b; margin-top: 14px; }
+        .rec-preview-body .rp-local { font-size: 0.8rem; color: #1e293b; margin-top: 10px; }
+        .rec-preview-sign { text-align: center; margin: 16px 0 6px; }
+        .rec-preview-sign .rp-sig { display: block; height: 44px; margin: 0 auto -6px; object-fit: contain; }
         .rec-preview-sign .rp-line { width: 70%; margin: 0 auto; border-top: 1.5px solid #0f172a; }
-        .rec-preview-sign .rp-recebedor { font-weight: 700; font-size: 0.9rem; margin-top: 6px; color: #0f172a; }
-        .rec-preview-sign .rp-doc { font-size: 0.72rem; color: #64748b; margin-top: 2px; min-height: 14px; }
-        .rec-preview-foot {
-            display: flex; justify-content: space-between;
-            font-size: 0.62rem; color: #94a3b8; padding: 10px 18px;
-            border-top: 1px solid #f1f5f9;
-        }
-        .rec-preview-label {
-            font-size: 0.7rem; font-weight: 700; color: var(--secondary);
-            text-transform: uppercase; letter-spacing: 0.5px; margin: 4px 0 8px;
-            display: flex; align-items: center; gap: 6px;
-        }
+        .rec-preview-sign .rp-recebedor { font-weight: 700; font-size: 0.88rem; margin-top: 6px; color: #0f172a; }
+        .rec-preview-sign .rp-doc { font-size: 0.7rem; color: #64748b; margin-top: 2px; min-height: 13px; }
+        .rec-preview-foot { display: flex; justify-content: space-between; font-size: 0.6rem; color: #94a3b8; padding: 9px 16px; border-top: 1px solid #f1f5f9; }
+        .rec-preview-label { font-size: 0.7rem; font-weight: 700; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.5px; margin: 4px 0 8px; display: flex; align-items: center; gap: 6px; }
     </style>
 
     <div class="modal-overlay" id="overlay-recibo"></div>
@@ -3305,26 +3315,32 @@
         <div class="sheet-handle"></div>
         <h3 class="section-title"><i class="fas fa-receipt" style="color:var(--primary);"></i> Gerar Recibo</h3>
 
-        <!-- Pré-visualização -->
         <div class="rec-preview-label"><i class="fas fa-eye"></i> Pré-visualização</div>
         <div class="rec-preview" id="rec-preview">
             <div class="rec-preview-head">
-                <div>
-                    <div class="rp-title">RECIBO</div>
-                    <div class="rp-sub">Comprovante de pagamento</div>
+                <div class="rp-emit">
+                    <img id="rp-logo" class="rp-logo" alt="logo" src="" style="display:none;">
+                    <div class="rp-emit-info">
+                        <div class="rp-emit-nome" id="rp-emit-nome">Configure seu nome</div>
+                        <div class="rp-emit-doc" id="rp-emit-doc"></div>
+                        <div class="rp-emit-contato" id="rp-emit-contato"></div>
+                    </div>
                 </div>
-                <div class="rp-valor-wrap">
-                    <div class="rp-valor-lb">VALOR RECEBIDO</div>
-                    <div class="rp-valor" id="rp-valor">R$ 0,00</div>
+                <div class="rp-right">
+                    <div class="rp-title">RECIBO</div>
+                    <div class="rp-numero" id="rp-numero">Nº 0001</div>
+                    <div class="rp-data" id="rp-data">Emitido em --/--/----</div>
                 </div>
             </div>
             <div class="rec-preview-body">
-                <div class="rp-meta"><span id="rp-numero">Nº 0001</span></div>
-                <div class="rp-corpo" id="rp-corpo">Recibo de <b>—</b>...</div>
-                <div class="rp-extenso-box">
-                    <div class="rp-extenso-lb">VALOR POR EXTENSO</div>
-                    <div class="rp-extenso" id="rp-extenso">Zero real</div>
+                <div class="rp-valor-box">
+                    <div>
+                        <div class="rp-vlb">VALOR RECEBIDO</div>
+                        <div class="rp-valor" id="rp-valor">R$ 0,00</div>
+                    </div>
+                    <div class="rp-extenso" id="rp-extenso">(zero real)</div>
                 </div>
+                <div class="rp-corpo" id="rp-corpo">Recibo de <b>—</b>...</div>
                 <div class="rp-local" id="rp-local-data">Local, data.</div>
             </div>
             <div class="rec-preview-sign">
@@ -3339,7 +3355,11 @@
             </div>
         </div>
 
-        <!-- Toggle de assinatura padrão -->
+        <div class="rec-emit-hint">
+            <i class="fas fa-circle-info"></i>
+            <span>Os dados do emitente (nome, CPF/CNPJ, telefone, e-mail e logomarca) vêm das <b>Configurações</b> <i class="fas fa-cog"></i>.</span>
+        </div>
+
         <div class="rec-toggle">
             <div>
                 <div class="rt-txt"><i class="fas fa-signature"></i> Incluir assinatura padrão</div>
@@ -3351,7 +3371,6 @@
             </label>
         </div>
 
-        <!-- Formulário -->
         <div class="form-group">
             <label class="form-label">Valor recebido (R$)</label>
             <input type="text" id="rec-valor" class="form-control" inputmode="numeric" placeholder="0,00">
@@ -3364,29 +3383,19 @@
             <label class="form-label">Referente a</label>
             <textarea id="rec-descricao" class="form-control" placeholder="Ex.: serviços de pintura, mês de aluguel, etc." style="min-height:60px;"></textarea>
         </div>
-        <div class="form-group">
-            <label class="form-label">Recebedor (você)</label>
-            <input type="text" id="rec-recebedor" class="form-control" placeholder="Seu nome">
-        </div>
         <div class="rec-grid">
-            <div class="form-group">
-                <label class="form-label">CPF/CNPJ <span style="font-weight:400;color:var(--secondary);">(opcional)</span></label>
-                <input type="text" id="rec-doc" class="form-control" placeholder="000.000.000-00">
-            </div>
             <div class="form-group">
                 <label class="form-label">Cidade</label>
                 <input type="text" id="rec-cidade" class="form-control" placeholder="Sua cidade">
             </div>
-        </div>
-        <div class="rec-grid">
             <div class="form-group">
                 <label class="form-label">Data</label>
                 <input type="date" id="rec-data" class="form-control">
             </div>
-            <div class="form-group">
-                <label class="form-label">Nº do recibo</label>
-                <input type="text" id="rec-numero" class="form-control" placeholder="0001">
-            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Nº do recibo</label>
+            <input type="text" id="rec-numero" class="form-control" placeholder="0001">
         </div>
 
         <div class="rec-actions">
@@ -8888,12 +8897,16 @@
             },
             
             openSettings: () => {
-                const s = FinanceApp.data.settings;
+                const s = FinanceApp.data.settings || {};
                 // Prioriza nome do usuário logado
                 const displayName = (Auth.currentUser && Auth.currentUser.name) ? Auth.currentUser.name : (s.name || '');
                 document.getElementById('s-name').value = displayName;
                 document.getElementById('s-currency').value = s.currency || 'BRL';
                 document.getElementById('s-closing-day').value = s.closingDay || 1;
+                document.getElementById('s-doc').value = s.doc || '';
+                document.getElementById('s-phone').value = s.phone || '';
+                document.getElementById('s-email').value = s.email || '';
+                if (window.FPConfig) FPConfig.setLogo(s.logo || '');
 
                 // Atualiza estado da biometria
                 Auth.refreshSettingsBiometricUI();
@@ -9869,10 +9882,15 @@
                     e.preventDefault();
                     
                     const settings = {
+                        ...(FinanceApp.data.settings || {}),
                         id: 'user_settings',
                         name: document.getElementById('s-name').value,
                         currency: document.getElementById('s-currency').value,
-                        closingDay: parseInt(document.getElementById('s-closing-day').value)
+                        closingDay: parseInt(document.getElementById('s-closing-day').value),
+                        doc: document.getElementById('s-doc').value.trim(),
+                        phone: document.getElementById('s-phone').value.trim(),
+                        email: document.getElementById('s-email').value.trim(),
+                        logo: document.getElementById('s-logo-data').value || ''
                     };
                     
                     try {
@@ -14005,7 +14023,6 @@ const _waitEmpresa = setInterval(() => {
     (function () {
         'use strict';
 
-        // Assinatura padrão do recebedor (extraída do modelo enviado)
         const ASSINATURA_PADRAO = "data:image/png;base64,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";
 
         // ---------- Valor por extenso (pt-BR) ----------
@@ -14092,12 +14109,30 @@ const _waitEmpresa = setInterval(() => {
             const [y, m, dd] = iso.split('-').map(Number);
             return `${dd} de ${meses[m - 1]} de ${y}`;
         }
-        function getUserName() {
-            try {
-                if (typeof Auth !== 'undefined' && Auth.currentUser && Auth.currentUser.name) return Auth.currentUser.name;
-                if (typeof FinanceApp !== 'undefined' && FinanceApp.data && FinanceApp.data.settings && FinanceApp.data.settings.name) return FinanceApp.data.settings.name;
-            } catch (e) {}
-            return '';
+        function formatData(iso) {
+            if (!iso) return '';
+            const [y, m, dd] = iso.split('-');
+            return dd + '/' + m + '/' + y;
+        }
+        function settings() {
+            try { return (FinanceApp && FinanceApp.data && FinanceApp.data.settings) || {}; } catch (e) { return {}; }
+        }
+        // Dados do emitente (você) — vindos das Configurações
+        function getEmitente() {
+            const s = settings();
+            let nome = '';
+            try { if (typeof Auth !== 'undefined' && Auth.currentUser && Auth.currentUser.name) nome = Auth.currentUser.name; } catch (e) {}
+            if (!nome) nome = s.name || '';
+            return {
+                nome,
+                doc: s.doc || '',
+                phone: s.phone || '',
+                email: s.email || '',
+                logo: s.logo || ''
+            };
+        }
+        function toast(msg, type) {
+            if (typeof Utils !== 'undefined' && Utils.toast) Utils.toast(msg, type);
         }
         function seqKey() {
             let u = 'default';
@@ -14115,64 +14150,71 @@ const _waitEmpresa = setInterval(() => {
                 if (!isNaN(n)) localStorage.setItem(seqKey(), String(n));
             } catch (e) {}
         }
-        function toast(msg, type) {
-            if (typeof Utils !== 'undefined' && Utils.toast) Utils.toast(msg, type);
-        }
 
-        // ---------- Coleta dos dados do formulário ----------
+        // ---------- Coleta dos dados ----------
         function coletar() {
             const g = id => (document.getElementById(id) ? document.getElementById(id).value.trim() : '');
             const chk = document.getElementById('rec-assinatura');
-            const valor = parseValor(g('rec-valor'));
             return {
                 numero: g('rec-numero') || proximoNumero(),
-                valor,
+                valor: parseValor(g('rec-valor')),
                 pagador: g('rec-pagador'),
                 descricao: g('rec-descricao'),
-                recebedor: g('rec-recebedor'),
-                docRecebedor: g('rec-doc'),
                 cidade: g('rec-cidade'),
                 data: g('rec-data') || hojeISO(),
                 comAssinatura: chk ? chk.checked : true,
-                assinatura: ASSINATURA_PADRAO
+                assinatura: ASSINATURA_PADRAO,
+                emitente: getEmitente()
             };
         }
 
         // ---------- Preview ao vivo ----------
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
         function atualizarPreview() {
             const d = coletar();
+            const em = d.emitente;
             const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-            set('rp-valor', brl(d.valor));
+            // Emitente
+            const logo = document.getElementById('rp-logo');
+            if (logo) {
+                if (em.logo) { logo.src = em.logo; logo.style.display = 'block'; }
+                else { logo.style.display = 'none'; }
+            }
+            set('rp-emit-nome', em.nome || 'Configure seu nome');
+            set('rp-emit-doc', em.doc ? ('CPF/CNPJ: ' + em.doc) : '');
+            set('rp-emit-contato', [em.phone, em.email].filter(Boolean).join('  ·  '));
+            // Cabeçalho direito
             set('rp-numero', 'Nº ' + d.numero);
-            set('rp-extenso', valorPorExtenso(d.valor));
-            const pag = d.pagador || '—';
-            const desc = d.descricao || '—';
+            set('rp-data', 'Emitido em ' + formatData(d.data));
+            // Valor
+            set('rp-valor', brl(d.valor));
+            set('rp-extenso', '(' + valorPorExtenso(d.valor) + ')');
+            // Corpo
             const corpo = document.getElementById('rp-corpo');
             if (corpo) {
-                corpo.innerHTML = 'Recebi de <b>' + escapeHtml(pag) + '</b> a importância de <b>' +
-                    escapeHtml(valorPorExtenso(d.valor)) + '</b>, referente a <b>' + escapeHtml(desc) + '</b>.';
+                corpo.innerHTML = 'Recebi de <b>' + escapeHtml(d.pagador || '—') + '</b> a importância de <b>' +
+                    escapeHtml(valorPorExtenso(d.valor)) + '</b>, referente a <b>' + escapeHtml(d.descricao || '—') + '</b>.';
             }
             set('rp-local-data', (d.cidade ? d.cidade : 'Local') + ', ' + dataExtensa(d.data) + '.');
-            set('rp-recebedor', d.recebedor || '—');
-            set('rp-doc', d.docRecebedor ? ('CPF/CNPJ: ' + d.docRecebedor) : '');
+            // Assinatura
+            set('rp-recebedor', em.nome || '—');
+            set('rp-doc', em.doc ? ('CPF/CNPJ: ' + em.doc) : '');
             const sig = document.getElementById('rp-sig-img');
             if (sig) {
                 if (d.comAssinatura) { sig.src = ASSINATURA_PADRAO; sig.style.display = 'block'; }
                 else { sig.style.display = 'none'; }
             }
         }
-        function escapeHtml(s) {
-            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        }
 
-        // ---------- Máscara de valor ----------
         function maskValor(el) {
             const v = parseValor(el.value);
             el.value = v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             atualizarPreview();
         }
 
-        // ---------- Geração do PDF (jsPDF, vetorial) ----------
+        // ---------- Geração do PDF ----------
         function gerarPDF() {
             const d = coletar();
             if (!d.valor || d.valor <= 0) { toast('Informe um valor válido.', 'error'); return null; }
@@ -14183,85 +14225,80 @@ const _waitEmpresa = setInterval(() => {
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5' });
             const W = 210, H = 148;
             const GREEN = [16, 185, 129], DARK = [15, 23, 42], MUTED = [100, 116, 139], LIGHT = [226, 232, 240], BG = [248, 250, 252];
+            const em = d.emitente;
 
             doc.setFillColor(255, 255, 255); doc.rect(0, 0, W, H, 'F');
-
             const cx = 10, cy = 9, cw = 190, chh = 130;
             doc.setDrawColor(...LIGHT); doc.setLineWidth(0.4); doc.setFillColor(255, 255, 255);
             doc.roundedRect(cx, cy, cw, chh, 4, 4, 'FD');
 
-            const bh = 30;
-            doc.setFillColor(...GREEN); doc.roundedRect(cx, cy, cw, bh, 4, 4, 'F');
-            doc.rect(cx, cy + bh - 5, cw, 5, 'F');
+            // Faixa de cabeçalho
+            const bh = 38;
+            doc.setFillColor(...GREEN); doc.roundedRect(cx, cy, cw, bh, 4, 4, 'F'); doc.rect(cx, cy + bh - 5, cw, 5, 'F');
 
-            doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(26);
-            doc.text('RECIBO', cx + 10, cy + 16);
+            let tx = cx + 10;
+            if (em.logo) {
+                const ls = 20, lx = cx + 8, ly = cy + (bh - ls) / 2;
+                doc.setFillColor(255, 255, 255); doc.roundedRect(lx, ly, ls, ls, 3, 3, 'F');
+                try {
+                    const fmt = em.logo.indexOf('image/png') >= 0 ? 'PNG' : 'JPEG';
+                    doc.addImage(em.logo, fmt, lx + 1.5, ly + 1.5, ls - 3, ls - 3);
+                } catch (e) {}
+                tx = lx + ls + 6;
+            }
+            doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+            doc.text(em.nome || 'Emitente', tx, cy + 13);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8.2); doc.setTextColor(225, 252, 243);
+            let ly2 = cy + 19.5;
+            if (em.doc) { doc.text('CPF/CNPJ: ' + em.doc, tx, ly2); ly2 += 4.6; }
+            const contato = [em.phone, em.email].filter(Boolean).join('  ·  ');
+            if (contato) doc.text(contato, tx, ly2);
+
+            doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(17);
+            doc.text('RECIBO', cx + cw - 10, cy + 13, { align: 'right' });
             doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(225, 252, 243);
-            doc.text('Comprovante de pagamento', cx + 10, cy + 23);
-            doc.setTextColor(210, 250, 238); doc.setFontSize(8);
-            doc.text('VALOR RECEBIDO', cx + cw - 10, cy + 11, { align: 'right' });
-            doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(21);
-            doc.text(brl(d.valor), cx + cw - 10, cy + 22, { align: 'right' });
+            doc.text('Nº ' + d.numero, cx + cw - 10, cy + 20, { align: 'right' });
+            doc.setFontSize(8); doc.text('Emitido em ' + formatData(d.data), cx + cw - 10, cy + 25.5, { align: 'right' });
 
-            let y = cy + bh + 10;
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...DARK);
-            doc.text('Recibo Nº ' + d.numero, cx + 10, y);
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...MUTED);
-            doc.text(formatData(d.data), cx + cw - 10, y, { align: 'right' });
+            // Caixa de valor
+            const vy = cy + bh + 4, vh = 19;
+            doc.setFillColor(...BG); doc.setDrawColor(...LIGHT); doc.setLineWidth(0.3);
+            doc.roundedRect(cx + 10, vy, cw - 20, vh, 3, 3, 'FD');
+            doc.setFontSize(7.5); doc.setTextColor(...MUTED); doc.setFont('helvetica', 'bold');
+            doc.text('VALOR RECEBIDO', cx + 14, vy + 5.5);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(19); doc.setTextColor(...GREEN);
+            doc.text(brl(d.valor), cx + 14, vy + 14);
+            doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(...MUTED);
+            const exL = doc.splitTextToSize('(' + valorPorExtenso(d.valor) + ')', cw - 70);
+            doc.text(exL.slice(0, 2), cx + cw - 14, vy + (exL.length > 1 ? 9 : 11), { align: 'right' });
 
-            y += 4;
-            doc.setDrawColor(...LIGHT); doc.setLineWidth(0.3);
-            doc.line(cx + 10, y, cx + cw - 10, y);
-
-            y += 8;
-            doc.setTextColor(...DARK); doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+            // Corpo
+            let y = vy + vh + 9;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(...DARK);
             const corpo = 'Recebi de ' + d.pagador + ' a importância de ' + valorPorExtenso(d.valor) +
                 ', referente a ' + d.descricao + '.';
-            const linhas = doc.splitTextToSize(corpo, cw - 20);
-            doc.text(linhas, cx + 10, y, { lineHeightFactor: 1.45 });
-            y += linhas.length * 5.7 + 3;
-
-            doc.setFillColor(...BG); doc.setDrawColor(...LIGHT); doc.setLineWidth(0.3);
-            const boxY = y, boxH = 15;
-            doc.roundedRect(cx + 10, boxY, cw - 20, boxH, 2.5, 2.5, 'FD');
-            doc.setFontSize(7.5); doc.setTextColor(...MUTED); doc.setFont('helvetica', 'bold');
-            doc.text('VALOR POR EXTENSO', cx + 14, boxY + 5);
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...DARK);
-            const extLin = doc.splitTextToSize(valorPorExtenso(d.valor) + '.', cw - 28);
-            doc.text(extLin.slice(0, 2), cx + 14, boxY + 10);
-
-            y = boxY + boxH + 8;
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(...DARK);
+            const ln = doc.splitTextToSize(corpo, cw - 20);
+            doc.text(ln, cx + 10, y, { lineHeightFactor: 1.45 }); y += ln.length * 5.7 + 5;
+            doc.setFontSize(10.5);
             doc.text((d.cidade ? d.cidade : '________________') + ', ' + dataExtensa(d.data) + '.', cx + 10, y);
 
             // Assinatura
-            const sigLineY = cy + chh - 15;
-            const sigCx = cx + cw / 2;
+            const sigLineY = cy + chh - 15.5, sigCx = cx + cw / 2;
             if (d.comAssinatura && d.assinatura) {
-                try {
-                    const sw = 42, sh = 21;
-                    doc.addImage(d.assinatura, 'PNG', sigCx - sw / 2, sigLineY - sh + 3, sw, sh);
-                } catch (e) {}
+                try { const sw = 42, sh = 21; doc.addImage(d.assinatura, 'PNG', sigCx - sw / 2, sigLineY - sh + 3, sw, sh); } catch (e) {}
             }
-            doc.setDrawColor(...DARK); doc.setLineWidth(0.4);
-            doc.line(sigCx - 45, sigLineY, sigCx + 45, sigLineY);
+            doc.setDrawColor(...DARK); doc.setLineWidth(0.4); doc.line(sigCx - 45, sigLineY, sigCx + 45, sigLineY);
             doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...DARK);
-            doc.text(d.recebedor || ' ', sigCx, sigLineY + 5.5, { align: 'center' });
-            if (d.docRecebedor) {
+            doc.text(em.nome || ' ', sigCx, sigLineY + 5.5, { align: 'center' });
+            if (em.doc) {
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTED);
-                doc.text('CPF/CNPJ: ' + d.docRecebedor, sigCx, sigLineY + 10, { align: 'center' });
+                doc.text('CPF/CNPJ: ' + em.doc, sigCx, sigLineY + 10, { align: 'center' });
             }
-
             doc.setFontSize(7); doc.setTextColor(...MUTED); doc.setFont('helvetica', 'normal');
             doc.text('Gerado por FinançaPro', cx + 10, cy + chh - 3.5);
             doc.text('Documento sem valor fiscal', cx + cw - 10, cy + chh - 3.5, { align: 'right' });
 
             return { doc, dados: d };
-        }
-        function formatData(iso) {
-            if (!iso) return '';
-            const [y, m, dd] = iso.split('-');
-            return dd + '/' + m + '/' + y;
         }
         function nomeArquivo(d) {
             const limpo = (d.pagador || 'recibo').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').slice(0, 30);
@@ -14284,30 +14321,22 @@ const _waitEmpresa = setInterval(() => {
                 const blob = r.doc.output('blob');
                 const file = new File([blob], arquivo, { type: 'application/pdf' });
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        files: [file],
-                        title: 'Recibo Nº ' + r.dados.numero,
-                        text: 'Recibo no valor de ' + brl(r.dados.valor)
-                    });
+                    await navigator.share({ files: [file], title: 'Recibo Nº ' + r.dados.numero, text: 'Recibo no valor de ' + brl(r.dados.valor) });
                     consumirNumero(r.dados.numero);
                     return;
                 }
-            } catch (e) {
-                if (e && e.name === 'AbortError') return;
-            }
+            } catch (e) { if (e && e.name === 'AbortError') return; }
             r.doc.save(arquivo);
             consumirNumero(r.dados.numero);
             toast('Compartilhamento direto indisponível — recibo baixado.', 'success');
         }
 
-        // ---------- Abertura do modal ----------
+        // ---------- Modal ----------
         function abrir() {
             const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
             set('rec-valor', '');
             set('rec-pagador', '');
             set('rec-descricao', '');
-            set('rec-recebedor', getUserName());
-            set('rec-doc', '');
             set('rec-cidade', '');
             set('rec-data', hojeISO());
             set('rec-numero', proximoNumero());
@@ -14328,9 +14357,52 @@ const _waitEmpresa = setInterval(() => {
             }
         }
 
-        // ---------- Bind de inputs ----------
+        // ---------- Logomarca (Configurações) ----------
+        function _setLogo(dataUri) {
+            const hidden = document.getElementById('s-logo-data');
+            const img = document.getElementById('s-logo-preview');
+            const ph = document.getElementById('s-logo-placeholder');
+            const rm = document.getElementById('s-logo-remove');
+            if (hidden) hidden.value = dataUri || '';
+            if (img) {
+                if (dataUri) { img.src = dataUri; img.style.display = 'block'; }
+                else { img.removeAttribute('src'); img.style.display = 'none'; }
+            }
+            if (ph) ph.style.display = dataUri ? 'none' : 'flex';
+            if (rm) rm.style.display = dataUri ? 'inline-flex' : 'none';
+        }
+        function handleLogo(input) {
+            const f = input.files && input.files[0];
+            if (!f) return;
+            if (!/^image\//.test(f.type)) { toast('Selecione um arquivo de imagem.', 'error'); return; }
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = new Image();
+                img.onload = () => {
+                    const max = 400;
+                    let w = img.width, h = img.height;
+                    const scale = Math.min(1, max / Math.max(w, h));
+                    w = Math.round(w * scale); h = Math.round(h * scale);
+                    const cvs = document.createElement('canvas');
+                    cvs.width = w; cvs.height = h;
+                    cvs.getContext('2d').drawImage(img, 0, 0, w, h);
+                    const isPng = /png/i.test(f.type);
+                    let out;
+                    try { out = cvs.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.9); }
+                    catch (err) { out = e.target.result; }
+                    _setLogo(out);
+                };
+                img.onerror = () => _setLogo(e.target.result);
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(f);
+            input.value = '';
+        }
+        function removeLogo() { _setLogo(''); }
+        function setLogo(v) { _setLogo(v); }
+
         function bind() {
-            ['rec-pagador', 'rec-descricao', 'rec-recebedor', 'rec-doc', 'rec-cidade', 'rec-data', 'rec-numero']
+            ['rec-pagador', 'rec-descricao', 'rec-cidade', 'rec-data', 'rec-numero']
                 .forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', atualizarPreview); });
             const v = document.getElementById('rec-valor');
             if (v) v.addEventListener('input', () => maskValor(v));
@@ -14341,11 +14413,13 @@ const _waitEmpresa = setInterval(() => {
         }
 
         window.Recibo = { abrir, fechar, baixar, compartilhar, atualizarPreview, valorPorExtenso };
+        window.FPConfig = { handleLogo, removeLogo, setLogo };
 
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
         else bind();
     })();
     </script>
+
 
 
 </body>
