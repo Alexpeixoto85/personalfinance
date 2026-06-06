@@ -14585,12 +14585,12 @@ const _waitEmpresa = setInterval(() => {
         'use strict';
 
         /* ---------- helpers ---------- */
-        const fmt = (v) => (window.Utils ? Utils.formatCurrency(v || 0) : 'R$ ' + (v||0).toFixed(2));
-        const parseM = (s) => (window.Utils ? Utils.parseCurrency(s) : parseFloat(String(s).replace(/[^\d,-]/g,'').replace(',', '.')) || 0);
-        const today = () => (window.Utils ? Utils.getToday() : new Date().toISOString().split('T')[0]);
-        const uid = () => (window.Utils ? Utils.id() : Date.now().toString(36) + Math.random().toString(36).slice(2));
-        const toast = (m, t) => (window.Utils ? Utils.toast(m, t) : alert(m));
-        const fdate = (d) => (window.Utils ? Utils.formatDate(d) : d);
+        const fmt = (v) => (Utils ? Utils.formatCurrency(v || 0) : 'R$ ' + (v||0).toFixed(2));
+        const parseM = (s) => (Utils ? Utils.parseCurrency(s) : parseFloat(String(s).replace(/[^\d,-]/g,'').replace(',', '.')) || 0);
+        const today = () => (Utils ? Utils.getToday() : new Date().toISOString().split('T')[0]);
+        const uid = () => (Utils ? Utils.id() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+        const toast = (m, t) => (Utils ? Utils.toast(m, t) : alert(m));
+        const fdate = (d) => (Utils ? Utils.formatDate(d) : d);
         const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const $ = (id) => document.getElementById(id);
 
@@ -14642,7 +14642,7 @@ const _waitEmpresa = setInterval(() => {
         };
 
         /* ---------- dados do app principal ---------- */
-        const D = () => (window.FinanceApp && FinanceApp.data) ? FinanceApp.data : { transactions: [], accounts: [], categories: [], goals: [], settings: {} };
+        const D = () => (FinanceApp && FinanceApp.data) ? FinanceApp.data : { transactions: [], accounts: [], categories: [], goals: [], settings: {} };
         const txns = () => (D().transactions || []);
         const accounts = () => (D().accounts || []);
         const categories = () => (D().categories || []);
@@ -14698,7 +14698,7 @@ const _waitEmpresa = setInterval(() => {
                 a.href = '#'; a.className = 'nav-item'; a.setAttribute('data-target', 'plus-view');
                 a.setAttribute('aria-label', 'Mais recursos');
                 a.innerHTML = '<i class="fas fa-shapes"></i> <span>Mais</span>';
-                a.onclick = function () { if (window.UI) UI.switchTab(this); FinPlus.openHub(); return false; };
+                a.onclick = function () { if (UI) UI.switchTab(this); FinPlus.openHub(); return false; };
                 nav.appendChild(a);
             }
             // view container
@@ -14758,7 +14758,7 @@ const _waitEmpresa = setInterval(() => {
         let lastUser = null;
         async function tick() {
             try {
-                const logged = window.DB && DB.currentUsername && $('login-screen') && $('login-screen').classList.contains('hidden');
+                const logged = DB && DB.currentUsername && $('login-screen') && $('login-screen').classList.contains('hidden');
                 if (logged) {
                     injectUI();
                     if (DB.currentUsername !== lastUser) {
@@ -14790,15 +14790,16 @@ const _waitEmpresa = setInterval(() => {
                 catName, accName, monthKey, curYM, totalAccounts, panelHead, setPanel } = H;
         const FPx = window.FPx = window.FPx || {};
         const Chart = window.Chart;
+        const STORES = ['debts','investments','subscriptions','snapshots','rules','txnmeta','attachments','kv'];
 
         /* utilidades comuns */
         async function reloadCore() {
-            if (!window.DB || !window.FinanceApp) return;
+            if (!DB || !FinanceApp) return;
             try {
                 FinanceApp.data.transactions = await DB.getAllTransactions();
                 FinanceApp.data.accounts = await DB.getAllAccounts();
                 FinanceApp.data.categories = await DB.getAllCategories();
-                if (window.UI && UI.renderDashboard) UI.renderDashboard();
+                if (UI && UI.renderDashboard) UI.renderDashboard();
             } catch (e) { console.warn(e); }
         }
         function mkChart(canvasId, cfg) {
@@ -15158,7 +15159,7 @@ const _waitEmpresa = setInterval(() => {
         };
         FPx.subDel = async function (id) { if (!confirm('Excluir assinatura?')) return; await PlusDB.del('subscriptions', id); FPx.subsRender(); };
         FPx.subPost = async function (id) {
-            const s = await PlusDB.get('subscriptions', id); if (!s || !window.DB) return;
+            const s = await PlusDB.get('subscriptions', id); if (!s || !DB) return;
             const t = { id: uid(), type: 'expense', amount: s.amount, date: s.nextCharge || today(), description: s.name + ' (assinatura)',
                 category: s.category, account: s.account, status: 'cleared', recurring: false };
             await DB.saveTransaction(t);
@@ -15677,6 +15678,301 @@ const _waitEmpresa = setInterval(() => {
         st.textContent = 'body.fp-hc{--border:#000;--secondary:#000}body.fp-hc.dark-mode{--border:#fff;--secondary:#cbd5e1}body.fp-hc .fp-card,body.fp-hc .fp-box{border-width:2px}body.fp-hc *{text-shadow:none!important}';
         document.head.appendChild(st);
 
+    })();
+    </script>
+
+
+    <script>
+    /* ===== FinançaPro+ — Sincronização na nuvem (GitHub Gist) ===== */
+    (function () {
+        'use strict';
+        const core = window.FinPlus; if (!core) { console.error('FinPlus core ausente (sync)'); return; }
+        const H = core._h, PlusDB = core.PlusDB;
+        const { fmt, today, uid, toast, esc, $, txns, accounts, categories, D, panelHead, setPanel } = H;
+
+        const FILE = 'financapro-sync.json';
+        const DESC = 'FinançaPro — sincronização (não editar manualmente)';
+        const SYNC_STORES = ['debts', 'investments', 'subscriptions', 'snapshots', 'rules', 'txnmeta', 'kv'];
+        // 'attachments' (Blobs) ficam só no aparelho — não entram no snapshot.
+
+        /* estado */
+        let TOKEN = null, gistId = null, enabled = false, DEVICE = null;
+        let lastPulledAt = null, lastPushedAt = null;
+        let applying = false, dirty = false, conflict = false, busy = false, patched = false;
+        let pushTimer = null, lastUser = null, pulledForUser = null, statusText = 'Não configurado';
+
+        /* GitHub API */
+        function ghHeaders() { return { 'Authorization': 'Bearer ' + TOKEN, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Content-Type': 'application/json' }; }
+        async function ghFind() {
+            const r = await fetch('https://api.github.com/gists?per_page=100', { headers: ghHeaders() });
+            if (!r.ok) throw new Error('GitHub ' + r.status + (r.status === 401 ? ' (token inválido)' : ''));
+            const arr = await r.json();
+            const g = arr.find(x => x.files && x.files[FILE]);
+            return g ? g.id : null;
+        }
+        async function ghCreate(content) {
+            const r = await fetch('https://api.github.com/gists', { method: 'POST', headers: ghHeaders(),
+                body: JSON.stringify({ description: DESC, public: false, files: { [FILE]: { content } } }) });
+            if (!r.ok) throw new Error('GitHub ' + r.status);
+            return (await r.json()).id;
+        }
+        async function ghRead(id) {
+            const r = await fetch('https://api.github.com/gists/' + id, { headers: ghHeaders() });
+            if (!r.ok) throw new Error('GitHub ' + r.status);
+            const g = await r.json(); const f = g.files && g.files[FILE]; if (!f) return null;
+            if (f.truncated && f.raw_url) { const rr = await fetch(f.raw_url); return await rr.text(); }
+            return f.content;
+        }
+        async function ghWrite(id, content) {
+            const r = await fetch('https://api.github.com/gists/' + id, { method: 'PATCH', headers: ghHeaders(),
+                body: JSON.stringify({ files: { [FILE]: { content } } }) });
+            if (!r.ok) throw new Error('GitHub ' + r.status);
+            return true;
+        }
+
+        /* snapshot */
+        async function buildSnapshot() {
+            const plus = {};
+            for (const s of SYNC_STORES) {
+                let rows = await PlusDB.getAll(s).catch(() => []);
+                if (s === 'kv') rows = rows.filter(r => !String(r.id).startsWith('sync_'));
+                plus[s] = rows;
+            }
+            return { v: 1, app: 'financapro', updatedAt: new Date().toISOString(), device: DEVICE,
+                core: { transactions: txns(), accounts: accounts(), categories: categories(), goals: D().goals || [], settings: D().settings || null }, plus };
+        }
+        async function replaceCoreEntity(getAll, save, del, rows) {
+            const local = await getAll().catch(() => []); const ids = new Set(rows.map(r => r.id));
+            for (const l of local) if (!ids.has(l.id)) await del(l.id);
+            for (const r of rows) await save(r);
+        }
+        async function replacePlus(store, rows) {
+            const local = await PlusDB.getAll(store).catch(() => []); const ids = new Set(rows.map(r => r.id));
+            for (const l of local) { if (store === 'kv' && String(l.id).startsWith('sync_')) continue; if (!ids.has(l.id)) await PlusDB.del(store, l.id); }
+            for (const r of rows) await PlusDB.put(store, r);
+        }
+        async function applySnapshot(snap) {
+            applying = true;
+            try {
+                const c = snap.core || {};
+                if (typeof DB !== 'undefined') {
+                    await replaceCoreEntity(DB.getAllTransactions, DB.saveTransaction, DB.deleteTransaction, c.transactions || []);
+                    await replaceCoreEntity(DB.getAllAccounts, DB.saveAccount, DB.deleteAccount, c.accounts || []);
+                    await replaceCoreEntity(DB.getAllCategories, DB.saveCategory, DB.deleteCategory, c.categories || []);
+                    await replaceCoreEntity(DB.getAllGoals, DB.saveGoal, DB.deleteGoal, c.goals || []);
+                    if (c.settings) await DB.saveSettings(c.settings);
+                }
+                const p = snap.plus || {};
+                for (const s of SYNC_STORES) await replacePlus(s, p[s] || []);
+                await reloadCore();
+            } finally { applying = false; }
+        }
+        async function reloadCore() {
+            if (typeof DB === 'undefined' || typeof FinanceApp === 'undefined') return;
+            try {
+                FinanceApp.data.transactions = await DB.getAllTransactions();
+                FinanceApp.data.accounts = await DB.getAllAccounts();
+                FinanceApp.data.categories = await DB.getAllCategories();
+                FinanceApp.data.goals = await DB.getAllGoals();
+                FinanceApp.data.settings = await DB.getSettings();
+                if (typeof UI !== 'undefined' && UI.renderDashboard) UI.renderDashboard();
+            } catch (e) { console.warn(e); }
+        }
+
+        /* config persistida (em kv, chaves sync_*) */
+        async function loadCfg() {
+            TOKEN = await PlusDB.kvGet('sync_token', null);
+            gistId = await PlusDB.kvGet('sync_gistId', null);
+            enabled = await PlusDB.kvGet('sync_enabled', false);
+            lastPulledAt = await PlusDB.kvGet('sync_lastPulledAt', null);
+            lastPushedAt = await PlusDB.kvGet('sync_lastPushedAt', null);
+            DEVICE = await PlusDB.kvGet('sync_device', null);
+            if (!DEVICE) { DEVICE = uid(); await PlusDB.kvSet('sync_device', DEVICE); }
+        }
+
+        /* operações */
+        async function doPull(force) {
+            if (!enabled || !TOKEN || !gistId || applying || busy) return;
+            busy = true; setStatus('Verificando nuvem…'); render();
+            try {
+                const txt = await ghRead(gistId);
+                if (txt) {
+                    const snap = JSON.parse(txt);
+                    const isNewer = force || !lastPulledAt || (snap.updatedAt && snap.updatedAt > lastPulledAt);
+                    const isOurs = snap.device === DEVICE && snap.updatedAt === lastPushedAt;
+                    if (isNewer && !isOurs) { await applySnapshot(snap); toast('Dados atualizados da nuvem'); }
+                    lastPulledAt = snap.updatedAt; await PlusDB.kvSet('sync_lastPulledAt', snap.updatedAt);
+                    conflict = false; setStatus('Sincronizado');
+                }
+            } catch (e) { console.warn(e); setStatus('Erro: ' + e.message); toast('Sincronização: ' + e.message, 'error'); }
+            busy = false; render();
+        }
+        async function doPush(forceOverwrite) {
+            if (!enabled || !TOKEN || !gistId || applying || busy) return;
+            busy = true; setStatus('Enviando…'); render();
+            try {
+                if (!forceOverwrite) {
+                    const remoteTxt = await ghRead(gistId);
+                    if (remoteTxt) { const r = JSON.parse(remoteTxt);
+                        if (r.updatedAt && lastPulledAt && r.updatedAt > lastPulledAt && r.device !== DEVICE) {
+                            conflict = true; setStatus('Conflito detectado'); busy = false; render();
+                            toast('A nuvem tem alterações de outro aparelho. Resolva o conflito.', 'error'); return;
+                        }
+                    }
+                }
+                const snap = await buildSnapshot();
+                await ghWrite(gistId, JSON.stringify(snap));
+                lastPushedAt = snap.updatedAt; lastPulledAt = snap.updatedAt;
+                await PlusDB.kvSet('sync_lastPushedAt', snap.updatedAt); await PlusDB.kvSet('sync_lastPulledAt', snap.updatedAt);
+                dirty = false; conflict = false; setStatus('Sincronizado');
+            } catch (e) { console.warn(e); setStatus('Erro: ' + e.message); toast('Falha ao enviar: ' + e.message, 'error'); }
+            busy = false; render();
+        }
+        async function syncNow() { await doPull(false); if (!conflict) await doPush(false); }
+
+        /* dirty + auto-push */
+        function markDirty() {
+            if (!enabled || applying) return;
+            dirty = true; setStatus('Alterações pendentes…'); updateCardSub();
+            clearTimeout(pushTimer); pushTimer = setTimeout(() => doPush(false), 5000);
+        }
+        function patchDataLayer() {
+            if (patched) return; patched = true;
+            try {
+                if (typeof DB !== 'undefined') {
+                    ['saveTransaction','deleteTransaction','saveAccount','deleteAccount','saveCategory','deleteCategory','saveGoal','deleteGoal','saveSettings']
+                    .forEach(fn => { if (typeof DB[fn] === 'function') { const o = DB[fn]; DB[fn] = async function (...a) { const r = await o.apply(DB, a); markDirty(); return r; }; } });
+                }
+                const op = PlusDB.put, od = PlusDB.del;
+                PlusDB.put = async function (s, obj) { const r = await op.call(PlusDB, s, obj); if (!(s === 'kv' && obj && String(obj.id).startsWith('sync_'))) markDirty(); return r; };
+                PlusDB.del = async function (s, id) { const r = await od.call(PlusDB, s, id); markDirty(); return r; };
+            } catch (e) { console.warn('patch sync falhou', e); }
+        }
+
+        /* conectar / desconectar */
+        async function connect(token) {
+            if (!token) { toast('Cole o token', 'error'); return; }
+            busy = true; setStatus('Conectando…'); render();
+            try {
+                TOKEN = token.trim(); await PlusDB.kvSet('sync_token', TOKEN);
+                let id = await PlusDB.kvGet('sync_gistId', null);
+                if (!id) id = await ghFind();
+                let created = false;
+                if (!id) { const snap = await buildSnapshot(); id = await ghCreate(JSON.stringify(snap)); lastPushedAt = snap.updatedAt; lastPulledAt = snap.updatedAt; await PlusDB.kvSet('sync_lastPushedAt', snap.updatedAt); await PlusDB.kvSet('sync_lastPulledAt', snap.updatedAt); created = true; }
+                gistId = id; await PlusDB.kvSet('sync_gistId', id);
+                enabled = true; await PlusDB.kvSet('sync_enabled', true);
+                patchDataLayer();
+                busy = false;
+                if (!created) await doPull(true); // entrou numa sincronização existente: nuvem manda
+                setStatus('Sincronizado'); toast('Sincronização ativada'); render();
+            } catch (e) { busy = false; console.warn(e); setStatus('Erro: ' + e.message); toast('Falha: ' + e.message, 'error'); render(); }
+        }
+        async function disconnect() {
+            enabled = false; await PlusDB.kvSet('sync_enabled', false);
+            setStatus('Desconectado'); toast('Sincronização desligada'); render();
+        }
+        async function forget() {
+            enabled = false;
+            for (const k of ['sync_token', 'sync_gistId', 'sync_enabled', 'sync_lastPulledAt', 'sync_lastPushedAt']) await PlusDB.del('kv', k).catch(() => {});
+            TOKEN = null; gistId = null; lastPulledAt = null; lastPushedAt = null;
+            setStatus('Não configurado'); toast('Credenciais removidas deste aparelho'); render();
+        }
+
+        /* UI */
+        function setStatus(s) { statusText = s; const e = $('sync-status'); if (e) e.textContent = s; updateCardSub(); }
+        function fmtWhen(iso) { if (!iso) return '—'; try { return new Date(iso).toLocaleString('pt-BR'); } catch (e) { return iso; } }
+        function isOpen() { return !!$('sync-root'); }
+        function render() { if (isOpen()) renderPanel(); }
+        function updateCardSub() {
+            const sub = $('sync-card-sub'); if (sub) sub.textContent = !enabled ? 'Multi-dispositivo (desligada)' : conflict ? '⚠️ conflito' : dirty ? 'enviando…' : 'ativa · ' + (lastPushedAt ? fmtWhen(lastPushedAt).split(' ')[0] : 'ok');
+            const dot = $('sync-dot'); if (dot) dot.innerHTML = enabled ? (conflict ? '⚠️' : '🟢') : '';
+        }
+
+        function renderPanel() {
+            if (!enabled) {
+                setPanel(panelHead('Sincronização na nuvem', 'Seus dados em todos os aparelhos — sem servidor próprio') + `
+                    <div id="sync-root">
+                    <div class="fp-box"><h4><i class="fas fa-cloud"></i> Como funciona</h4>
+                        <div class="fp-mini" style="line-height:1.6">Usa um <strong>Gist privado do GitHub</strong> como cofre dos seus dados (grátis e durável). O app envia e baixa um backup automaticamente, mantendo todos os aparelhos iguais. Funciona no celular também.</div></div>
+                    <div class="fp-box"><h4><i class="fas fa-list-ol"></i> Configurar (uma vez)</h4>
+                        <div class="fp-mini" style="line-height:1.7">
+                        1. Tenha uma conta no <strong>github.com</strong> (grátis).<br>
+                        2. Abra <a href="https://github.com/settings/tokens/new?scopes=gist&description=FinancaPro" target="_blank" style="color:var(--primary);font-weight:700">este link</a> para gerar um <strong>token</strong> (o escopo <em>gist</em> já vem marcado). Defina validade e clique em <em>Generate token</em>.<br>
+                        3. Copie o token (começa com <code>ghp_</code>) e cole abaixo.<br>
+                        4. Nos <strong>outros aparelhos</strong>, cole o <strong>mesmo token</strong> — eles acham o cofre sozinhos.</div>
+                        <label class="fp-label">Token do GitHub</label>
+                        <input id="sync-token" class="fp-input" type="password" placeholder="ghp_...">
+                        <button class="fp-btn" style="margin-top:12px" onclick="FPxSync.connect(document.getElementById('sync-token').value)"><i class="fas fa-plug"></i> Conectar e sincronizar</button>
+                        <div class="fp-mini" style="margin-top:10px;color:var(--expense)"><i class="fas fa-triangle-exclamation"></i> Ao conectar este aparelho a uma sincronização que já existe, os dados da nuvem <strong>substituem</strong> os locais. Conecte primeiro o aparelho que tem os dados certos.</div>
+                        <div class="fp-mini"><i class="fas fa-shield-halved"></i> O token fica salvo só neste aparelho. Use o escopo apenas <em>gist</em> para limitar o acesso. Para revogar, exclua o token no GitHub.</div>
+                    </div></div>`);
+                return;
+            }
+            setPanel(panelHead('Sincronização na nuvem', 'Ativa via GitHub Gist') + `
+                <div id="sync-root">
+                ${conflict ? `<div class="fp-box" style="border-color:var(--expense)"><h4 style="color:var(--expense)"><i class="fas fa-triangle-exclamation"></i> Conflito</h4>
+                    <div class="fp-mini">A nuvem foi alterada por outro aparelho depois da sua última sincronização. Escolha qual versão vale:</div>
+                    <button class="fp-btn" style="margin-top:10px" onclick="FPxSync.resolvePull()"><i class="fas fa-cloud-arrow-down"></i> Usar a da nuvem (descarta as deste aparelho)</button>
+                    <button class="fp-btn danger" style="margin-top:8px" onclick="FPxSync.resolvePush()"><i class="fas fa-cloud-arrow-up"></i> Usar a deste aparelho (sobrescreve a nuvem)</button></div>` : ''}
+                <div class="fp-box"><div class="fp-kpi">
+                    <div><div class="k">Status</div><div class="v" id="sync-status" style="font-size:.95rem">${esc(statusText)}</div></div>
+                    <div><div class="k">Último envio</div><div class="v" style="font-size:.9rem">${fmtWhen(lastPushedAt)}</div></div></div>
+                    <button class="fp-btn" style="margin-top:12px" ${busy ? 'disabled' : ''} onclick="FPxSync.syncNow()"><i class="fas fa-arrows-rotate"></i> Sincronizar agora</button>
+                    <div class="fp-row" style="margin-top:8px"><button class="fp-btn out" onclick="FPxSync.pull()"><i class="fas fa-cloud-arrow-down"></i> Baixar</button>
+                    <button class="fp-btn out" onclick="FPxSync.push()"><i class="fas fa-cloud-arrow-up"></i> Enviar</button></div>
+                </div>
+                <div class="fp-box"><div class="fp-mini" style="line-height:1.6">Envio automático após alterações (poucos segundos) e baixa automática ao abrir o app ou voltar para ele. Resolução por “último a salvar vence” — evite editar dois aparelhos ao mesmo tempo sem sincronizar.</div>
+                    <button class="fp-btn out" style="margin-top:10px" onclick="FPxSync.disconnect()"><i class="fas fa-pause"></i> Pausar neste aparelho</button>
+                    <button class="fp-btn out" style="margin-top:8px;color:var(--expense)" onclick="FPxSync.forget()"><i class="fas fa-trash"></i> Remover token deste aparelho</button>
+                </div></div>`);
+        }
+
+        /* card no hub */
+        const _origHub = core.openHub.bind(core);
+        core.openHub = function () { _origHub(); try { addSyncCard(); } catch (e) {} };
+        function addSyncCard() {
+            const v = $('plus-view'); if (!v || $('sync-card')) return;
+            const wrap = document.createElement('div');
+            wrap.innerHTML = '<div class="fp-section-title">Nuvem</div><div class="fp-hub-grid">'
+                + '<button class="fp-card" id="sync-card" onclick="FinPlus.open(\'sync\')" aria-label="Sincronização na nuvem">'
+                + '<div class="fp-ic" style="background:#0ea5e9"><i class="fas fa-cloud"></i></div>'
+                + '<div class="fp-t">Sincronização <span id="sync-dot"></span></div>'
+                + '<div class="fp-d" id="sync-card-sub">Multi-dispositivo</div></button></div>';
+            const intro = v.firstElementChild;
+            if (intro && intro.nextSibling) v.insertBefore(wrap, intro.nextSibling); else v.appendChild(wrap);
+            updateCardSub();
+        }
+
+        /* handlers expostos */
+        window.FPxSync = {
+            connect, disconnect, forget, syncNow,
+            pull: () => doPull(false), push: () => doPush(false),
+            resolvePull: async () => { conflict = false; await doPull(true); },
+            resolvePush: async () => { conflict = false; await doPush(true); }
+        };
+        core._reg('sync', renderPanel);
+
+        /* inicialização + automações */
+        async function initForUser() {
+            await loadCfg();
+            if (enabled && TOKEN && gistId) { patchDataLayer(); await doPull(true); }
+            else setStatus(enabled ? 'Configuração incompleta' : (TOKEN ? 'Pausada' : 'Não configurado'));
+        }
+        setInterval(async () => {
+            try {
+                const ready = (typeof DB !== 'undefined') && DB.currentUsername && $('login-screen') && $('login-screen').classList.contains('hidden') && PlusDB.db;
+                if (!ready) return;
+                if (DB.currentUsername !== lastUser) { lastUser = DB.currentUsername; enabled = false; conflict = false; dirty = false; }
+                if (pulledForUser !== lastUser && PlusDB.user === lastUser) { pulledForUser = lastUser; await initForUser(); }
+            } catch (e) { /* silencioso */ }
+        }, 1000);
+
+        document.addEventListener('visibilitychange', () => {
+            if (!enabled) return;
+            if (document.hidden) { if (dirty && !busy) doPush(false); }   // flush ao sair (melhor esforço)
+            else if (!busy) doPull(false);                                 // baixa ao voltar
+        });
+        setInterval(() => { if (enabled && !document.hidden && !busy && !dirty) doPull(false); }, 180000);
     })();
     </script>
 
