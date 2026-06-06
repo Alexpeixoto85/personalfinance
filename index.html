@@ -8911,6 +8911,17 @@
                 document.getElementById('s-phone').value = s.phone || '';
                 document.getElementById('s-email').value = s.email || '';
                 if (window.FPConfig) FPConfig.setLogo(s.logo || '');
+                
+                // Atualizar Apple Touch Icon ao carregar configuracoes
+                if (s.logo) {
+                    let link = document.querySelector('link[rel="apple-touch-icon"]');
+                    if (!link) {
+                        link = document.createElement('link');
+                        link.rel = 'apple-touch-icon';
+                        document.head.appendChild(link);
+                    }
+                    link.href = s.logo;
+                }
 
                 // Atualiza estado da biometria
                 Auth.refreshSettingsBiometricUI();
@@ -9900,6 +9911,17 @@
                     try {
                         await DB.saveSettings(settings);
                         FinanceApp.data.settings = settings;
+                        
+                        // Atualizar Apple Touch Icon se houver logo
+                        if (settings.logo) {
+                            let link = document.querySelector('link[rel="apple-touch-icon"]');
+                            if (!link) {
+                                link = document.createElement('link');
+                                link.rel = 'apple-touch-icon';
+                                document.head.appendChild(link);
+                            }
+                            link.href = settings.logo;
+                        }
                         
                         Utils.toast('Configurações salvas!');
                         UI.closeModals();
@@ -14409,6 +14431,17 @@ const _waitEmpresa = setInterval(() => {
             }
             if (ph) ph.style.display = dataUri ? 'none' : 'flex';
             if (rm) rm.style.display = dataUri ? 'inline-flex' : 'none';
+            
+            // Atualizar Apple Touch Icon dinamicamente
+            if (dataUri) {
+                let link = document.querySelector('link[rel="apple-touch-icon"]');
+                if (!link) {
+                    link = document.createElement('link');
+                    link.rel = 'apple-touch-icon';
+                    document.head.appendChild(link);
+                }
+                link.href = dataUri;
+            }
         }
         function handleLogo(input) {
             const f = input.files && input.files[0];
