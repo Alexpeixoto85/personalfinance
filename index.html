@@ -14503,5 +14503,1182 @@ const _waitEmpresa = setInterval(() => {
 
 
 
+
+    <!-- ============================================================= -->
+    <!-- ============  FinançaPro+  (módulo de extensão)  ============ -->
+    <!-- Recursos adicionais 100% locais (HTML + IndexedDB).           -->
+    <!-- Banco isolado por usuário: FinancaProDB_<user>_plus            -->
+    <!-- Não altera o schema existente (v7). Tudo em DOM injetado.      -->
+    <!-- ============================================================= -->
+    <style>
+        /* Hub */
+        #plus-view { padding: 16px; padding-bottom: calc(var(--nav-height) + 20px); }
+        .fp-hub-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .fp-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-md); padding: 14px; cursor: pointer;
+            display: flex; flex-direction: column; gap: 8px; transition: transform .12s, box-shadow .12s;
+            box-shadow: var(--shadow-sm); text-align: left; min-height: 96px;
+        }
+        .fp-card:active { transform: scale(.97); }
+        .fp-card:hover { box-shadow: var(--shadow-md); }
+        .fp-card .fp-ic { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; color: #fff; }
+        .fp-card .fp-t { font-weight: 700; font-size: .92rem; color: var(--dark); line-height: 1.15; }
+        .fp-card .fp-d { font-size: .72rem; color: var(--secondary); line-height: 1.25; }
+        .fp-section-title { font-size: .78rem; font-weight: 700; color: var(--secondary); text-transform: uppercase; letter-spacing: .04em; margin: 18px 4px 8px; }
+
+        /* Panel (sub-página dentro do hub) */
+        .fp-panel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .fp-back { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--dark); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        .fp-panel-title { font-size: 1.1rem; font-weight: 800; color: var(--dark); }
+        .fp-panel-sub { font-size: .78rem; color: var(--secondary); }
+
+        .fp-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 12px; box-shadow: var(--shadow-sm); }
+        .fp-box h4 { font-size: .9rem; color: var(--dark); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .fp-row { display: flex; gap: 8px; }
+        .fp-row > * { flex: 1; }
+        .fp-label { font-size: .74rem; font-weight: 600; color: var(--secondary); margin: 8px 0 4px; display: block; }
+        .fp-input, .fp-select {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+            background: var(--surface); color: var(--dark); font-size: .9rem; font-family: inherit;
+        }
+        .fp-input:focus, .fp-select:focus { outline: none; border-color: var(--primary); }
+        .fp-btn { width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--primary); color: #fff; font-weight: 700; font-size: .9rem; cursor: pointer; font-family: inherit; }
+        .fp-btn:active { opacity: .85; }
+        .fp-btn.sec { background: var(--secondary); }
+        .fp-btn.out { background: transparent; border: 1px solid var(--border); color: var(--dark); }
+        .fp-btn.danger { background: var(--expense); }
+        .fp-btn.sm { padding: 8px 10px; font-size: .8rem; width: auto; }
+
+        .fp-item { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+        .fp-item:last-child { border-bottom: none; }
+        .fp-item .fp-item-main { flex: 1; min-width: 0; }
+        .fp-item .fp-item-name { font-weight: 600; color: var(--dark); font-size: .9rem; }
+        .fp-item .fp-item-sub { font-size: .75rem; color: var(--secondary); }
+        .fp-item .fp-item-val { font-weight: 700; font-size: .92rem; text-align: right; white-space: nowrap; }
+
+        .fp-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: .72rem; font-weight: 600; background: var(--light); color: var(--secondary); }
+        .fp-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; font-size: .72rem; font-weight: 600; background: #ede9fe; color: #6d28d9; margin: 2px; }
+        body.dark-mode .fp-tag { background: #2e1065; color: #c4b5fd; }
+        .fp-tag i { cursor: pointer; opacity: .7; }
+
+        .fp-bar-track { height: 9px; background: var(--border); border-radius: 5px; overflow: hidden; margin-top: 6px; }
+        .fp-bar-fill { height: 100%; border-radius: 5px; transition: width .3s; }
+        .fp-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(0,1fr)); gap: 10px; }
+        .fp-kpi > div { background: var(--light); border-radius: 10px; padding: 11px; }
+        .fp-kpi .k { font-size: .68rem; color: var(--secondary); font-weight: 600; text-transform: uppercase; }
+        .fp-kpi .v { font-size: 1.05rem; font-weight: 800; color: var(--dark); margin-top: 2px; }
+        .fp-empty { text-align: center; padding: 28px 12px; color: var(--secondary); font-size: .85rem; }
+        .fp-empty i { font-size: 2rem; opacity: .35; display: block; margin-bottom: 8px; }
+        .fp-chart-wrap { position: relative; height: 220px; }
+        .fp-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+        .fp-table th, .fp-table td { padding: 7px 6px; text-align: left; border-bottom: 1px solid var(--border); color: var(--dark); }
+        .fp-table th { color: var(--secondary); font-weight: 700; font-size: .72rem; text-transform: uppercase; }
+        .fp-check { width: 20px; height: 20px; accent-color: var(--primary); }
+        .fp-mini { font-size: .72rem; color: var(--secondary); margin-top: 6px; line-height: 1.4; }
+        /* nav scroll defensivo (caso fique apertado) */
+        .bottom-nav { overflow-x: auto; }
+    </style>
+
+    <script>
+    (function () {
+        'use strict';
+
+        /* ---------- helpers ---------- */
+        const fmt = (v) => (window.Utils ? Utils.formatCurrency(v || 0) : 'R$ ' + (v||0).toFixed(2));
+        const parseM = (s) => (window.Utils ? Utils.parseCurrency(s) : parseFloat(String(s).replace(/[^\d,-]/g,'').replace(',', '.')) || 0);
+        const today = () => (window.Utils ? Utils.getToday() : new Date().toISOString().split('T')[0]);
+        const uid = () => (window.Utils ? Utils.id() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+        const toast = (m, t) => (window.Utils ? Utils.toast(m, t) : alert(m));
+        const fdate = (d) => (window.Utils ? Utils.formatDate(d) : d);
+        const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const $ = (id) => document.getElementById(id);
+
+        /* ---------- PlusDB: banco isolado por usuário ---------- */
+        const STORES = ['debts','investments','subscriptions','snapshots','rules','txnmeta','attachments','kv'];
+        const PlusDB = {
+            db: null, user: null,
+            open(username) {
+                return new Promise((resolve, reject) => {
+                    if (PlusDB.db && PlusDB.user === username) return resolve();
+                    if (PlusDB.db) { try { PlusDB.db.close(); } catch (e) {} PlusDB.db = null; }
+                    PlusDB.user = username;
+                    const req = indexedDB.open('FinancaProDB_' + username + '_plus', 1);
+                    req.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        STORES.forEach(s => { if (!db.objectStoreNames.contains(s)) {
+                            const os = db.createObjectStore(s, { keyPath: 'id' });
+                            if (s === 'attachments') os.createIndex('txnId', 'txnId', { unique: false });
+                            if (s === 'snapshots') os.createIndex('ym', 'ym', { unique: false });
+                        }});
+                    };
+                    req.onsuccess = () => { PlusDB.db = req.result; resolve(); };
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            _op(store, mode, fn) {
+                return new Promise((resolve, reject) => {
+                    if (!PlusDB.db) return reject(new Error('PlusDB fechado'));
+                    const tx = PlusDB.db.transaction([store], mode);
+                    const r = fn(tx.objectStore(store));
+                    r.onsuccess = () => resolve(r.result);
+                    r.onerror = () => reject(r.error);
+                });
+            },
+            getAll: (s) => PlusDB._op(s, 'readonly', st => st.getAll()),
+            get: (s, id) => PlusDB._op(s, 'readonly', st => st.get(id)),
+            put: (s, o) => PlusDB._op(s, 'readwrite', st => st.put(o)),
+            del: (s, id) => PlusDB._op(s, 'readwrite', st => st.delete(id)),
+            byIndex(store, index, val) {
+                return new Promise((resolve, reject) => {
+                    const tx = PlusDB.db.transaction([store], 'readonly');
+                    const r = tx.objectStore(store).index(index).getAll(val);
+                    r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error);
+                });
+            },
+            // chave-valor simples para configs do módulo
+            async kvGet(key, def) { try { const o = await PlusDB.get('kv', key); return o ? o.value : def; } catch (e) { return def; } },
+            async kvSet(key, value) { return PlusDB.put('kv', { id: key, value }); }
+        };
+
+        /* ---------- dados do app principal ---------- */
+        const D = () => (window.FinanceApp && FinanceApp.data) ? FinanceApp.data : { transactions: [], accounts: [], categories: [], goals: [], settings: {} };
+        const txns = () => (D().transactions || []);
+        const accounts = () => (D().accounts || []);
+        const categories = () => (D().categories || []);
+        const catName = (id) => { const c = categories().find(c => c.id === id); return c ? c.name : (id || '—'); };
+        const accName = (id) => { const a = accounts().find(a => a.id === id); return a ? a.name : (id || '—'); };
+        const monthKey = (d) => (d || '').slice(0, 7);
+        const curYM = () => new Date().toISOString().slice(0, 7);
+
+        // saldo total das contas (mesma lógica do app: usa o campo balance armazenado)
+        const totalAccounts = () => accounts().reduce((s, a) => s + (a.balance || 0), 0);
+
+        /* ---------- catálogo de recursos ---------- */
+        const FEATURES = [
+            { grp: 'Organização', items: [
+                { id: 'search',   t: 'Busca avançada', d: 'Filtros combinados + exportar', ic: 'fa-magnifying-glass', c: '#3b82f6' },
+                { id: 'tags',     t: 'Etiquetas (tags)', d: 'Marque transações', ic: 'fa-tags', c: '#8b5cf6' },
+                { id: 'attach',   t: 'Comprovantes', d: 'Anexe notas e recibos', ic: 'fa-paperclip', c: '#0ea5e9' },
+                { id: 'reconcile',t: 'Conciliação', d: 'Confira com o extrato', ic: 'fa-clipboard-check', c: '#10b981' },
+            ]},
+            { grp: 'Planejamento', items: [
+                { id: 'rule503020', t: 'Regra 50/30/20', d: 'Necessidades/desejos/poupança', ic: 'fa-chart-pie', c: '#f59e0b' },
+                { id: 'reserve',  t: 'Reserva de emergência', d: 'Meta em meses de despesa', ic: 'fa-shield-halved', c: '#10b981' },
+                { id: 'subs',     t: 'Assinaturas', d: 'Gastos recorrentes fixos', ic: 'fa-rotate', c: '#ec4899' },
+                { id: 'debts',    t: 'Dívidas & financiamentos', d: 'Amortização + quitação', ic: 'fa-hand-holding-dollar', c: '#ef4444' },
+                { id: 'cashflow', t: 'Projeção de caixa', d: 'Saldo futuro estimado', ic: 'fa-chart-line', c: '#6366f1' },
+            ]},
+            { grp: 'Patrimônio', items: [
+                { id: 'invest',   t: 'Carteira de investimentos', d: 'Posições + rentabilidade', ic: 'fa-arrow-trend-up', c: '#3b82f6' },
+                { id: 'networth', t: 'Patrimônio líquido', d: 'Evolução mês a mês', ic: 'fa-scale-balanced', c: '#059669' },
+            ]},
+            { grp: 'Automação & dados', items: [
+                { id: 'rules',    t: 'Regras de categoria', d: 'Classificação automática', ic: 'fa-wand-magic-sparkles', c: '#8b5cf6' },
+                { id: 'import',   t: 'Importar extrato', d: 'OFX / CSV do banco', ic: 'fa-file-import', c: '#0ea5e9' },
+                { id: 'exportcsv',t: 'Exportar CSV', d: 'Transações para Excel', ic: 'fa-file-csv', c: '#16a34a' },
+                { id: 'crypto',   t: 'Backup criptografado', d: 'AES-GCM com senha', ic: 'fa-lock', c: '#475569' },
+            ]},
+            { grp: 'Ferramentas', items: [
+                { id: 'currency', t: 'Multimoeda', d: 'Conversor + câmbio', ic: 'fa-coins', c: '#f59e0b' },
+                { id: 'reminders',t: 'Lembretes', d: 'Vencimentos próximos', ic: 'fa-bell', c: '#ec4899' },
+                { id: 'a11y',     t: 'Acessibilidade', d: 'Fonte e contraste', ic: 'fa-universal-access', c: '#0891b2' },
+            ]},
+        ];
+
+        /* ---------- injeção de UI (nav + view) ---------- */
+        let injected = false;
+        function injectUI() {
+            if (injected) return; injected = true;
+
+            // nav item
+            const nav = document.querySelector('.bottom-nav');
+            if (nav && !document.querySelector('.nav-item[data-target="plus-view"]')) {
+                const a = document.createElement('a');
+                a.href = '#'; a.className = 'nav-item'; a.setAttribute('data-target', 'plus-view');
+                a.setAttribute('aria-label', 'Mais recursos');
+                a.innerHTML = '<i class="fas fa-shapes"></i> <span>Mais</span>';
+                a.onclick = function () { if (window.UI) UI.switchTab(this); FinPlus.openHub(); return false; };
+                nav.appendChild(a);
+            }
+            // view container
+            if (!$('plus-view')) {
+                const v = document.createElement('div');
+                v.id = 'plus-view'; v.className = 'view'; v.setAttribute('role', 'region'); v.setAttribute('aria-label', 'Recursos avançados');
+                // inserir após a última .view
+                const views = document.querySelectorAll('.view');
+                const last = views[views.length - 1];
+                (last && last.parentNode ? last.parentNode : document.body).insertBefore(v, last ? last.nextSibling : null);
+            }
+        }
+
+        /* ---------- HUB ---------- */
+        function renderHub() {
+            const v = $('plus-view'); if (!v) return;
+            let html = '<div style="margin-bottom:14px;"><div style="font-size:1.3rem;font-weight:800;color:var(--dark);">Mais recursos</div>'
+                     + '<div class="fp-panel-sub">Gestão financeira completa — tudo offline, no seu dispositivo.</div></div>';
+            FEATURES.forEach(g => {
+                html += `<div class="fp-section-title">${g.grp}</div><div class="fp-hub-grid">`;
+                g.items.forEach(f => {
+                    html += `<button class="fp-card" onclick="FinPlus.open('${f.id}')" aria-label="${esc(f.t)}">
+                        <div class="fp-ic" style="background:${f.c}"><i class="fas ${f.ic}"></i></div>
+                        <div class="fp-t">${f.t}</div><div class="fp-d">${f.d}</div></button>`;
+                });
+                html += '</div>';
+            });
+            v.innerHTML = html;
+        }
+
+        function panelHead(title, sub) {
+            return `<div class="fp-panel-head">
+                <button class="fp-back" onclick="FinPlus.openHub()" aria-label="Voltar"><i class="fas fa-arrow-left"></i></button>
+                <div><div class="fp-panel-title">${title}</div>${sub ? `<div class="fp-panel-sub">${sub}</div>` : ''}</div></div>`;
+        }
+        function setPanel(html) { const v = $('plus-view'); if (v) { v.innerHTML = html; v.scrollTop = 0; } }
+        function destroyCharts() { Object.values(charts).forEach(c => { try { c.destroy(); } catch (e) {} }); charts = {}; }
+        let charts = {};
+
+        /* ---------- router ---------- */
+        const PANELS = {}; // preenchido pelos módulos de recurso
+
+        const FinPlus = {
+            PlusDB, charts,
+            openHub() { destroyCharts(); renderHub(); },
+            open(id) {
+                destroyCharts();
+                if (PANELS[id]) { try { PANELS[id](); } catch (e) { console.error(e); toast('Erro ao abrir recurso', 'error'); } }
+                else toast('Recurso indisponível', 'error');
+            },
+            _reg(id, fn) { PANELS[id] = fn; },
+            _h: { fmt, parseM, today, uid, toast, fdate, esc, $, D, txns, accounts, categories, catName, accName, monthKey, curYM, totalAccounts, panelHead, setPanel, charts: () => charts, setChart: (k, c) => { charts[k] = c; } }
+        };
+        window.FinPlus = FinPlus;
+
+        /* ---------- inicialização: aguarda login e abre PlusDB ---------- */
+        let lastUser = null;
+        async function tick() {
+            try {
+                const logged = window.DB && DB.currentUsername && $('login-screen') && $('login-screen').classList.contains('hidden');
+                if (logged) {
+                    injectUI();
+                    if (DB.currentUsername !== lastUser) {
+                        lastUser = DB.currentUsername;
+                        await PlusDB.open(DB.currentUsername);
+                        try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+                        FinPlus._applyA11y && FinPlus._applyA11y();
+                    }
+                }
+            } catch (e) { /* silencioso */ }
+        }
+        setInterval(tick, 800);
+        if (document.readyState !== 'loading') tick(); else document.addEventListener('DOMContentLoaded', tick);
+
+        /* os módulos de recurso registram-se abaixo via FinPlus._reg(...) */
+        window.__FinPlusCore = { PlusDB, FinPlus, helpers: FinPlus._h };
+    })();
+    </script>
+
+
+    <script>
+    /* ===== FinançaPro+ — módulos de recurso ===== */
+    (function () {
+        'use strict';
+        const core = window.FinPlus; if (!core) { console.error('FinPlus core ausente'); return; }
+        const H = core._h, PlusDB = core.PlusDB;
+        const reg = (id, fn) => core._reg(id, fn);
+        const { fmt, parseM, today, uid, toast, fdate, esc, $, txns, accounts, categories,
+                catName, accName, monthKey, curYM, totalAccounts, panelHead, setPanel } = H;
+        const FPx = window.FPx = window.FPx || {};
+        const Chart = window.Chart;
+
+        /* utilidades comuns */
+        async function reloadCore() {
+            if (!window.DB || !window.FinanceApp) return;
+            try {
+                FinanceApp.data.transactions = await DB.getAllTransactions();
+                FinanceApp.data.accounts = await DB.getAllAccounts();
+                FinanceApp.data.categories = await DB.getAllCategories();
+                if (window.UI && UI.renderDashboard) UI.renderDashboard();
+            } catch (e) { console.warn(e); }
+        }
+        function mkChart(canvasId, cfg) {
+            if (!Chart) return; const el = $(canvasId); if (!el) return;
+            const c = new Chart(el.getContext('2d'), cfg); H.setChart(canvasId, c);
+        }
+        function download(filename, blob) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 4000);
+        }
+        function lastNMonthsKeys(n) {
+            const out = []; const d = new Date();
+            for (let i = n - 1; i >= 0; i--) { const x = new Date(d.getFullYear(), d.getMonth() - i, 1); out.push(x.toISOString().slice(0, 7)); }
+            return out;
+        }
+        function monthExpense(ym) { return txns().filter(t => t.type === 'expense' && monthKey(t.date) === ym).reduce((s, t) => s + (t.amount || 0), 0); }
+        function monthIncome(ym) { return txns().filter(t => t.type === 'income' && monthKey(t.date) === ym).reduce((s, t) => s + (t.amount || 0), 0); }
+        function expenseCatOptions(sel) {
+            return categories().filter(c => c.type === 'expense' || !c.type)
+                .map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+        }
+        function accountOptions(sel) {
+            return accounts().map(a => `<option value="${a.id}" ${sel === a.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
+        }
+
+        /* ---------- meta de transação (tags / conciliação) ---------- */
+        async function getMeta(id) { try { return (await PlusDB.get('txnmeta', id)) || { id, tags: [], reconciled: false }; } catch (e) { return { id, tags: [], reconciled: false }; } }
+        async function allMeta() { try { return await PlusDB.getAll('txnmeta'); } catch (e) { return []; } }
+        async function saveMeta(m) { return PlusDB.put('txnmeta', m); }
+
+        /* =================================================================
+           1. BUSCA AVANÇADA
+        ================================================================= */
+        reg('search', async () => {
+            const metas = await allMeta();
+            const tagSet = new Set(); metas.forEach(m => (m.tags || []).forEach(t => tagSet.add(t)));
+            setPanel(panelHead('Busca avançada', 'Filtros combinados sobre todas as transações') + `
+                <div class="fp-box">
+                    <label class="fp-label">Texto na descrição</label>
+                    <input id="sx-text" class="fp-input" placeholder="ex.: mercado, uber...">
+                    <div class="fp-row">
+                        <div><label class="fp-label">Tipo</label><select id="sx-type" class="fp-select">
+                            <option value="">Todos</option><option value="income">Receita</option><option value="expense">Despesa</option></select></div>
+                        <div><label class="fp-label">Conta</label><select id="sx-acc" class="fp-select"><option value="">Todas</option>${accountOptions()}</select></div>
+                    </div>
+                    <div class="fp-row">
+                        <div><label class="fp-label">Categoria</label><select id="sx-cat" class="fp-select"><option value="">Todas</option>${categories().map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div>
+                        <div><label class="fp-label">Tag</label><select id="sx-tag" class="fp-select"><option value="">Todas</option>${[...tagSet].map(t => `<option>${esc(t)}</option>`).join('')}</select></div>
+                    </div>
+                    <div class="fp-row">
+                        <div><label class="fp-label">De</label><input type="date" id="sx-from" class="fp-input"></div>
+                        <div><label class="fp-label">Até</label><input type="date" id="sx-to" class="fp-input"></div>
+                    </div>
+                    <div class="fp-row">
+                        <div><label class="fp-label">Valor mín.</label><input id="sx-min" class="fp-input" placeholder="0,00"></div>
+                        <div><label class="fp-label">Valor máx.</label><input id="sx-max" class="fp-input" placeholder="0,00"></div>
+                    </div>
+                    <button class="fp-btn" style="margin-top:12px" onclick="FPx.runSearch()"><i class="fas fa-magnifying-glass"></i> Buscar</button>
+                </div>
+                <div id="sx-results"></div>`);
+        });
+        FPx._lastSearch = [];
+        FPx.runSearch = async function () {
+            const text = ($('sx-text').value || '').toLowerCase().trim();
+            const type = $('sx-type').value, acc = $('sx-acc').value, cat = $('sx-cat').value, tag = $('sx-tag').value;
+            const from = $('sx-from').value, to = $('sx-to').value;
+            const min = $('sx-min').value ? parseM($('sx-min').value) : null;
+            const max = $('sx-max').value ? parseM($('sx-max').value) : null;
+            let metaByTag = null;
+            if (tag) { const ms = await allMeta(); metaByTag = new Set(ms.filter(m => (m.tags || []).includes(tag)).map(m => m.id)); }
+            let res = txns().filter(t => {
+                if (text && !(t.description || '').toLowerCase().includes(text)) return false;
+                if (type && t.type !== type) return false;
+                if (acc && t.account !== acc) return false;
+                if (cat && t.category !== cat) return false;
+                if (from && (t.date || '') < from) return false;
+                if (to && (t.date || '') > to) return false;
+                if (min != null && (t.amount || 0) < min) return false;
+                if (max != null && (t.amount || 0) > max) return false;
+                if (metaByTag && !metaByTag.has(t.id)) return false;
+                return true;
+            }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            FPx._lastSearch = res;
+            const inc = res.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+            const exp = res.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+            let html = `<div class="fp-box"><div class="fp-kpi">
+                <div><div class="k">Resultados</div><div class="v">${res.length}</div></div>
+                <div><div class="k">Receitas</div><div class="v" style="color:var(--income)">${fmt(inc)}</div></div>
+                <div><div class="k">Despesas</div><div class="v" style="color:var(--expense)">${fmt(exp)}</div></div>
+                <div><div class="k">Saldo</div><div class="v">${fmt(inc - exp)}</div></div></div>
+                <button class="fp-btn out sm" style="margin-top:10px" onclick="FPx.exportSearch()"><i class="fas fa-file-csv"></i> Exportar resultados</button></div>`;
+            if (!res.length) html += '<div class="fp-empty"><i class="fas fa-inbox"></i>Nenhuma transação encontrada</div>';
+            else {
+                html += '<div class="fp-box">' + res.slice(0, 300).map(t => `
+                    <div class="fp-item"><div class="fp-item-main">
+                        <div class="fp-item-name">${esc(t.description || '—')}</div>
+                        <div class="fp-item-sub">${fdate(t.date)} · ${esc(catName(t.category))} · ${esc(accName(t.account))}</div>
+                    </div><div class="fp-item-val" style="color:${t.type === 'income' ? 'var(--income)' : 'var(--expense)'}">${t.type === 'income' ? '+' : '-'}${fmt(t.amount)}</div></div>`).join('') + '</div>';
+            }
+            $('sx-results').innerHTML = html;
+        };
+        FPx.exportSearch = function () { FPx._exportTxns(FPx._lastSearch, 'busca'); };
+
+        /* =================================================================
+           2. ETIQUETAS (TAGS)
+        ================================================================= */
+        reg('tags', async () => {
+            setPanel(panelHead('Etiquetas', 'Marque transações com tags livres (ex.: viagem, reembolso)') + `
+                <div class="fp-box"><label class="fp-label">Buscar transação</label>
+                    <input id="tg-q" class="fp-input" placeholder="descrição..." oninput="FPx.tagSearch()">
+                    <div class="fp-mini">Digite para localizar e adicionar/remover etiquetas.</div></div>
+                <div id="tg-cloud"></div><div id="tg-list"></div>`);
+            FPx.tagCloud(); FPx.tagSearch();
+        });
+        FPx.tagCloud = async function () {
+            const ms = await allMeta(); const counts = {};
+            ms.forEach(m => (m.tags || []).forEach(t => counts[t] = (counts[t] || 0) + 1));
+            const keys = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+            $('tg-cloud').innerHTML = keys.length ? `<div class="fp-box"><h4><i class="fas fa-hashtag"></i> Suas etiquetas</h4>${keys.map(t => `<span class="fp-tag">${esc(t)} · ${counts[t]}</span>`).join('')}</div>` : '';
+        };
+        FPx.tagSearch = async function () {
+            const q = ($('tg-q').value || '').toLowerCase().trim();
+            let list = txns().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            if (q) list = list.filter(t => (t.description || '').toLowerCase().includes(q));
+            list = list.slice(0, 40);
+            const ms = await allMeta(); const map = {}; ms.forEach(m => map[m.id] = m.tags || []);
+            $('tg-list').innerHTML = '<div class="fp-box">' + (list.length ? list.map(t => {
+                const tags = map[t.id] || [];
+                return `<div style="padding:11px 0;border-bottom:1px solid var(--border)">
+                    <div class="fp-item-name">${esc(t.description || '—')} <span class="fp-item-sub">${fdate(t.date)}</span></div>
+                    <div style="margin:6px 0">${tags.map(tg => `<span class="fp-tag">${esc(tg)} <i class="fas fa-times" onclick="FPx.delTag('${t.id}','${esc(tg)}')"></i></span>`).join('') || '<span class="fp-item-sub">sem etiquetas</span>'}</div>
+                    <div class="fp-row"><input class="fp-input" id="tg-in-${t.id}" placeholder="nova etiqueta" style="flex:2">
+                    <button class="fp-btn sm" style="flex:0 0 auto" onclick="FPx.addTag('${t.id}')">Adicionar</button></div></div>`;
+            }).join('') : '<div class="fp-empty"><i class="fas fa-tags"></i>Nenhuma transação</div>') + '</div>';
+        };
+        FPx.addTag = async function (id) {
+            const v = ($('tg-in-' + id).value || '').trim(); if (!v) return;
+            const m = await getMeta(id); m.tags = m.tags || []; if (!m.tags.includes(v)) m.tags.push(v);
+            await saveMeta(m); toast('Etiqueta adicionada'); FPx.tagSearch(); FPx.tagCloud();
+        };
+        FPx.delTag = async function (id, tag) {
+            const m = await getMeta(id); m.tags = (m.tags || []).filter(t => t !== tag);
+            await saveMeta(m); FPx.tagSearch(); FPx.tagCloud();
+        };
+
+        /* =================================================================
+           3. COMPROVANTES (ANEXOS)
+        ================================================================= */
+        reg('attach', async () => {
+            let est = '';
+            try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); est = `${(e.usage / 1048576).toFixed(1)} MB usados de ${(e.quota / 1048576).toFixed(0)} MB`; } } catch (e) {}
+            setPanel(panelHead('Comprovantes', 'Anexe fotos de notas e recibos às transações') + `
+                <div class="fp-box"><label class="fp-label">Buscar transação</label>
+                    <input id="at-q" class="fp-input" placeholder="descrição..." oninput="FPx.atSearch()">
+                    ${est ? `<div class="fp-mini"><i class="fas fa-database"></i> ${est}</div>` : ''}
+                    <div class="fp-mini">Imagens são comprimidas automaticamente antes de salvar.</div></div>
+                <div id="at-list"></div>`);
+            FPx.atSearch();
+        });
+        FPx.atSearch = async function () {
+            const q = ($('at-q').value || '').toLowerCase().trim();
+            let list = txns().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            if (q) list = list.filter(t => (t.description || '').toLowerCase().includes(q));
+            list = list.slice(0, 30);
+            const all = await PlusDB.getAll('attachments').catch(() => []);
+            const byTxn = {}; all.forEach(a => { (byTxn[a.txnId] = byTxn[a.txnId] || []).push(a); });
+            $('at-list').innerHTML = '<div class="fp-box">' + (list.length ? list.map(t => {
+                const atts = byTxn[t.id] || [];
+                return `<div style="padding:11px 0;border-bottom:1px solid var(--border)">
+                    <div class="fp-item-name">${esc(t.description || '—')} <span class="fp-item-sub">${fdate(t.date)} · ${fmt(t.amount)}</span></div>
+                    <div style="margin:6px 0">${atts.map(a => `<span class="fp-pill" style="cursor:pointer" onclick="FPx.atOpen('${a.id}')"><i class="fas fa-file"></i> ${esc(a.name)} <i class="fas fa-trash" style="margin-left:4px;color:var(--expense)" onclick="event.stopPropagation();FPx.atDel('${a.id}')"></i></span>`).join(' ') || '<span class="fp-item-sub">nenhum anexo</span>'}</div>
+                    <input type="file" id="at-f-${t.id}" accept="image/*,application/pdf" style="display:none" onchange="FPx.atUpload('${t.id}', this)">
+                    <button class="fp-btn out sm" onclick="document.getElementById('at-f-${t.id}').click()"><i class="fas fa-paperclip"></i> Anexar arquivo</button></div>`;
+            }).join('') : '<div class="fp-empty"><i class="fas fa-paperclip"></i>Nenhuma transação</div>') + '</div>';
+        };
+        FPx.atUpload = async function (txnId, input) {
+            const file = input.files[0]; if (!file) return;
+            try {
+                let blob = file, name = file.name, type = file.type;
+                if (file.type.startsWith('image/')) { blob = await compressImage(file); type = 'image/jpeg'; name = name.replace(/\.\w+$/, '') + '.jpg'; }
+                await PlusDB.put('attachments', { id: uid(), txnId, name, type, blob, size: blob.size, date: today() });
+                toast('Comprovante anexado'); FPx.atSearch();
+            } catch (e) { console.error(e); toast('Falha ao anexar', 'error'); }
+        };
+        FPx.atOpen = async function (id) {
+            const a = await PlusDB.get('attachments', id); if (!a) return;
+            const url = URL.createObjectURL(a.blob); window.open(url, '_blank');
+            setTimeout(() => URL.revokeObjectURL(url), 8000);
+        };
+        FPx.atDel = async function (id) { if (!confirm('Excluir este comprovante?')) return; await PlusDB.del('attachments', id); FPx.atSearch(); };
+        function compressImage(file) {
+            return new Promise((resolve, reject) => {
+                const img = new Image(); const r = new FileReader();
+                r.onload = () => { img.onload = () => {
+                    const max = 1280; let { width: w, height: h } = img;
+                    if (w > max || h > max) { const s = Math.min(max / w, max / h); w = Math.round(w * s); h = Math.round(h * s); }
+                    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+                    cv.getContext('2d').drawImage(img, 0, 0, w, h);
+                    cv.toBlob(b => b ? resolve(b) : reject(new Error('toBlob falhou')), 'image/jpeg', 0.7);
+                }; img.onerror = reject; img.src = r.result; };
+                r.onerror = reject; r.readAsDataURL(file);
+            });
+        }
+
+        /* =================================================================
+           4. CONCILIAÇÃO
+        ================================================================= */
+        reg('reconcile', async () => {
+            const ym = curYM();
+            setPanel(panelHead('Conciliação', 'Marque o que já bateu com o extrato do banco') + `
+                <div class="fp-box"><label class="fp-label">Mês</label><input type="month" id="rc-month" class="fp-input" value="${ym}" onchange="FPx.rcRender()"></div>
+                <div id="rc-body"></div>`);
+            FPx.rcRender();
+        });
+        FPx.rcRender = async function () {
+            const ym = $('rc-month').value || curYM();
+            const list = txns().filter(t => monthKey(t.date) === ym).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+            const ms = await allMeta(); const rec = {}; ms.forEach(m => rec[m.id] = !!m.reconciled);
+            const done = list.filter(t => rec[t.id]); const pend = list.filter(t => !rec[t.id]);
+            const sum = (arr) => arr.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+            let html = `<div class="fp-box"><div class="fp-kpi">
+                <div><div class="k">Conferido</div><div class="v" style="color:var(--income)">${done.length}</div></div>
+                <div><div class="k">Pendente</div><div class="v" style="color:var(--pending)">${pend.length}</div></div>
+                <div><div class="k">Saldo conferido</div><div class="v">${fmt(sum(done))}</div></div></div></div><div class="fp-box">`;
+            html += list.length ? list.map(t => `<label class="fp-item" style="cursor:pointer">
+                <input type="checkbox" class="fp-check" ${rec[t.id] ? 'checked' : ''} onchange="FPx.rcToggle('${t.id}', this.checked)">
+                <div class="fp-item-main"><div class="fp-item-name">${esc(t.description || '—')}</div>
+                <div class="fp-item-sub">${fdate(t.date)} · ${esc(accName(t.account))}</div></div>
+                <div class="fp-item-val" style="color:${t.type === 'income' ? 'var(--income)' : 'var(--expense)'}">${t.type === 'income' ? '+' : '-'}${fmt(t.amount)}</div></label>`).join('')
+                : '<div class="fp-empty"><i class="fas fa-clipboard-check"></i>Sem transações neste mês</div>';
+            html += '</div>';
+            $('rc-body').innerHTML = html;
+        };
+        FPx.rcToggle = async function (id, checked) { const m = await getMeta(id); m.reconciled = checked; await saveMeta(m); FPx.rcRender(); };
+
+        /* =================================================================
+           5. REGRA 50/30/20
+        ================================================================= */
+        reg('rule503020', async () => {
+            const map = await PlusDB.kvGet('map503020', {});
+            const cats = categories().filter(c => c.type === 'expense' || !c.type);
+            const opt = (id, sel) => `<select class="fp-select" onchange="FPx.set503020('${id}', this.value)" style="max-width:130px">
+                <option value="need" ${sel==='need'?'selected':''}>Necessidade</option>
+                <option value="want" ${sel==='want'?'selected':''}>Desejo</option>
+                <option value="save" ${sel==='save'?'selected':''}>Poupança</option></select>`;
+            setPanel(panelHead('Regra 50/30/20', 'Necessidades 50% · Desejos 30% · Poupança/invest. 20%') + `
+                <div id="r5-summary"></div>
+                <div class="fp-box"><h4><i class="fas fa-list"></i> Classifique suas categorias</h4>
+                ${cats.length ? cats.map(c => `<div class="fp-item"><div class="fp-item-main"><div class="fp-item-name">${esc(c.name)}</div></div>${opt(c.id, map[c.id] || 'need')}</div>`).join('') : '<div class="fp-empty">Cadastre categorias de despesa primeiro</div>'}
+                </div>`);
+            FPx.render503020();
+        });
+        FPx.set503020 = async function (catId, bucket) { const map = await PlusDB.kvGet('map503020', {}); map[catId] = bucket; await PlusDB.kvSet('map503020', map); FPx.render503020(); };
+        FPx.render503020 = async function () {
+            const map = await PlusDB.kvGet('map503020', {});
+            const ym = curYM(); const income = monthIncome(ym);
+            const buckets = { need: 0, want: 0, save: 0 };
+            txns().filter(t => t.type === 'expense' && monthKey(t.date) === ym).forEach(t => { const b = map[t.category] || 'need'; buckets[b] += t.amount || 0; });
+            const tgt = { need: 0.5, want: 0.3, save: 0.2 }, labels = { need: 'Necessidades', want: 'Desejos', save: 'Poupança/Invest.' }, cols = { need: '#3b82f6', want: '#f59e0b', save: '#10b981' };
+            const base = income || (buckets.need + buckets.want + buckets.save) || 1;
+            let html = `<div class="fp-box"><h4><i class="fas fa-chart-pie"></i> ${new Date().toLocaleDateString('pt-BR', { month: 'long' })} · renda ${fmt(income)}</h4>`;
+            ['need', 'want', 'save'].forEach(b => {
+                const val = buckets[b], pct = (val / base * 100), tpct = tgt[b] * 100, over = pct > tpct + 0.5;
+                html += `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:.82rem">
+                    <span style="font-weight:600;color:var(--dark)">${labels[b]} <span class="fp-item-sub">(meta ${tpct}%)</span></span>
+                    <span style="font-weight:700;color:${over ? 'var(--expense)' : 'var(--dark)'}">${fmt(val)} · ${pct.toFixed(0)}%</span></div>
+                    <div class="fp-bar-track"><div class="fp-bar-fill" style="width:${Math.min(pct, 100)}%;background:${over ? 'var(--expense)' : cols[b]}"></div></div></div>`;
+            });
+            if (!income) html += '<div class="fp-mini"><i class="fas fa-info-circle"></i> Sem receitas neste mês — percentuais calculados sobre o total de gastos.</div>';
+            html += '</div>';
+            const el = $('r5-summary'); if (el) el.innerHTML = html;
+        };
+
+        /* =================================================================
+           6. RESERVA DE EMERGÊNCIA
+        ================================================================= */
+        reg('reserve', async () => {
+            const cfg = await PlusDB.kvGet('reserve', { months: 6, accts: [] });
+            setPanel(panelHead('Reserva de emergência', 'Sua rede de proteção em meses de despesa') + `
+                <div class="fp-box"><label class="fp-label">Meses de despesa como meta</label>
+                    <select id="rv-months" class="fp-select" onchange="FPx.rvSave()">
+                        ${[3,4,5,6,9,12].map(m => `<option value="${m}" ${cfg.months===m?'selected':''}>${m} meses</option>`).join('')}</select>
+                    <label class="fp-label">Contas que compõem a reserva</label>
+                    ${accounts().length ? accounts().map(a => `<label class="fp-item" style="cursor:pointer;padding:8px 0">
+                        <input type="checkbox" class="fp-check" value="${a.id}" ${cfg.accts.includes(a.id)?'checked':''} onchange="FPx.rvSave()">
+                        <div class="fp-item-main"><div class="fp-item-name">${esc(a.name)}</div></div>
+                        <div class="fp-item-val">${fmt(a.balance||0)}</div></label>`).join('') : '<div class="fp-empty">Sem contas</div>'}
+                </div><div id="rv-result"></div>`);
+            FPx.rvRender();
+        });
+        FPx.rvSave = async function () {
+            const months = parseInt($('rv-months').value);
+            const accts = [...document.querySelectorAll('#rv-months')].length ? [...$('plus-view').querySelectorAll('.fp-check:checked')].map(c => c.value) : [];
+            await PlusDB.kvSet('reserve', { months, accts }); FPx.rvRender();
+        };
+        FPx.rvRender = async function () {
+            const cfg = await PlusDB.kvGet('reserve', { months: 6, accts: [] });
+            const keys = lastNMonthsKeys(4).slice(0, 3); // 3 meses anteriores
+            const avg = keys.reduce((s, k) => s + monthExpense(k), 0) / (keys.length || 1);
+            const target = avg * cfg.months;
+            const current = accounts().filter(a => cfg.accts.includes(a.id)).reduce((s, a) => s + (a.balance || 0), 0);
+            const pct = target > 0 ? Math.min(current / target * 100, 100) : 0;
+            const el = $('rv-result'); if (!el) return;
+            el.innerHTML = `<div class="fp-box"><h4><i class="fas fa-shield-halved"></i> Situação</h4>
+                <div class="fp-kpi"><div><div class="k">Despesa média/mês</div><div class="v">${fmt(avg)}</div></div>
+                <div><div class="k">Meta (${cfg.months} meses)</div><div class="v">${fmt(target)}</div></div>
+                <div><div class="k">Reserva atual</div><div class="v" style="color:var(--income)">${fmt(current)}</div></div></div>
+                <div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:.82rem"><span style="font-weight:600">Progresso</span><span style="font-weight:700">${pct.toFixed(0)}%</span></div>
+                <div class="fp-bar-track" style="height:12px"><div class="fp-bar-fill" style="width:${pct}%;background:${pct>=100?'var(--income)':'var(--primary)'}"></div></div></div>
+                <div class="fp-mini">${current>=target ? '✅ Parabéns! Sua reserva está completa.' : `Faltam <strong>${fmt(target-current)}</strong> para atingir a meta.`}</div></div>`;
+        };
+
+        /* =================================================================
+           7. ASSINATURAS
+        ================================================================= */
+        reg('subs', async () => { FPx.subsRender(); });
+        FPx.subsRender = async function () {
+            const list = (await PlusDB.getAll('subscriptions').catch(() => [])).sort((a, b) => (a.nextCharge || '').localeCompare(b.nextCharge || ''));
+            const monthly = list.filter(s => s.active !== false).reduce((s, x) => s + (x.cycle === 'yearly' ? (x.amount || 0) / 12 : (x.amount || 0)), 0);
+            const soon = (d) => { if (!d) return false; const diff = (new Date(d) - new Date(today())) / 86400000; return diff >= 0 && diff <= 5; };
+            setPanel(panelHead('Assinaturas', 'Gastos recorrentes fixos (streaming, academia...)') + `
+                <div class="fp-box"><div class="fp-kpi"><div><div class="k">Total mensal</div><div class="v" style="color:var(--expense)">${fmt(monthly)}</div></div>
+                <div><div class="k">Por ano</div><div class="v">${fmt(monthly*12)}</div></div>
+                <div><div class="k">Ativas</div><div class="v">${list.filter(s=>s.active!==false).length}</div></div></div></div>
+                <button class="fp-btn" onclick="FPx.subForm()"><i class="fas fa-plus"></i> Nova assinatura</button>
+                <div class="fp-box" style="margin-top:12px">${list.length ? list.map(s => `
+                    <div class="fp-item"><div class="fp-item-main">
+                        <div class="fp-item-name">${esc(s.name)} ${s.active===false?'<span class="fp-pill">pausada</span>':''} ${soon(s.nextCharge)?'<span class="fp-pill" style="background:#fef3c7;color:#92400e">vence em breve</span>':''}</div>
+                        <div class="fp-item-sub">${s.cycle==='yearly'?'anual':'mensal'} · próx.: ${s.nextCharge?fdate(s.nextCharge):'—'}</div>
+                        <div style="margin-top:6px"><button class="fp-btn out sm" onclick="FPx.subPost('${s.id}')"><i class="fas fa-receipt"></i> Lançar</button>
+                        <button class="fp-btn out sm" onclick="FPx.subForm('${s.id}')">Editar</button>
+                        <button class="fp-btn out sm" style="color:var(--expense)" onclick="FPx.subDel('${s.id}')">Excluir</button></div></div>
+                    <div class="fp-item-val">${fmt(s.amount)}</div></div>`).join('') : '<div class="fp-empty"><i class="fas fa-rotate"></i>Nenhuma assinatura</div>'}</div>`);
+        };
+        FPx.subForm = async function (id) {
+            const s = id ? (await PlusDB.get('subscriptions', id)) : { id: '', name: '', amount: '', cycle: 'monthly', nextCharge: today(), category: '', account: '', active: true };
+            setPanel(panelHead(id ? 'Editar assinatura' : 'Nova assinatura') + `
+                <div class="fp-box">
+                    <label class="fp-label">Nome</label><input id="sb-name" class="fp-input" value="${esc(s.name)}" placeholder="Netflix, Spotify...">
+                    <div class="fp-row"><div><label class="fp-label">Valor</label><input id="sb-amount" class="fp-input" value="${s.amount?String(s.amount).replace('.',','):''}" placeholder="0,00"></div>
+                    <div><label class="fp-label">Ciclo</label><select id="sb-cycle" class="fp-select"><option value="monthly" ${s.cycle==='monthly'?'selected':''}>Mensal</option><option value="yearly" ${s.cycle==='yearly'?'selected':''}>Anual</option></select></div></div>
+                    <label class="fp-label">Próxima cobrança</label><input type="date" id="sb-next" class="fp-input" value="${s.nextCharge||today()}">
+                    <label class="fp-label">Categoria</label><select id="sb-cat" class="fp-select"><option value="">—</option>${expenseCatOptions(s.category)}</select>
+                    <label class="fp-label">Conta</label><select id="sb-acc" class="fp-select"><option value="">—</option>${accountOptions(s.account)}</select>
+                    <label class="fp-item" style="cursor:pointer;margin-top:8px"><input type="checkbox" class="fp-check" id="sb-active" ${s.active!==false?'checked':''}><span class="fp-item-name" style="margin-left:8px">Ativa</span></label>
+                    <button class="fp-btn" style="margin-top:12px" onclick="FPx.subSave('${id||''}')"><i class="fas fa-check"></i> Salvar</button>
+                    <button class="fp-btn out" style="margin-top:8px" onclick="FinPlus.open('subs')">Cancelar</button>
+                </div>`);
+        };
+        FPx.subSave = async function (id) {
+            const o = { id: id || uid(), name: $('sb-name').value.trim(), amount: parseM($('sb-amount').value), cycle: $('sb-cycle').value,
+                nextCharge: $('sb-next').value, category: $('sb-cat').value, account: $('sb-acc').value, active: $('sb-active').checked };
+            if (!o.name || !o.amount) { toast('Preencha nome e valor', 'error'); return; }
+            await PlusDB.put('subscriptions', o); toast('Assinatura salva'); FPx.subsRender();
+        };
+        FPx.subDel = async function (id) { if (!confirm('Excluir assinatura?')) return; await PlusDB.del('subscriptions', id); FPx.subsRender(); };
+        FPx.subPost = async function (id) {
+            const s = await PlusDB.get('subscriptions', id); if (!s || !window.DB) return;
+            const t = { id: uid(), type: 'expense', amount: s.amount, date: s.nextCharge || today(), description: s.name + ' (assinatura)',
+                category: s.category, account: s.account, status: 'cleared', recurring: false };
+            await DB.saveTransaction(t);
+            const d = new Date(s.nextCharge || today()); if (s.cycle === 'yearly') d.setFullYear(d.getFullYear() + 1); else d.setMonth(d.getMonth() + 1);
+            s.nextCharge = d.toISOString().slice(0, 10); await PlusDB.put('subscriptions', s);
+            await reloadCore(); toast('Lançada e próxima data atualizada'); FPx.subsRender();
+        };
+
+        /* =================================================================
+           8. DÍVIDAS & FINANCIAMENTOS
+        ================================================================= */
+        reg('debts', async () => { FPx.debtsRender(); });
+        function pricePayment(P, i, n) { return i === 0 ? P / n : P * i / (1 - Math.pow(1 + i, -n)); }
+        function priceBalance(P, i, n, k) { if (i === 0) return P * (1 - k / n); return P * (Math.pow(1 + i, n) - Math.pow(1 + i, k)) / (Math.pow(1 + i, n) - 1); }
+        function elapsedMonths(start) { if (!start) return 0; const s = new Date(start), now = new Date(); return Math.max(0, (now.getFullYear() - s.getFullYear()) * 12 + (now.getMonth() - s.getMonth())); }
+        function debtRemaining(d) { const i = (d.annualRate || 0) / 100 / 12; const k = Math.min(elapsedMonths(d.startDate), d.months); return Math.max(0, priceBalance(d.principal, i, d.months, k)); }
+        FPx.debtsRender = async function () {
+            const list = await PlusDB.getAll('debts').catch(() => []);
+            const totRem = list.reduce((s, d) => s + debtRemaining(d), 0);
+            const totMonthly = list.reduce((s, d) => s + pricePayment(d.principal, (d.annualRate||0)/100/12, d.months), 0);
+            setPanel(panelHead('Dívidas & financiamentos', 'Amortização (Tabela Price) e plano de quitação') + `
+                <div class="fp-box"><div class="fp-kpi"><div><div class="k">Saldo devedor</div><div class="v" style="color:var(--expense)">${fmt(totRem)}</div></div>
+                <div><div class="k">Parcelas/mês</div><div class="v">${fmt(totMonthly)}</div></div>
+                <div><div class="k">Dívidas</div><div class="v">${list.length}</div></div></div></div>
+                <button class="fp-btn" onclick="FPx.debtForm()"><i class="fas fa-plus"></i> Nova dívida</button>
+                ${list.length ? `<button class="fp-btn out" style="margin-top:8px" onclick="FPx.payoffSim()"><i class="fas fa-flag-checkered"></i> Simular quitação</button>` : ''}
+                <div class="fp-box" style="margin-top:12px">${list.length ? list.map(d => {
+                    const i = (d.annualRate||0)/100/12, pay = pricePayment(d.principal, i, d.months), rem = debtRemaining(d), k = Math.min(elapsedMonths(d.startDate), d.months);
+                    return `<div class="fp-item"><div class="fp-item-main"><div class="fp-item-name">${esc(d.name)}</div>
+                        <div class="fp-item-sub">${d.months} parcelas · ${(d.annualRate||0).toFixed(2)}% a.a. · paga ${k}/${d.months}</div>
+                        <div style="margin-top:6px"><button class="fp-btn out sm" onclick="FPx.debtForm('${d.id}')">Editar</button>
+                        <button class="fp-btn out sm" style="color:var(--expense)" onclick="FPx.debtDel('${d.id}')">Excluir</button></div></div>
+                        <div class="fp-item-val">${fmt(pay)}/mês<br><span class="fp-item-sub">resta ${fmt(rem)}</span></div></div>`;
+                }).join('') : '<div class="fp-empty"><i class="fas fa-hand-holding-dollar"></i>Nenhuma dívida cadastrada</div>'}</div>`);
+        };
+        FPx.debtForm = async function (id) {
+            const d = id ? await PlusDB.get('debts', id) : { name: '', principal: '', annualRate: '', months: '', startDate: today() };
+            setPanel(panelHead(id ? 'Editar dívida' : 'Nova dívida') + `
+                <div class="fp-box">
+                    <label class="fp-label">Nome</label><input id="db-name" class="fp-input" value="${esc(d.name)}" placeholder="Financiamento carro">
+                    <label class="fp-label">Valor total (principal)</label><input id="db-principal" class="fp-input" value="${d.principal?String(d.principal).replace('.',','):''}" placeholder="0,00">
+                    <div class="fp-row"><div><label class="fp-label">Juros (% ao ano)</label><input id="db-rate" class="fp-input" value="${d.annualRate||''}" placeholder="ex.: 18"></div>
+                    <div><label class="fp-label">Nº de parcelas</label><input id="db-months" class="fp-input" value="${d.months||''}" placeholder="ex.: 48"></div></div>
+                    <label class="fp-label">Início</label><input type="date" id="db-start" class="fp-input" value="${d.startDate||today()}">
+                    <button class="fp-btn" style="margin-top:12px" onclick="FPx.debtSave('${id||''}')"><i class="fas fa-check"></i> Salvar</button>
+                    <button class="fp-btn out" style="margin-top:8px" onclick="FinPlus.open('debts')">Cancelar</button>
+                    <div id="db-preview" class="fp-mini"></div>
+                </div>`);
+            ['db-principal','db-rate','db-months'].forEach(x => $(x).addEventListener('input', FPx.debtPreview)); FPx.debtPreview();
+        };
+        FPx.debtPreview = function () {
+            const P = parseM($('db-principal').value), r = parseFloat(($('db-rate').value||'0').replace(',','.')), n = parseInt($('db-months').value);
+            const el = $('db-preview'); if (!el) return;
+            if (!P || !n) { el.innerHTML = ''; return; }
+            const i = r/100/12, pay = pricePayment(P, i, n), total = pay*n;
+            el.innerHTML = `<i class="fas fa-calculator"></i> Parcela ≈ <strong>${fmt(pay)}</strong> · total pago ≈ ${fmt(total)} · juros ≈ <strong style="color:var(--expense)">${fmt(total-P)}</strong>`;
+        };
+        FPx.debtSave = async function (id) {
+            const o = { id: id || uid(), name: $('db-name').value.trim(), principal: parseM($('db-principal').value),
+                annualRate: parseFloat(($('db-rate').value||'0').replace(',','.')), months: parseInt($('db-months').value), startDate: $('db-start').value };
+            if (!o.name || !o.principal || !o.months) { toast('Preencha nome, valor e parcelas', 'error'); return; }
+            await PlusDB.put('debts', o); toast('Dívida salva'); FPx.debtsRender();
+        };
+        FPx.debtDel = async function (id) { if (!confirm('Excluir dívida?')) return; await PlusDB.del('debts', id); FPx.debtsRender(); };
+        FPx.payoffSim = async function () {
+            const list = await PlusDB.getAll('debts').catch(() => []);
+            setPanel(panelHead('Simular quitação', 'Bola de neve x Avalanche') + `
+                <div class="fp-box">
+                    <label class="fp-label">Valor extra por mês (além das parcelas)</label><input id="po-extra" class="fp-input" placeholder="0,00" value="0">
+                    <label class="fp-label">Estratégia</label><select id="po-strat" class="fp-select">
+                        <option value="snowball">Bola de neve (quita menor saldo primeiro)</option>
+                        <option value="avalanche">Avalanche (quita maior juros primeiro)</option></select>
+                    <button class="fp-btn" style="margin-top:12px" onclick="FPx.runPayoff()"><i class="fas fa-play"></i> Simular</button>
+                </div><div id="po-result"></div>`);
+        };
+        FPx.runPayoff = async function () {
+            const list = await PlusDB.getAll('debts').catch(() => []);
+            const extra = parseM($('po-extra').value); const strat = $('po-strat').value;
+            const sim = (useExtra) => {
+                let debts = list.map(d => ({ name: d.name, bal: debtRemaining(d), i: (d.annualRate||0)/100/12, pay: pricePayment(d.principal, (d.annualRate||0)/100/12, d.months) }))
+                    .filter(d => d.bal > 0.5);
+                let months = 0, interest = 0;
+                while (debts.length && months < 600) {
+                    months++; let pool = useExtra ? extra : 0;
+                    debts.forEach(d => { const int = d.bal * d.i; interest += int; let principalPaid = d.pay - int; if (principalPaid < 0) principalPaid = 0; d.bal = d.bal + int - d.pay; if (d.bal < 0) { pool += -d.bal; d.bal = 0; } });
+                    // alocar extra
+                    let order = strat === 'avalanche' ? [...debts].sort((a, b) => b.i - a.i) : [...debts].sort((a, b) => a.bal - b.bal);
+                    for (const d of order) { if (pool <= 0) break; if (d.bal <= 0) continue; const p = Math.min(pool, d.bal); d.bal -= p; pool -= p; }
+                    debts = debts.filter(d => d.bal > 0.5);
+                }
+                return { months, interest };
+            };
+            const withE = sim(true), without = sim(false);
+            $('po-result').innerHTML = `<div class="fp-box"><h4><i class="fas fa-flag-checkered"></i> Resultado</h4>
+                <div class="fp-kpi"><div><div class="k">Tempo p/ quitar</div><div class="v">${withE.months} meses</div></div>
+                <div><div class="k">Juros totais</div><div class="v" style="color:var(--expense)">${fmt(withE.interest)}</div></div></div>
+                <div class="fp-mini" style="margin-top:10px">Sem o extra: <strong>${without.months} meses</strong> e ${fmt(without.interest)} de juros.<br>
+                ${extra>0 ? `💡 Pagando ${fmt(extra)} a mais por mês você economiza <strong style="color:var(--income)">${fmt(without.interest-withE.interest)}</strong> em juros e quita <strong>${without.months-withE.months} meses</strong> antes.` : 'Informe um valor extra para ver a economia.'}</div></div>`;
+        };
+
+        /* =================================================================
+           9. PROJEÇÃO DE FLUXO DE CAIXA
+        ================================================================= */
+        reg('cashflow', async () => {
+            const keys = lastNMonthsKeys(4).slice(0, 3);
+            const nets = keys.map(k => monthIncome(k) - monthExpense(k));
+            const avg = nets.reduce((s, n) => s + n, 0) / (nets.length || 1);
+            const start = totalAccounts();
+            const N = 6; const labels = [], data = []; let bal = start;
+            const future = new Date();
+            for (let m = 1; m <= N; m++) { const dt = new Date(future.getFullYear(), future.getMonth() + m, 1); labels.push(dt.toLocaleDateString('pt-BR', { month: 'short' })); bal += avg; data.push(Math.round(bal)); }
+            const subs = (await PlusDB.getAll('subscriptions').catch(() => [])).filter(s => s.active !== false);
+            const subTotal = subs.reduce((s, x) => s + (x.cycle === 'yearly' ? x.amount / 12 : x.amount), 0);
+            const futurePending = txns().filter(t => t.status === 'pending' && (t.date || '') >= today()).sort((a,b)=>(a.date||'').localeCompare(b.date||'')).slice(0, 8);
+            setPanel(panelHead('Projeção de caixa', 'Estimativa de saldo para os próximos 6 meses') + `
+                <div class="fp-box"><div class="fp-kpi"><div><div class="k">Saldo hoje</div><div class="v">${fmt(start)}</div></div>
+                <div><div class="k">Fluxo médio/mês</div><div class="v" style="color:${avg>=0?'var(--income)':'var(--expense)'}">${avg>=0?'+':''}${fmt(avg)}</div></div>
+                <div><div class="k">Saldo em 6 meses</div><div class="v">${fmt(data[data.length-1])}</div></div></div>
+                <div class="fp-chart-wrap" style="margin-top:14px"><canvas id="cf-chart"></canvas></div>
+                <div class="fp-mini">Projeção baseada na média de receitas − despesas dos últimos 3 meses.</div></div>
+                <div class="fp-box"><h4><i class="fas fa-calendar-day"></i> Compromissos conhecidos</h4>
+                <div class="fp-item"><div class="fp-item-main"><div class="fp-item-name">Assinaturas ativas</div><div class="fp-item-sub">${subs.length} recorrências</div></div><div class="fp-item-val" style="color:var(--expense)">-${fmt(subTotal)}/mês</div></div>
+                ${futurePending.map(t => `<div class="fp-item"><div class="fp-item-main"><div class="fp-item-name">${esc(t.description||'—')}</div><div class="fp-item-sub">${fdate(t.date)} · pendente</div></div><div class="fp-item-val" style="color:${t.type==='income'?'var(--income)':'var(--expense)'}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div></div>`).join('') || ''}
+                </div>`);
+            mkChart('cf-chart', { type: 'line', data: { labels, datasets: [{ label: 'Saldo projetado', data, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,.12)', fill: true, tension: .3, pointRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => 'R$' + (v/1000).toFixed(0) + 'k' } } } } });
+        });
+
+        /* =================================================================
+           10. CARTEIRA DE INVESTIMENTOS
+        ================================================================= */
+        const KLASS = { acao: 'Ações', fii: 'FIIs', rf: 'Renda fixa', etf: 'ETF', cripto: 'Cripto', outro: 'Outro' };
+        const KCOL = { acao: '#3b82f6', fii: '#8b5cf6', rf: '#10b981', etf: '#f59e0b', cripto: '#ec4899', outro: '#64748b' };
+        reg('invest', async () => { FPx.invRender(); });
+        FPx.invRender = async function () {
+            const list = await PlusDB.getAll('investments').catch(() => []);
+            const invested = list.reduce((s, p) => s + p.qty * p.avgPrice, 0);
+            const value = list.reduce((s, p) => s + p.qty * (p.price || p.avgPrice), 0);
+            const pl = value - invested; const plPct = invested ? pl / invested * 100 : 0;
+            const alloc = {}; list.forEach(p => { alloc[p.klass] = (alloc[p.klass] || 0) + p.qty * (p.price || p.avgPrice); });
+            setPanel(panelHead('Carteira de investimentos', 'Posições, rentabilidade e alocação') + `
+                <div class="fp-box"><div class="fp-kpi"><div><div class="k">Investido</div><div class="v">${fmt(invested)}</div></div>
+                <div><div class="k">Valor atual</div><div class="v">${fmt(value)}</div></div>
+                <div><div class="k">Resultado</div><div class="v" style="color:${pl>=0?'var(--income)':'var(--expense)'}">${pl>=0?'+':''}${fmt(pl)} (${plPct.toFixed(1)}%)</div></div></div>
+                ${list.length ? '<div class="fp-chart-wrap" style="height:200px;margin-top:14px"><canvas id="inv-chart"></canvas></div>' : ''}</div>
+                <button class="fp-btn" onclick="FPx.invForm()"><i class="fas fa-plus"></i> Nova posição</button>
+                ${list.length ? '<button class="fp-btn out" style="margin-top:8px" onclick="FPx.invQuotes()"><i class="fas fa-arrows-rotate"></i> Atualizar cotações (ações/FIIs)</button>' : ''}
+                <div class="fp-box" style="margin-top:12px">${list.length ? list.map(p => {
+                    const v = p.qty * (p.price || p.avgPrice), ip = (p.price||p.avgPrice) - p.avgPrice, ipPct = p.avgPrice ? ip/p.avgPrice*100 : 0;
+                    return `<div class="fp-item"><div class="fp-item-main"><div class="fp-item-name">${esc(p.ticker)} <span class="fp-pill" style="background:${KCOL[p.klass]}22;color:${KCOL[p.klass]}">${KLASS[p.klass]}</span></div>
+                        <div class="fp-item-sub">${p.qty} × ${fmt(p.price||p.avgPrice)} (méd. ${fmt(p.avgPrice)})</div>
+                        <div style="margin-top:6px"><button class="fp-btn out sm" onclick="FPx.invForm('${p.id}')">Editar</button>
+                        <button class="fp-btn out sm" style="color:var(--expense)" onclick="FPx.invDel('${p.id}')">Excluir</button></div></div>
+                        <div class="fp-item-val">${fmt(v)}<br><span class="fp-item-sub" style="color:${ip>=0?'var(--income)':'var(--expense)'}">${ip>=0?'+':''}${ipPct.toFixed(1)}%</span></div></div>`;
+                }).join('') : '<div class="fp-empty"><i class="fas fa-arrow-trend-up"></i>Nenhuma posição</div>'}</div>`);
+            if (list.length) { const ks = Object.keys(alloc); mkChart('inv-chart', { type: 'doughnut',
+                data: { labels: ks.map(k => KLASS[k]), datasets: [{ data: ks.map(k => alloc[k]), backgroundColor: ks.map(k => KCOL[k]) }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } }); }
+        };
+        FPx.invForm = async function (id) {
+            const p = id ? await PlusDB.get('investments', id) : { ticker: '', klass: 'acao', qty: '', avgPrice: '', price: '' };
+            setPanel(panelHead(id ? 'Editar posição' : 'Nova posição') + `
+                <div class="fp-box">
+                    <label class="fp-label">Ativo / ticker</label><input id="iv-ticker" class="fp-input" value="${esc(p.ticker)}" placeholder="PETR4, MXRF11, BTC...">
+                    <label class="fp-label">Classe</label><select id="iv-klass" class="fp-select">${Object.keys(KLASS).map(k => `<option value="${k}" ${p.klass===k?'selected':''}>${KLASS[k]}</option>`).join('')}</select>
+                    <div class="fp-row"><div><label class="fp-label">Quantidade</label><input id="iv-qty" class="fp-input" value="${p.qty||''}" placeholder="0"></div>
+                    <div><label class="fp-label">Preço médio</label><input id="iv-avg" class="fp-input" value="${p.avgPrice?String(p.avgPrice).replace('.',','):''}" placeholder="0,00"></div></div>
+                    <label class="fp-label">Preço atual (manual)</label><input id="iv-price" class="fp-input" value="${p.price?String(p.price).replace('.',','):''}" placeholder="deixe vazio = usa o médio">
+                    <button class="fp-btn" style="margin-top:12px" onclick="FPx.invSave('${id||''}')"><i class="fas fa-check"></i> Salvar</button>
+                    <button class="fp-btn out" style="margin-top:8px" onclick="FinPlus.open('invest')">Cancelar</button>
+                </div>`);
+        };
+        FPx.invSave = async function (id) {
+            const o = { id: id || uid(), ticker: ($('iv-ticker').value||'').toUpperCase().trim(), klass: $('iv-klass').value,
+                qty: parseFloat(($('iv-qty').value||'0').replace(',','.')), avgPrice: parseM($('iv-avg').value), price: $('iv-price').value ? parseM($('iv-price').value) : null };
+            if (!o.ticker || !o.qty || !o.avgPrice) { toast('Preencha ativo, quantidade e preço médio', 'error'); return; }
+            if (!o.price) o.price = o.avgPrice;
+            await PlusDB.put('investments', o); toast('Posição salva'); FPx.invRender();
+        };
+        FPx.invDel = async function (id) { if (!confirm('Excluir posição?')) return; await PlusDB.del('investments', id); FPx.invRender(); };
+        FPx.invQuotes = async function () {
+            const list = await PlusDB.getAll('investments').catch(() => []);
+            const tickers = list.filter(p => ['acao', 'fii', 'etf'].includes(p.klass)).map(p => p.ticker);
+            if (!tickers.length) { toast('Sem ações/FIIs para atualizar', 'error'); return; }
+            toast('Buscando cotações...');
+            try {
+                const resp = await fetch('https://brapi.dev/api/quote/' + tickers.join(','));
+                const data = await resp.json();
+                const quotes = {}; (data.results || []).forEach(r => { if (r.regularMarketPrice) quotes[r.symbol] = r.regularMarketPrice; });
+                let n = 0; for (const p of list) { if (quotes[p.ticker]) { p.price = quotes[p.ticker]; await PlusDB.put('investments', p); n++; } }
+                toast(n ? `${n} cotações atualizadas` : 'Nenhuma cotação retornada — informe manualmente', n ? 'success' : 'error');
+                FPx.invRender();
+            } catch (e) { console.warn(e); toast('Sem conexão / API indisponível. Use preço manual.', 'error'); }
+        };
+
+        /* =================================================================
+           11. PATRIMÔNIO LÍQUIDO
+        ================================================================= */
+        reg('networth', async () => { FPx.nwRender(); });
+        FPx.nwRender = async function () {
+            const invs = await PlusDB.getAll('investments').catch(() => []);
+            const debts = await PlusDB.getAll('debts').catch(() => []);
+            const investValue = invs.reduce((s, p) => s + p.qty * (p.price || p.avgPrice), 0);
+            const assets = totalAccounts() + investValue;
+            const liabilities = debts.reduce((s, d) => s + debtRemaining(d), 0);
+            const net = assets - liabilities;
+            const snaps = (await PlusDB.getAll('snapshots').catch(() => [])).sort((a, b) => (a.ym || '').localeCompare(b.ym || ''));
+            setPanel(panelHead('Patrimônio líquido', 'Bens − dívidas, mês a mês') + `
+                <div class="fp-box"><div class="fp-kpi"><div><div class="k">Bens (contas+invest.)</div><div class="v" style="color:var(--income)">${fmt(assets)}</div></div>
+                <div><div class="k">Dívidas</div><div class="v" style="color:var(--expense)">${fmt(liabilities)}</div></div>
+                <div><div class="k">Patrimônio líquido</div><div class="v">${fmt(net)}</div></div></div>
+                <button class="fp-btn" style="margin-top:12px" onclick="FPx.nwSnap(${assets},${liabilities},${net})"><i class="fas fa-camera"></i> Salvar foto de ${curYM()}</button></div>
+                ${snaps.length ? '<div class="fp-box"><h4><i class="fas fa-chart-line"></i> Evolução</h4><div class="fp-chart-wrap"><canvas id="nw-chart"></canvas></div></div>' : '<div class="fp-empty"><i class="fas fa-chart-line"></i>Salve fotos mensais para ver a evolução</div>'}`);
+            if (snaps.length) mkChart('nw-chart', { type: 'line', data: { labels: snaps.map(s => s.ym), datasets: [
+                { label: 'Patrimônio', data: snaps.map(s => Math.round(s.net)), borderColor: '#059669', backgroundColor: 'rgba(5,150,105,.12)', fill: true, tension: .3 } ] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+        };
+        FPx.nwSnap = async function (assets, liabilities, net) {
+            const ym = curYM();
+            const existing = (await PlusDB.getAll('snapshots').catch(() => [])).find(s => s.ym === ym);
+            await PlusDB.put('snapshots', { id: existing ? existing.id : uid(), ym, assets, liabilities, net, date: today() });
+            toast('Foto do patrimônio salva'); FPx.nwRender();
+        };
+
+        /* =================================================================
+           12. REGRAS DE CATEGORIA
+        ================================================================= */
+        reg('rules', async () => { FPx.rulesRender(); });
+        FPx.rulesRender = async function () {
+            const list = await PlusDB.getAll('rules').catch(() => []);
+            setPanel(panelHead('Regras de categoria', 'Classifique automaticamente pela descrição') + `
+                <div class="fp-box"><h4><i class="fas fa-plus"></i> Nova regra</h4>
+                    <label class="fp-label">Se a descrição contém</label><input id="rl-text" class="fp-input" placeholder="ex.: uber, ifood, posto">
+                    <label class="fp-label">Classificar como</label><select id="rl-cat" class="fp-select">${categories().map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
+                    <button class="fp-btn" style="margin-top:12px" onclick="FPx.ruleAdd()"><i class="fas fa-check"></i> Adicionar regra</button></div>
+                <div class="fp-box"><label class="fp-item" style="cursor:pointer"><input type="checkbox" class="fp-check" id="rl-overwrite"><span class="fp-item-name" style="margin-left:8px">Sobrescrever categorias já definidas</span></label>
+                    <button class="fp-btn out" style="margin-top:10px" onclick="FPx.rulesApply()"><i class="fas fa-wand-magic-sparkles"></i> Aplicar às transações existentes</button></div>
+                <div class="fp-box">${list.length ? list.map(r => `<div class="fp-item"><div class="fp-item-main">
+                    <div class="fp-item-name">"${esc(r.contains)}"</div><div class="fp-item-sub">→ ${esc(catName(r.categoryId))}</div></div>
+                    <button class="fp-btn out sm" style="color:var(--expense)" onclick="FPx.ruleDel('${r.id}')">Excluir</button></div>`).join('') : '<div class="fp-empty"><i class="fas fa-wand-magic-sparkles"></i>Nenhuma regra</div>'}</div>`);
+        };
+        FPx.ruleAdd = async function () {
+            const text = ($('rl-text').value || '').trim(); const cat = $('rl-cat').value;
+            if (!text || !cat) { toast('Preencha o texto e a categoria', 'error'); return; }
+            await PlusDB.put('rules', { id: uid(), contains: text.toLowerCase(), categoryId: cat });
+            toast('Regra adicionada'); FPx.rulesRender();
+        };
+        FPx.ruleDel = async function (id) { await PlusDB.del('rules', id); FPx.rulesRender(); };
+        FPx.rulesApply = async function () {
+            const rules = await PlusDB.getAll('rules').catch(() => []);
+            if (!rules.length) { toast('Crie regras primeiro', 'error'); return; }
+            const overwrite = $('rl-overwrite').checked; let n = 0;
+            for (const t of txns()) {
+                if (t.category && !overwrite) continue;
+                const desc = (t.description || '').toLowerCase();
+                const r = rules.find(r => desc.includes(r.contains));
+                if (r && t.category !== r.categoryId) { t.category = r.categoryId; await DB.saveTransaction(t); n++; }
+            }
+            await reloadCore(); toast(n ? `${n} transações reclassificadas` : 'Nenhuma correspondência'); FPx.rulesRender();
+        };
+
+        /* =================================================================
+           13. IMPORTAR EXTRATO (OFX / CSV)
+        ================================================================= */
+        reg('import', async () => {
+            setPanel(panelHead('Importar extrato', 'Arquivos OFX ou CSV do seu banco') + `
+                <div class="fp-box"><label class="fp-label">Conta de destino</label>
+                    <select id="im-acc" class="fp-select">${accountOptions()}</select>
+                    <label class="fp-label" style="margin-top:10px">Arquivo (.ofx, .csv, .txt)</label>
+                    <input type="file" id="im-file" class="fp-input" accept=".ofx,.qfx,.csv,.txt" onchange="FPx.imParse(this)">
+                    <div class="fp-mini"><i class="fas fa-circle-info"></i> CSV: colunas data, descrição e valor (em qualquer ordem). As regras de categoria são aplicadas automaticamente.</div></div>
+                <div id="im-preview"></div>`);
+        });
+        FPx._imRows = [];
+        FPx.imParse = async function (input) {
+            const file = input.files[0]; if (!file) return;
+            const text = await file.text();
+            let rows = [];
+            if (/<OFX>|<STMTTRN>/i.test(text)) rows = parseOFX(text);
+            else rows = parseCSV(text);
+            if (!rows.length) { $('im-preview').innerHTML = '<div class="fp-empty"><i class="fas fa-triangle-exclamation"></i>Não consegui ler transações deste arquivo</div>'; return; }
+            const rules = await PlusDB.getAll('rules').catch(() => []);
+            rows.forEach(r => { const d = (r.description || '').toLowerCase(); const m = rules.find(x => d.includes(x.contains)); r.category = m ? m.categoryId : ''; });
+            FPx._imRows = rows;
+            $('im-preview').innerHTML = `<div class="fp-box"><h4><i class="fas fa-eye"></i> Pré-visualização (${rows.length})</h4>
+                <div style="max-height:340px;overflow:auto"><table class="fp-table"><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Categoria</th></tr></thead><tbody>
+                ${rows.slice(0, 200).map((r, idx) => `<tr><td>${fdate(r.date)}</td><td>${esc((r.description||'').slice(0,28))}</td>
+                    <td style="color:${r.type==='income'?'var(--income)':'var(--expense)'}">${r.type==='income'?'+':'-'}${fmt(r.amount)}</td>
+                    <td><select class="fp-select" style="padding:4px;font-size:.75rem" onchange="FPx._imRows[${idx}].category=this.value"><option value="">—</option>${categories().map(c => `<option value="${c.id}" ${r.category===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></td></tr>`).join('')}
+                </tbody></table></div>
+                <button class="fp-btn" style="margin-top:12px" onclick="FPx.imConfirm()"><i class="fas fa-file-import"></i> Importar ${rows.length} transações</button></div>`;
+        };
+        FPx.imConfirm = async function () {
+            const acc = $('im-acc').value; let n = 0;
+            for (const r of FPx._imRows) {
+                await DB.saveTransaction({ id: uid(), type: r.type, amount: Math.abs(r.amount), date: r.date,
+                    description: r.description || 'Importado', category: r.category || '', account: acc, status: 'cleared', recurring: false });
+                n++;
+            }
+            await reloadCore(); toast(`${n} transações importadas`); FinPlus.open('import');
+        };
+        function parseOFX(text) {
+            const out = []; const blocks = text.split(/<STMTTRN>/i).slice(1);
+            blocks.forEach(b => {
+                const g = (tag) => { const m = b.match(new RegExp('<' + tag + '>([^<\r\n]*)', 'i')); return m ? m[1].trim() : ''; };
+                const amt = parseFloat(g('TRNAMT').replace(',', '.')); if (isNaN(amt)) return;
+                const dt = g('DTPOSTED').replace(/[^0-9]/g, '').slice(0, 8);
+                const date = dt.length === 8 ? `${dt.slice(0,4)}-${dt.slice(4,6)}-${dt.slice(6,8)}` : today();
+                out.push({ date, description: g('MEMO') || g('NAME') || 'Transação', amount: Math.abs(amt), type: amt >= 0 ? 'income' : 'expense' });
+            });
+            return out;
+        }
+        function parseCSV(text) {
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            if (!lines.length) return [];
+            const delim = (lines[0].match(/;/g) || []).length > (lines[0].match(/,/g) || []).length ? ';' : ',';
+            const split = (l) => l.split(delim).map(c => c.replace(/^"|"$/g, '').trim());
+            let start = 0; const first = split(lines[0]);
+            const hasHeader = first.some(c => /data|date|descri|hist|valor|amount|montante/i.test(c));
+            let dateIdx = -1, descIdx = -1, valIdx = -1;
+            if (hasHeader) { first.forEach((c, i) => { if (/data|date/i.test(c)) dateIdx = i; if (/descri|hist|memo|lan/i.test(c)) descIdx = i; if (/valor|amount|montante|credito|debito/i.test(c)) valIdx = i; }); start = 1; }
+            const out = [];
+            for (let i = start; i < lines.length; i++) {
+                const c = split(lines[i]); if (!c.length) continue;
+                let date = dateIdx >= 0 ? c[dateIdx] : c.find(x => /\d{2}[\/\-]\d{2}[\/\-]\d{2,4}|\d{4}-\d{2}-\d{2}/.test(x));
+                let valRaw = valIdx >= 0 ? c[valIdx] : c.find(x => /^-?[\d.,]+$/.test(x) && /[.,]/.test(x));
+                let desc = descIdx >= 0 ? c[descIdx] : c.filter(x => x !== date && x !== valRaw).sort((a, b) => b.length - a.length)[0];
+                if (!date || valRaw == null) continue;
+                const amt = parseFloat(String(valRaw).replace(/\./g, '').replace(',', '.')); if (isNaN(amt)) continue;
+                let iso = date;
+                const br = date.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{2,4})/);
+                if (br) { let y = br[3].length === 2 ? '20' + br[3] : br[3]; iso = `${y}-${br[2]}-${br[1]}`; }
+                out.push({ date: iso, description: desc || 'Importado', amount: Math.abs(amt), type: amt >= 0 ? 'income' : 'expense' });
+            }
+            return out;
+        }
+
+        /* =================================================================
+           14. EXPORTAR CSV
+        ================================================================= */
+        reg('exportcsv', async () => {
+            setPanel(panelHead('Exportar CSV', 'Baixe suas transações para Excel/planilhas') + `
+                <div class="fp-box"><h4><i class="fas fa-file-csv"></i> Transações</h4>
+                <div class="fp-mini" style="margin-bottom:12px">${txns().length} transações no total. O arquivo abre direto no Excel (acentos preservados).</div>
+                <button class="fp-btn" onclick="FPx._exportTxns(FinPlus._h.txns(), 'transacoes')"><i class="fas fa-download"></i> Exportar tudo (CSV)</button>
+                <button class="fp-btn out" style="margin-top:8px" onclick="FPx.exportMonth()"><i class="fas fa-calendar"></i> Exportar mês atual</button></div>`);
+        });
+        FPx._exportTxns = function (list, base) {
+            if (!list || !list.length) { toast('Nada para exportar', 'error'); return; }
+            const head = ['Data', 'Descrição', 'Tipo', 'Categoria', 'Conta', 'Valor', 'Status'];
+            const esc2 = (s) => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"';
+            const rows = list.slice().sort((a, b) => (a.date || '').localeCompare(b.date || '')).map(t => [
+                t.date, t.description, t.type === 'income' ? 'Receita' : 'Despesa', catName(t.category), accName(t.account),
+                (t.type === 'income' ? '' : '-') + (t.amount || 0).toFixed(2).replace('.', ','), t.status === 'cleared' ? 'Efetivada' : 'Pendente'
+            ].map(esc2).join(';'));
+            const csv = '\uFEFF' + head.join(';') + '\n' + rows.join('\n');
+            download(base + '_' + today() + '.csv', new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+            toast('CSV gerado');
+        };
+        FPx.exportMonth = function () { const ym = curYM(); FPx._exportTxns(txns().filter(t => monthKey(t.date) === ym), 'transacoes_' + ym); };
+
+        /* =================================================================
+           15. BACKUP CRIPTOGRAFADO (Web Crypto)
+        ================================================================= */
+        reg('crypto', async () => {
+            setPanel(panelHead('Backup criptografado', 'AES-GCM 256 bits — protegido por senha') + `
+                <div class="fp-box"><h4><i class="fas fa-lock"></i> Exportar</h4>
+                    <label class="fp-label">Senha</label><input type="password" id="cr-pass" class="fp-input" placeholder="senha forte">
+                    <button class="fp-btn" style="margin-top:12px" onclick="FPx.crExport()"><i class="fas fa-shield-halved"></i> Gerar backup cifrado</button>
+                    <div class="fp-mini">Inclui transações, contas, categorias, metas e todos os dados dos módulos avançados.</div></div>
+                <div class="fp-box"><h4><i class="fas fa-unlock"></i> Restaurar</h4>
+                    <label class="fp-label">Arquivo (.fpenc)</label><input type="file" id="cr-file" class="fp-input" accept=".fpenc,.json">
+                    <label class="fp-label">Senha</label><input type="password" id="cr-pass2" class="fp-input" placeholder="senha do backup">
+                    <button class="fp-btn out" style="margin-top:12px" onclick="FPx.crImport()"><i class="fas fa-rotate-left"></i> Restaurar</button>
+                    <div class="fp-mini" style="color:var(--expense)"><i class="fas fa-triangle-exclamation"></i> A restauração sobrescreve os dados atuais deste usuário.</div></div>`);
+        });
+        async function deriveKey(pass, salt) {
+            const enc = new TextEncoder();
+            const base = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+            return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+        }
+        const b64 = { enc: (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))), dec: (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0)) };
+        FPx.crExport = async function () {
+            const pass = $('cr-pass').value; if (!pass) { toast('Defina uma senha', 'error'); return; }
+            try {
+                const plus = {}; for (const s of STORES) plus[s] = await PlusDB.getAll(s).catch(() => []);
+                const payload = { v: 1, when: new Date().toISOString(), core: { transactions: txns(), accounts: accounts(), categories: categories(), goals: D().goals || [], settings: D().settings || null }, plus };
+                const data = new TextEncoder().encode(JSON.stringify(payload));
+                const salt = crypto.getRandomValues(new Uint8Array(16)); const iv = crypto.getRandomValues(new Uint8Array(12));
+                const key = await deriveKey(pass, salt);
+                const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
+                const out = JSON.stringify({ fp: 'enc', salt: b64.enc(salt), iv: b64.enc(iv), data: b64.enc(ct) });
+                download('financapro_backup_' + today() + '.fpenc', new Blob([out], { type: 'application/json' }));
+                toast('Backup cifrado gerado');
+            } catch (e) { console.error(e); toast('Falha ao cifrar', 'error'); }
+        };
+        FPx.crImport = async function () {
+            const f = $('cr-file').files[0], pass = $('cr-pass2').value;
+            if (!f || !pass) { toast('Selecione o arquivo e a senha', 'error'); return; }
+            if (!confirm('Restaurar irá sobrescrever os dados atuais. Continuar?')) return;
+            try {
+                const obj = JSON.parse(await f.text());
+                const key = await deriveKey(pass, b64.dec(obj.salt));
+                const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64.dec(obj.iv) }, key, b64.dec(obj.data));
+                const payload = JSON.parse(new TextDecoder().decode(pt));
+                // restaura plus
+                if (payload.plus) for (const s of STORES) { for (const o of (payload.plus[s] || [])) await PlusDB.put(s, o); }
+                // restaura core
+                const c = payload.core || {};
+                for (const t of (c.transactions || [])) await DB.saveTransaction(t);
+                for (const a of (c.accounts || [])) await DB.saveAccount(a);
+                for (const ct of (c.categories || [])) await DB.saveCategory(ct);
+                for (const g of (c.goals || [])) await DB.saveGoal(g);
+                if (c.settings) await DB.saveSettings(c.settings);
+                await reloadCore(); toast('Backup restaurado com sucesso');
+            } catch (e) { console.error(e); toast('Senha incorreta ou arquivo inválido', 'error'); }
+        };
+
+        /* =================================================================
+           16. MULTIMOEDA
+        ================================================================= */
+        const CUR = ['USD', 'EUR', 'GBP', 'BTC'];
+        reg('currency', async () => {
+            const rates = await PlusDB.kvGet('rates', { USD: 5.0, EUR: 5.4, GBP: 6.3, BTC: 350000 });
+            setPanel(panelHead('Multimoeda', 'Conversor e cotações (base: Real)') + `
+                <div class="fp-box"><h4><i class="fas fa-coins"></i> Cotações (R$ por unidade)</h4>
+                    ${CUR.map(c => `<div class="fp-row" style="align-items:center;margin-bottom:6px"><label class="fp-item-name" style="flex:0 0 60px">${c}</label>
+                        <input id="cur-${c}" class="fp-input" value="${rates[c]}" style="flex:2"></div>`).join('')}
+                    <button class="fp-btn out sm" onclick="FPx.curSaveRates()">Salvar cotações</button>
+                    <button class="fp-btn out sm" onclick="FPx.curFetch()"><i class="fas fa-arrows-rotate"></i> Atualizar online</button></div>
+                <div class="fp-box"><h4><i class="fas fa-right-left"></i> Converter</h4>
+                    <label class="fp-label">Valor</label><input id="cur-amt" class="fp-input" value="100" oninput="FPx.curConvert()">
+                    <div class="fp-row"><div><label class="fp-label">De</label><select id="cur-from" class="fp-select" onchange="FPx.curConvert()"><option>BRL</option>${CUR.map(c => `<option>${c}</option>`).join('')}</select></div>
+                    <div><label class="fp-label">Para</label><select id="cur-to" class="fp-select" onchange="FPx.curConvert()"><option>USD</option><option>BRL</option>${CUR.filter(c=>c!=='USD').map(c => `<option>${c}</option>`).join('')}</select></div></div>
+                    <div id="cur-out" style="font-size:1.4rem;font-weight:800;color:var(--dark);margin-top:14px;text-align:center"></div></div>`);
+            FPx.curConvert();
+        });
+        FPx.curSaveRates = async function () { const r = {}; CUR.forEach(c => r[c] = parseFloat(($('cur-' + c).value || '0').replace(',', '.'))); await PlusDB.kvSet('rates', r); toast('Cotações salvas'); FPx.curConvert(); };
+        FPx.curFetch = async function () {
+            toast('Buscando câmbio...');
+            try {
+                const resp = await fetch('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL,GBP-BRL,BTC-BRL');
+                const d = await resp.json();
+                if (d.USDBRL) $('cur-USD').value = parseFloat(d.USDBRL.bid).toFixed(4);
+                if (d.EURBRL) $('cur-EUR').value = parseFloat(d.EURBRL.bid).toFixed(4);
+                if (d.GBPBRL) $('cur-GBP').value = parseFloat(d.GBPBRL.bid).toFixed(4);
+                if (d.BTCBRL) $('cur-BTC').value = parseFloat(d.BTCBRL.bid).toFixed(2);
+                FPx.curSaveRates(); toast('Câmbio atualizado');
+            } catch (e) { console.warn(e); toast('API indisponível — edite manualmente', 'error'); }
+        };
+        FPx.curConvert = async function () {
+            const rates = await PlusDB.kvGet('rates', {}); CUR.forEach(c => { const el = $('cur-' + c); if (el) rates[c] = parseFloat((el.value || '0').replace(',', '.')); });
+            const toBRL = (cur, v) => cur === 'BRL' ? v : v * (rates[cur] || 0);
+            const fromBRL = (cur, v) => cur === 'BRL' ? v : v / (rates[cur] || 1);
+            const amt = parseFloat(($('cur-amt').value || '0').replace(',', '.'));
+            const from = $('cur-from').value, to = $('cur-to').value;
+            const res = fromBRL(to, toBRL(from, amt));
+            const out = $('cur-out'); if (out) out.textContent = res.toLocaleString('pt-BR', { maximumFractionDigits: to === 'BTC' ? 8 : 2 }) + ' ' + to;
+        };
+
+        /* =================================================================
+           17. LEMBRETES (Notification API)
+        ================================================================= */
+        reg('reminders', async () => {
+            const perm = (typeof Notification !== 'undefined') ? Notification.permission : 'unsupported';
+            setPanel(panelHead('Lembretes', 'Avisos de vencimentos próximos') + `
+                <div class="fp-box"><h4><i class="fas fa-bell"></i> Notificações</h4>
+                    <div class="fp-mini">Status: <strong>${perm === 'granted' ? 'ativadas' : perm === 'denied' ? 'bloqueadas no navegador' : 'não ativadas'}</strong></div>
+                    ${perm !== 'granted' && perm !== 'unsupported' && perm !== 'denied' ? '<button class="fp-btn" style="margin-top:10px" onclick="FPx.remEnable()"><i class="fas fa-bell"></i> Ativar notificações</button>' : ''}
+                    <button class="fp-btn out" style="margin-top:8px" onclick="FPx.remCheck(true)"><i class="fas fa-magnifying-glass"></i> Verificar agora</button>
+                    <div class="fp-mini" style="margin-top:8px"><i class="fas fa-circle-info"></i> Por ser um app local, os avisos aparecem quando você abre o app (não há servidor de push em segundo plano).</div></div>
+                <div id="rem-list"></div>`);
+            FPx.remCheck(false);
+        });
+        FPx.remEnable = async function () { try { const p = await Notification.requestPermission(); toast(p === 'granted' ? 'Notificações ativadas' : 'Permissão negada', p === 'granted' ? 'success' : 'error'); FinPlus.open('reminders'); } catch (e) {} };
+        FPx.remCheck = async function (notify) {
+            const horizon = 7; const now = new Date(today()); const items = [];
+            txns().filter(t => t.status === 'pending' && t.date >= today()).forEach(t => { const d = (new Date(t.date) - now) / 86400000; if (d <= horizon) items.push({ when: t.date, text: `${t.description || 'Lançamento'} — ${fmt(t.amount)}`, kind: 'Pendente' }); });
+            const subs = await PlusDB.getAll('subscriptions').catch(() => []);
+            subs.filter(s => s.active !== false && s.nextCharge).forEach(s => { const d = (new Date(s.nextCharge) - now) / 86400000; if (d >= 0 && d <= horizon) items.push({ when: s.nextCharge, text: `Assinatura ${s.name} — ${fmt(s.amount)}`, kind: 'Assinatura' }); });
+            items.sort((a, b) => a.when.localeCompare(b.when));
+            const el = $('rem-list'); if (el) el.innerHTML = '<div class="fp-box"><h4><i class="fas fa-calendar-day"></i> Próximos 7 dias</h4>' +
+                (items.length ? items.map(i => `<div class="fp-item"><div class="fp-item-main"><div class="fp-item-name">${esc(i.text)}</div><div class="fp-item-sub">${i.kind} · ${fdate(i.when)}</div></div></div>`).join('') : '<div class="fp-empty"><i class="fas fa-check"></i>Nada vencendo em breve</div>') + '</div>';
+            if (notify && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                if (!items.length) toast('Nenhum vencimento próximo');
+                items.slice(0, 5).forEach(i => { try { new Notification('FinançaPro — ' + i.kind, { body: i.text + ' em ' + fdate(i.when) }); } catch (e) {} });
+            } else if (notify) { toast('Ative as notificações para receber avisos', 'error'); }
+        };
+
+        /* =================================================================
+           18. ACESSIBILIDADE
+        ================================================================= */
+        reg('a11y', async () => {
+            const cfg = await PlusDB.kvGet('a11y', { scale: 100, contrast: false });
+            setPanel(panelHead('Acessibilidade', 'Ajuste a leitura ao seu conforto') + `
+                <div class="fp-box"><h4><i class="fas fa-text-height"></i> Tamanho da fonte</h4>
+                    <input type="range" id="a11-scale" min="90" max="140" step="5" value="${cfg.scale}" style="width:100%" oninput="FPx.a11Apply()">
+                    <div class="fp-mini">Atual: <span id="a11-scale-val">${cfg.scale}</span>%</div></div>
+                <div class="fp-box"><label class="fp-item" style="cursor:pointer"><input type="checkbox" class="fp-check" id="a11-contrast" ${cfg.contrast?'checked':''} onchange="FPx.a11Apply()"><span class="fp-item-name" style="margin-left:8px">Alto contraste</span></label></div>
+                <div class="fp-mini">As preferências ficam salvas e são aplicadas automaticamente ao abrir o app.</div>`);
+        });
+        FPx.a11Apply = async function () {
+            const scale = parseInt($('a11-scale').value), contrast = $('a11-contrast').checked;
+            const v = $('a11-scale-val'); if (v) v.textContent = scale;
+            await PlusDB.kvSet('a11y', { scale, contrast });
+            applyA11y({ scale, contrast });
+        };
+        function applyA11y(cfg) {
+            document.documentElement.style.fontSize = (16 * (cfg.scale || 100) / 100) + 'px';
+            document.body.classList.toggle('fp-hc', !!cfg.contrast);
+        }
+        core._applyA11y = async function () { try { applyA11y(await PlusDB.kvGet('a11y', { scale: 100, contrast: false })); } catch (e) {} };
+
+        // estilo de alto contraste
+        const st = document.createElement('style');
+        st.textContent = 'body.fp-hc{--border:#000;--secondary:#000}body.fp-hc.dark-mode{--border:#fff;--secondary:#cbd5e1}body.fp-hc .fp-card,body.fp-hc .fp-box{border-width:2px}body.fp-hc *{text-shadow:none!important}';
+        document.head.appendChild(st);
+
+    })();
+    </script>
+
 </body>
 </html>
