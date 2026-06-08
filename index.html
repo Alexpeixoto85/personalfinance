@@ -3887,26 +3887,39 @@
                     // Máximo de ocorrências a gerar: se indeterminado → 24 meses; se definido → o que falta
                     const maxOccurrences = maxCount > 0 ? maxCount : 24;
 
-                    // Se já atingiu o limite, pula
-                    if (maxCount > 0 && existingChildren.length >= maxCount) continue;
+                    // Se já atingiu o limite de filhos, pula
+                    if (maxCount > 0 && existingChildren.length >= maxCount - 1) continue;
 
                     // Data do último filho (ou data mestre se nenhum filho)
                     const allDates = [master.date, ...existingChildren.map(t => t.date)];
                     const lastDate = allDates.reduce((a, b) => a > b ? a : b);
 
                     let currentDate = new Date(lastDate + 'T00:00:00');
+                    // FIX: maxCount é total de ocorrências incluindo a mestre → filhos = count - 1
+                    const totalChildren = maxCount > 0 ? maxCount - 1 : 24;
                     let generated = 0;
-                    const remaining = maxCount > 0 ? maxCount - existingChildren.length : 24;
+                    const remaining = maxCount > 0 ? totalChildren - existingChildren.length : 24;
                     const safetyLimit = Math.min(remaining, 366);
+                    // FIX: dia original do mestre para evitar overflow de mês
+                    const masterOriginalDay = new Date(master.date + 'T00:00:00').getDate();
+                    const masterBaseDate = new Date(master.date + 'T00:00:00');
+                    const childrenCountBefore = existingChildren.length;
 
                     for (let i = 0; i < safetyLimit; i++) {
-                        const next = new Date(currentDate);
-                        switch (master.recurringFrequency) {
-                            case 'daily':   next.setDate(next.getDate() + 1); break;
-                            case 'weekly':  next.setDate(next.getDate() + 7); break;
-                            case 'monthly': next.setMonth(next.getMonth() + 1); break;
-                            case 'yearly':  next.setFullYear(next.getFullYear() + 1); break;
-                            default: break;
+                        let next;
+                        if (master.recurringFrequency === 'monthly') {
+                            // FIX: calcula a partir da data mestre + (filhos existentes + i + 1) meses
+                            next = new Date(masterBaseDate.getFullYear(), masterBaseDate.getMonth() + childrenCountBefore + i + 1, 1);
+                            const dim = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+                            next.setDate(Math.min(masterOriginalDay, dim));
+                        } else {
+                            next = new Date(currentDate);
+                            switch (master.recurringFrequency) {
+                                case 'daily':   next.setDate(next.getDate() + 1); break;
+                                case 'weekly':  next.setDate(next.getDate() + 7); break;
+                                case 'yearly':  next.setFullYear(next.getFullYear() + 1); break;
+                                default: next.setMonth(next.getMonth() + 1); break;
+                            }
                         }
                         currentDate = next;
                         const dateStr = currentDate.toISOString().split('T')[0];
@@ -3931,7 +3944,7 @@
                         newTransactions.push(child);
                         generated++;
 
-                        if (maxCount > 0 && (existingChildren.length + generated) >= maxCount) break;
+                        if (maxCount > 0 && (existingChildren.length + generated) >= totalChildren) break;
                     }
                 }
 
@@ -8792,7 +8805,8 @@
                 const preview = document.getElementById('t-installment-preview');
                 const previewText = document.getElementById('t-installment-preview-text');
                 if (total > 0 && count >= 2) {
-                    const parcel = Math.round((total / count) * 100) / 100;
+                    // FIX: usa Math.floor para ser consistente com o cálculo real do save
+                    const parcel = Math.floor((total / count) * 100) / 100;
                     const lastParcel = Math.round((total - parcel * (count - 1)) * 100) / 100;
                     previewText.textContent = `${count}x de ${Utils.formatCurrency(parcel)}${lastParcel !== parcel ? ` (última: ${Utils.formatCurrency(lastParcel)})` : ''} = ${Utils.formatCurrency(total)}`;
                     preview.style.display = 'block';
@@ -9079,12 +9093,19 @@
                             const baseParcel = Math.floor((installmentTotal / installmentCount) * 100) / 100;
                             const lastParcel = Math.round((installmentTotal - baseParcel * (installmentCount - 1)) * 100) / 100;
                             const groupId = Utils.id(); // agrupa todas as parcelas
-                            let currentDate = new Date(date + 'T00:00:00');
+                            // FIX: captura o dia original para evitar overflow de mês (ex: dia 31 → fev → vira março)
+                            const baseDate = new Date(date + 'T00:00:00');
+                            const originalDay = baseDate.getDate();
 
                             for (let i = 0; i < installmentCount; i++) {
                                 const parcNum = i + 1;
                                 const parcAmount = parcNum === installmentCount ? lastParcel : baseParcel;
-                                const dateStr = currentDate.toISOString().split('T')[0];
+                                // FIX: calcula a data de cada parcela a partir do mês base + i meses,
+                                // ajustando para o último dia do mês quando o dia original não existe
+                                const parcDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, 1);
+                                const daysInMonth = new Date(parcDate.getFullYear(), parcDate.getMonth() + 1, 0).getDate();
+                                parcDate.setDate(Math.min(originalDay, daysInMonth));
+                                const dateStr = parcDate.toISOString().split('T')[0];
                                 // Status: 1ª parcela = status escolhido, demais = pending
                                 const parcStatus = parcNum === 1 ? status : 'pending';
 
@@ -9111,10 +9132,6 @@
                                 if (parcStatus === 'cleared') {
                                     await FinanceApp.account.updateBalance(parcTransaction);
                                 }
-
-                                // Avança 1 mês para a próxima parcela
-                                currentDate = new Date(currentDate);
-                                currentDate.setMonth(currentDate.getMonth() + 1);
                             }
 
                             Utils.toast(`${installmentCount} parcelas cadastradas com sucesso!`);
@@ -9163,19 +9180,39 @@
                         // Gerar filhos de recorrência (apenas para novas transações recorrentes)
                         const isNewTransaction = index < 0;
                         if (recurring && isNewTransaction) {
-                            // Gera ocorrências futuras: até 24 meses à frente (ou conforme o count)
-                            const maxOccurrences = recurringCount > 0 ? recurringCount : 24;
-                            let currentDate = new Date(date + 'T00:00:00');
+                            // FIX: recurringCount representa o total de ocorrências (incluindo a mestre).
+                            // Os filhos a gerar = count - 1. Se 0 (indeterminado) → 24 meses à frente.
+                            const maxOccurrences = recurringCount > 0 ? recurringCount - 1 : 24;
+                            // FIX: captura o dia original para evitar overflow de mês
+                            const baseRecDate = new Date(date + 'T00:00:00');
+                            const originalRecDay = baseRecDate.getDate();
+                            let currentDate = new Date(baseRecDate);
                             let generated = 0;
 
                             for (let i = 0; i < maxOccurrences; i++) {
-                                const next = new Date(currentDate);
+                                let next;
                                 switch (recurringFrequency) {
-                                    case 'daily':   next.setDate(next.getDate() + 1); break;
-                                    case 'weekly':  next.setDate(next.getDate() + 7); break;
-                                    case 'monthly': next.setMonth(next.getMonth() + 1); break;
-                                    case 'yearly':  next.setFullYear(next.getFullYear() + 1); break;
-                                    default: break;
+                                    case 'daily':
+                                        next = new Date(currentDate);
+                                        next.setDate(next.getDate() + 1);
+                                        break;
+                                    case 'weekly':
+                                        next = new Date(currentDate);
+                                        next.setDate(next.getDate() + 7);
+                                        break;
+                                    case 'monthly':
+                                        // FIX: avança mês fixando o dia original para evitar overflow
+                                        next = new Date(baseRecDate.getFullYear(), baseRecDate.getMonth() + i + 1, 1);
+                                        const daysInRecMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+                                        next.setDate(Math.min(originalRecDay, daysInRecMonth));
+                                        break;
+                                    case 'yearly':
+                                        next = new Date(currentDate);
+                                        next.setFullYear(next.getFullYear() + 1);
+                                        break;
+                                    default:
+                                        next = new Date(currentDate);
+                                        next.setMonth(next.getMonth() + 1);
                                 }
                                 currentDate = next;
                                 const dateStr = currentDate.toISOString().split('T')[0];
