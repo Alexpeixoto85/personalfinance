@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -7,7 +6,10 @@
     <meta name="theme-color" content="#10b981">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="https://files.manuscdn.com/user_upload_by_module/session_file/310519663703947007/XnLsKgAhqdvmjXIG.png">
+    <!-- Ícone do app na tela inicial. O href é preenchido dinamicamente com a logomarca importada. -->
+    <link rel="apple-touch-icon" id="app-apple-touch-icon" href="https://files.manuscdn.com/user_upload_by_module/session_file/310519663703947007/XnLsKgAhqdvmjXIG.png">
+    <link rel="apple-touch-icon" sizes="180x180" id="app-apple-touch-icon-180" href="https://files.manuscdn.com/user_upload_by_module/session_file/310519663703947007/XnLsKgAhqdvmjXIG.png">
+    <link rel="icon" type="image/png" id="app-favicon" href="https://files.manuscdn.com/user_upload_by_module/session_file/310519663703947007/XnLsKgAhqdvmjXIG.png">
     <title>FinançaPro - Controle Financeiro Completo</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -5275,6 +5277,7 @@
                 FinanceApp.data.categories = await DB.getAllCategories();
                 FinanceApp.data.goals = await DB.getAllGoals();
                 FinanceApp.data.settings = await DB.getSettings();
+                if (typeof window.updateHomeScreenIcon === 'function') window.updateHomeScreenIcon((FinanceApp.data.settings || {}).logo || '');
             },
             
             createDefaultAccounts: async () => {
@@ -8953,16 +8956,8 @@
                 document.getElementById('s-email').value = s.email || '';
                 if (window.FPConfig) FPConfig.setLogo(s.logo || '');
                 
-                // Atualizar Apple Touch Icon ao carregar configuracoes
-                if (s.logo) {
-                    let link = document.querySelector('link[rel="apple-touch-icon"]');
-                    if (!link) {
-                        link = document.createElement('link');
-                        link.rel = 'apple-touch-icon';
-                        document.head.appendChild(link);
-                    }
-                    link.href = s.logo;
-                }
+                // Atualizar ícone da tela inicial a partir da logomarca
+                if (typeof window.updateHomeScreenIcon === 'function') window.updateHomeScreenIcon(s.logo || '');
 
                 // Atualiza estado da biometria
                 Auth.refreshSettingsBiometricUI();
@@ -9976,16 +9971,8 @@
                         await DB.saveSettings(settings);
                         FinanceApp.data.settings = settings;
                         
-                        // Atualizar Apple Touch Icon se houver logo
-                        if (settings.logo) {
-                            let link = document.querySelector('link[rel="apple-touch-icon"]');
-                            if (!link) {
-                                link = document.createElement('link');
-                                link.rel = 'apple-touch-icon';
-                                document.head.appendChild(link);
-                            }
-                            link.href = settings.logo;
-                        }
+                        // Atualizar ícone da tela inicial a partir da logomarca
+                        if (typeof window.updateHomeScreenIcon === 'function') window.updateHomeScreenIcon(settings.logo || '');
                         
                         Utils.toast('Configurações salvas!');
                         UI.closeModals();
@@ -14534,7 +14521,7 @@ const _waitEmpresa = setInterval(() => {
             reader.readAsDataURL(f);
             input.value = '';
         }
-        function removeLogo() { _setLogo(''); }
+        function removeLogo() { _setLogo(''); if (typeof window.updateHomeScreenIcon === 'function') window.updateHomeScreenIcon(''); }
         function setLogo(v) { _setLogo(v); }
 
         function bind() {
@@ -16039,6 +16026,109 @@ const _waitEmpresa = setInterval(() => {
         setInterval(() => { if (enabled && !document.hidden && !busy && !dirty) doPull(false); }, 180000);
     })();
     </script>
+
+<!-- ============================================================
+     ÍCONE DA TELA INICIAL (Add to Home Screen)
+     Gera o apple-touch-icon a partir da LOGOMARCA importada,
+     fazendo-a preencher TODO o espaço do botão.
+============================================================ -->
+<script>
+(function () {
+  var ICON_SIZE = 180; // tamanho recomendado pelo iOS
+  var ICON_IDS  = ['app-apple-touch-icon', 'app-apple-touch-icon-180', 'app-favicon'];
+
+  // Guarda o ícone padrão (usado quando não há logomarca importada)
+  var DEFAULT_HREF = '';
+  (function () {
+    var el = document.getElementById('app-apple-touch-icon');
+    if (el) DEFAULT_HREF = el.getAttribute('href') || '';
+  })();
+
+  function applyIcon(dataUrl) {
+    if (!dataUrl) return;
+    ICON_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.setAttribute('href', dataUrl);
+    });
+  }
+
+  function applyDefault() {
+    ICON_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && DEFAULT_HREF) el.setAttribute('href', DEFAULT_HREF);
+    });
+  }
+
+  // Analisa os cantos da logo para descobrir a cor de fundo e se ela é opaca
+  function analyzeLogo(img) {
+    var result = { bg: '#ffffff', opaque: false };
+    try {
+      var s = 40;
+      var c = document.createElement('canvas');
+      c.width = s; c.height = s;
+      var cx = c.getContext('2d');
+      cx.drawImage(img, 0, 0, s, s);
+      var d = cx.getImageData(0, 0, s, s).data;
+      var pts = [[0,0],[s-1,0],[0,s-1],[s-1,s-1]];
+      var r = 0, g = 0, b = 0, aMin = 255, n = pts.length;
+      pts.forEach(function (p) {
+        var i = (p[1] * s + p[0]) * 4;
+        r += d[i]; g += d[i+1]; b += d[i+2];
+        if (d[i+3] < aMin) aMin = d[i+3];
+      });
+      r = Math.round(r/n); g = Math.round(g/n); b = Math.round(b/n);
+      result.bg = 'rgb(' + r + ',' + g + ',' + b + ')';
+      result.opaque = aMin > 200;
+    } catch (e) {}
+    return result;
+  }
+
+  // Desenha a logo preenchendo TODO o botão (sem margem)
+  function drawLogoIcon(img) {
+    var canvas = document.createElement('canvas');
+    canvas.width = ICON_SIZE;
+    canvas.height = ICON_SIZE;
+    var ctx = canvas.getContext('2d');
+
+    var info = analyzeLogo(img);
+    var aspect = img.width / img.height;
+    var nearSquare = aspect > 0.7 && aspect < 1.43;
+
+    // Fundo na cor detectada (ou branco) — só aparece se sobrar algum cantinho
+    ctx.fillStyle = info.opaque ? info.bg : '#ffffff';
+    ctx.fillRect(0, 0, ICON_SIZE, ICON_SIZE);
+
+    if (nearSquare) {
+      // Logo quadrada (ou quase): "cover" — encosta nas 4 bordas, como app nativo
+      var scale = Math.max(ICON_SIZE / img.width, ICON_SIZE / img.height);
+      var cw = img.width * scale, ch = img.height * scale;
+      try { ctx.drawImage(img, (ICON_SIZE - cw)/2, (ICON_SIZE - ch)/2, cw, ch); } catch (e) {}
+    } else {
+      // Logo retangular: o maior possível, sem cortar a marca, sem margem extra
+      var ratio = Math.min(ICON_SIZE / img.width, ICON_SIZE / img.height);
+      var w = img.width * ratio, h = img.height * ratio;
+      try { ctx.drawImage(img, (ICON_SIZE - w)/2, (ICON_SIZE - h)/2, w, h); } catch (e) {}
+    }
+
+    return canvas.toDataURL('image/png');
+  }
+
+  // Atualiza o ícone a partir da logomarca (data URL). Sem logo => ícone padrão.
+  function updateHomeScreenIcon(logo) {
+    if (typeof logo === 'string' && logo.indexOf('data:image') === 0) {
+      var img = new Image();
+      img.onload = function () { applyIcon(drawLogoIcon(img)); };
+      img.onerror = applyDefault;
+      img.src = logo;
+    } else {
+      applyDefault();
+    }
+  }
+
+  // Exposto globalmente para ser chamado ao carregar/salvar/remover a logo
+  window.updateHomeScreenIcon = updateHomeScreenIcon;
+})();
+</script>
 
 </body>
 </html>
