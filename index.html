@@ -3843,17 +3843,29 @@
             generateRecurringDates: (startDate, frequency, count, endDate) => {
                 const dates = [];
                 let currentDate = new Date(startDate);
-                
-                const maxIterations = count === 0 ? 365 : count;
-                
+
+                // ANTI-RUNAWAY: para recorrência indeterminada (count === 0), limita
+                // a um horizonte a partir de HOJE em vez de um número fixo de iterações.
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const horizon = new Date(
+                    today.getFullYear(),
+                    today.getMonth() + (Utils.RECURRING_HORIZON_MONTHS || 24),
+                    today.getDate()
+                );
+                const HARD_CAP = 600; // trava de segurança absoluta
+                const maxIterations = count === 0 ? HARD_CAP : Math.min(count, HARD_CAP);
+
                 for (let i = 0; i < maxIterations; i++) {
+                    // Não ultrapassa o horizonte quando a contagem é indeterminada
+                    if (count === 0 && currentDate > horizon) break;
+
                     const dateStr = currentDate.toISOString().split('T')[0];
                     dates.push(dateStr);
-                    
+
                     if (endDate && currentDate >= new Date(endDate)) {
                         break;
                     }
-                    
+
                     const nextDate = new Date(currentDate);
                     switch(frequency) {
                         case 'daily':
@@ -3875,76 +3887,90 @@
                 return dates;
             },
             
-            // FUNÇÃO MELHORADA: Processar transações recorrentes automaticamente
-            // Garante filhos gerados mesmo para meses futuros (até 24 meses à frente)
+            // Janela (em meses) de geração antecipada a partir de HOJE.
+            // As ocorrências recorrentes são mantidas preenchidas até hoje + esta janela.
+            RECURRING_HORIZON_MONTHS: 24,
+
+            // Processa recorrências de forma IDEMPOTENTE e ancorada em HOJE.
+            //
+            // Bug corrigido: a versão anterior ancorava o cálculo na QUANTIDADE de
+            // filhos já existentes (master + childrenCount + i meses). Como roda a
+            // cada login, gerava +24 filhos cada vez mais à frente, sem parar
+            // (runaway: lançamentos jogados para 2104..2269 e meses reais vazios).
+            //
+            // Esta versão:
+            //   • gera período a período a partir da DATA DA MESTRE (sem drift);
+            //   • NUNCA passa do horizonte (hoje + RECURRING_HORIZON_MONTHS) → anti-runaway;
+            //   • é idempotente: se a cobertura já alcança o horizonte, gera 0;
+            //   • preenche LACUNAS no meio (meses faltantes voltam a aparecer);
+            //   • respeita recurringCount (série finita) e recurringEndDate.
             processRecurringTransactions: (transactions) => {
                 const newTransactions = [];
-                const recurringMasters = transactions.filter(t => t.recurring && !t.recurringParent);
+                const masters = transactions.filter(t => t.recurring && !t.recurringParent);
 
-                for (const master of recurringMasters) {
-                    const existingChildren = transactions.filter(t => t.recurringParent === master.id);
-                    const maxCount = master.recurringCount || 0;
-                    // Máximo de ocorrências a gerar: se indeterminado → 24 meses; se definido → o que falta
-                    const maxOccurrences = maxCount > 0 ? maxCount : 24;
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const horizon = new Date(
+                    today.getFullYear(),
+                    today.getMonth() + Utils.RECURRING_HORIZON_MONTHS,
+                    today.getDate()
+                );
+                const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const MAX_STEPS = 600; // trava de segurança absoluta por série
 
-                    // Se já atingiu o limite de filhos, pula
-                    if (maxCount > 0 && existingChildren.length >= maxCount - 1) continue;
+                for (const master of masters) {
+                    const freq = master.recurringFrequency || 'monthly';
+                    const maxCount = master.recurringCount || 0;        // 0 = indeterminado
+                    const endByDate = master.recurringEndDate || null;
 
-                    // Data do último filho (ou data mestre se nenhum filho)
-                    const allDates = [master.date, ...existingChildren.map(t => t.date)];
-                    const lastDate = allDates.reduce((a, b) => a > b ? a : b);
+                    const children = transactions.filter(t => t.recurringParent === master.id);
+                    const existingDates = new Set(children.map(c => c.date));
 
-                    let currentDate = new Date(lastDate + 'T00:00:00');
-                    // FIX: maxCount é total de ocorrências incluindo a mestre → filhos = count - 1
-                    const totalChildren = maxCount > 0 ? maxCount - 1 : 24;
-                    let generated = 0;
-                    const remaining = maxCount > 0 ? totalChildren - existingChildren.length : 24;
-                    const safetyLimit = Math.min(remaining, 366);
-                    // FIX: dia original do mestre para evitar overflow de mês
-                    const masterOriginalDay = new Date(master.date + 'T00:00:00').getDate();
-                    const masterBaseDate = new Date(master.date + 'T00:00:00');
-                    const childrenCountBefore = existingChildren.length;
+                    // Limite de ocorrências TOTAIS (mestre + filhos). 0 = sem limite.
+                    const occLimit = maxCount > 0 ? maxCount : Infinity;
+                    let occCount = 1 + children.length;
+                    if (occCount >= occLimit) continue;                 // série finita já completa
 
-                    for (let i = 0; i < safetyLimit; i++) {
-                        let next;
-                        if (master.recurringFrequency === 'monthly') {
-                            // FIX: calcula a partir da data mestre + (filhos existentes + i + 1) meses
-                            next = new Date(masterBaseDate.getFullYear(), masterBaseDate.getMonth() + childrenCountBefore + i + 1, 1);
-                            const dim = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-                            next.setDate(Math.min(masterOriginalDay, dim));
-                        } else {
-                            next = new Date(currentDate);
-                            switch (master.recurringFrequency) {
-                                case 'daily':   next.setDate(next.getDate() + 1); break;
-                                case 'weekly':  next.setDate(next.getDate() + 7); break;
-                                case 'yearly':  next.setFullYear(next.getFullYear() + 1); break;
-                                default: next.setMonth(next.getMonth() + 1); break;
-                            }
+                    const base = new Date(master.date + 'T00:00:00');
+                    const baseDay = base.getDate();
+
+                    for (let step = 1; step <= MAX_STEPS; step++) {
+                        let d;
+                        if (freq === 'monthly') {
+                            d = new Date(base.getFullYear(), base.getMonth() + step, 1);
+                            const dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+                            d.setDate(Math.min(baseDay, dim));
+                        } else if (freq === 'yearly') {
+                            d = new Date(base.getFullYear() + step, base.getMonth(), 1);
+                            const dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+                            d.setDate(Math.min(baseDay, dim));
+                        } else if (freq === 'weekly') {
+                            d = new Date(base); d.setDate(d.getDate() + 7 * step);
+                        } else { // daily
+                            d = new Date(base); d.setDate(d.getDate() + step);
                         }
-                        currentDate = next;
-                        const dateStr = currentDate.toISOString().split('T')[0];
 
-                        if (master.recurringEndDate && dateStr > master.recurringEndDate) break;
+                        // ANTI-RUNAWAY: nunca gera além do horizonte (hoje + N meses).
+                        if (d > horizon) break;
 
-                        // Não gerar duplicata (pode já existir filho para esta data)
-                        const alreadyExists = existingChildren.some(c => c.date === dateStr) ||
-                            newTransactions.some(c => c.recurringParent === master.id && c.date === dateStr);
-                        if (alreadyExists) continue;
+                        const ds = fmt(d);
+                        if (endByDate && ds > endByDate) break;
+                        if (occCount >= occLimit) break;
+
+                        const dup = existingDates.has(ds) ||
+                            newTransactions.some(c => c.recurringParent === master.id && c.date === ds);
+                        if (dup) continue;                              // já existe → preserva, não duplica
 
                         const child = { ...master };
                         child.id = Utils.id();
-                        child.date = dateStr;
+                        child.date = ds;
                         child.status = 'pending';
                         child.recurringParent = master.id;
                         child.recurring = false;
                         child.recurringFrequency = null;
                         child.recurringCount = 0;
                         child.recurringEndDate = null;
-
                         newTransactions.push(child);
-                        generated++;
-
-                        if (maxCount > 0 && (existingChildren.length + generated) >= totalChildren) break;
+                        occCount++;
                     }
                 }
 
