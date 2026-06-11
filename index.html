@@ -604,18 +604,24 @@
         .toast {
             position: fixed; left: 50%;
             bottom: calc(var(--nav-height) + 20px); top: auto;
-            transform: translateX(-50%) translateY(160px);
-            opacity: 0; pointer-events: none;
+            transform: translateX(-50%) translateY(12px);
+            display: flex; pointer-events: none;
             background: var(--dark); color: white;
             padding: 13px 18px; border-radius: 16px;
             font-size: 0.9rem; font-weight: 500;
             box-shadow: var(--shadow-float); z-index: 3000;
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
-            display: flex; align-items: center; gap: 8px;
+            align-items: center; gap: 8px;
             max-width: min(92vw, 440px); white-space: normal;
             line-height: 1.35; text-align: left;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
         }
-        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
 
         .badge {
             display: inline-block; padding: 2px 8px;
@@ -3838,9 +3844,12 @@
                 const t = document.getElementById('toast');
                 t.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> <span>${msg}</span>`;
                 t.style.background = type === 'success' ? 'var(--dark)' : 'var(--expense)';
-                t.classList.add('show');
                 clearTimeout(Utils._toastTimer);
-                Utils._toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+                clearTimeout(Utils._toastHideTimer);
+                t.classList.add('show');
+                Utils._toastTimer = setTimeout(() => {
+                    t.classList.remove('show');
+                }, 3000);
             },
             
             getTransactionTypeIcon: (type) => {
