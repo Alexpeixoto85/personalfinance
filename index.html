@@ -2791,7 +2791,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Data</label>
-                    <input type="date" id="t-date" class="form-control" required>
+                    <input type="date" id="t-date" class="form-control" required onchange="UI.onTransactionDateChange()">
                 </div>
             </div>
             
@@ -2853,7 +2853,7 @@
 
             <div class="form-group">
                 <label class="form-label">Status</label>
-                <select id="t-status-select" class="form-control">
+                <select id="t-status-select" class="form-control" onchange="UI.onStatusChange()">
                     <option value="cleared">Efetivada</option>
                     <option value="pending">Pendente</option>
                     <option value="scheduled">Agendada</option>
@@ -8589,6 +8589,31 @@
                 if (info) info.style.display = checked ? 'none' : 'block';
             },
 
+            // Data futura → marca automaticamente como Pendente
+            onTransactionDateChange: () => {
+                const dateInput = document.getElementById('t-date');
+                const statusSel = document.getElementById('t-status-select');
+                if (!dateInput || !statusSel || !dateInput.value) return;
+                if (Utils.isFutureDate(dateInput.value)) {
+                    // Só altera quando está em "Efetivada"; respeita Pendente/Agendada já escolhidos
+                    if (statusSel.value === 'cleared') {
+                        statusSel.value = 'pending';
+                        Utils.toast('📅 Data futura: status definido como Pendente');
+                    }
+                }
+            },
+
+            // Impede selecionar "Efetivada" quando a data é futura
+            onStatusChange: () => {
+                const dateInput = document.getElementById('t-date');
+                const statusSel = document.getElementById('t-status-select');
+                if (!dateInput || !statusSel) return;
+                if (statusSel.value === 'cleared' && dateInput.value && Utils.isFutureDate(dateInput.value)) {
+                    statusSel.value = 'pending';
+                    Utils.toast('Só é possível efetivar uma transação com data presente ou passada.', 'error');
+                }
+            },
+
             onCategoryInput: (val) => {
                 const type = document.getElementById('t-type').value;
                 const categories = FinanceApp.data.categories.filter(c => c.type === type);
@@ -9103,6 +9128,18 @@
                     const paymentMethod = document.getElementById('t-payment-method').value;
                     const notes = document.getElementById('t-notes').value;
                     const status = document.getElementById('t-status-select').value;
+
+                    // Bloqueio: não é possível efetivar transação com data futura
+                    if (status === 'cleared' && Utils.isFutureDate(date)) {
+                        Utils.toast('Só é possível efetivar uma transação com data presente ou passada.', 'error');
+                        const statusSel = document.getElementById('t-status-select');
+                        statusSel.style.borderColor = 'var(--expense)';
+                        statusSel.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.15)';
+                        setTimeout(() => { statusSel.style.borderColor = ''; statusSel.style.boxShadow = ''; }, 2200);
+                        statusSel.focus();
+                        return;
+                    }
+
                     const confirmed = document.getElementById('t-confirmed').checked;
                     const recurring = document.getElementById('t-recurring').checked;
                     const recurringFrequency = recurring ? document.getElementById('t-recurring-frequency').value : null;
@@ -9388,6 +9425,13 @@
                     
                     const oldStatus = transaction.status;
                     const newStatus = oldStatus === 'pending' || oldStatus === 'scheduled' ? 'cleared' : 'pending';
+
+                    // Bloqueio: não é possível efetivar transação com data futura
+                    if (newStatus === 'cleared' && Utils.isFutureDate(transaction.date)) {
+                        Utils.toast('Só é possível efetivar uma transação com data presente ou passada.', 'error');
+                        return;
+                    }
+
                     transaction.status = newStatus;
                     
                     try {
