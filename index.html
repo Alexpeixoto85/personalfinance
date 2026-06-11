@@ -3838,7 +3838,7 @@
                 t.style.background = type === 'success' ? 'var(--dark)' : 'var(--expense)';
                 t.classList.add('show');
                 clearTimeout(Utils._toastTimer);
-                Utils._toastTimer = setTimeout(() => t.classList.remove('show'), 10000);
+                Utils._toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
             },
             
             getTransactionTypeIcon: (type) => {
