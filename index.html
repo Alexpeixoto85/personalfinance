@@ -535,24 +535,64 @@
             cursor: pointer;
         }
 
-        /* Radio Buttons */
+        /* --- Ações do modal (botões organizados e elegantes) --- */
+        .modal-actions {
+            display: flex; flex-direction: column; gap: 10px;
+            margin-top: 22px;
+        }
+        .modal-actions-row { display: flex; gap: 10px; }
+        .btn-action {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 8px; line-height: 1;
+            padding: 15px 18px;
+            border: none; border-radius: 14px;
+            font-size: 0.98rem; font-weight: 700;
+            cursor: pointer; -webkit-appearance: none;
+            transition: transform .15s ease, filter .2s ease, background .2s ease;
+        }
+        .modal-actions-row .btn-action { flex: 1; min-width: 0; padding: 14px 12px; }
+        .btn-action i { font-size: 0.92rem; }
+        .btn-action:active { transform: scale(0.97); }
+        .btn-action--primary {
+            background: var(--primary); color: #fff;
+            box-shadow: 0 8px 18px -6px rgba(16,185,129,0.55);
+        }
+        .btn-action--primary:hover { background: var(--primary-dark); }
+        .btn-action--ghost { background: #f1f5f9; color: #475569; }
+        .btn-action--ghost:hover { background: #e2e8f0; }
+        .btn-action--warn { background: var(--pending); color: #78350f; }
+        .btn-action--danger { background: #fee2e2; color: #dc2626; }
+        .btn-action--danger:hover { background: #fecaca; }
+
+        /* Seletor de tipo (grid 2x2 equilibrado) */
         .type-selector {
-            display: flex; gap: 8px; margin-bottom: 16px;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px; margin-bottom: 18px;
         }
         .type-option {
-            flex: 1; padding: 12px; border: 2px solid var(--border);
-            border-radius: 10px; text-align: center; cursor: pointer;
-            transition: all 0.2s; min-width: 100px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 6px;
+            padding: 14px 8px; min-width: 0;
+            border: 1.5px solid var(--border);
+            border-radius: 14px; text-align: center; cursor: pointer;
+            font-size: 0.92rem; font-weight: 600; color: var(--secondary);
+            background: var(--surface);
+            transition: transform .15s ease, border-color .18s ease, background .18s ease, color .18s ease;
         }
-        .type-option.active { 
-            border-color: var(--primary); background: #f0fdf4;
-            color: var(--primary); font-weight: 600;
-        }
-        .type-income.active { background: #f0fdf4; }
-        .type-expense.active { background: #fef2f2; }
-        .type-investment.active { background: #eff6ff; }
-        .type-transfer.active { background: #f3e8ff; }
+        .type-option i { font-size: 1.2rem; line-height: 1; }
+        .type-option:active { transform: scale(0.97); }
+        /* Ícone sempre na cor do seu tipo, para leitura rápida */
+        .type-income i    { color: var(--income); }
+        .type-expense i   { color: var(--expense); }
+        .type-transfer i  { color: var(--transfer); }
+        .type-investment i{ color: var(--investment); }
+        /* Estado ativo: cada tipo com sua própria cor */
+        .type-option.active { font-weight: 700; border-color: currentColor; }
+        .type-income.active   { background: #f0fdf4; color: var(--income); }
+        .type-expense.active  { background: #fef2f2; color: var(--expense); }
+        .type-transfer.active { background: #f5f0ff; color: var(--transfer); }
+        .type-investment.active { background: #eff6ff; color: var(--investment); }
 
         /* --- Utility --- */
         .empty-state { 
@@ -1905,6 +1945,10 @@
     body.dark-mode .balance-card * { color: white !important; }
 
     /* Type selector */
+    body.dark-mode .btn-action--ghost { background: #334155 !important; color: #e2e8f0 !important; }
+    body.dark-mode .btn-action--ghost:hover { background: #3f4d63 !important; }
+    body.dark-mode .btn-action--danger { background: #450a0a !important; color: #f87171 !important; }
+    body.dark-mode .btn-action--danger:hover { background: #5c1010 !important; }
     body.dark-mode .type-selector { background: #1e293b !important; }
     body.dark-mode .type-option { color: #94a3b8 !important; background: #0f172a !important; }
     body.dark-mode .type-option.active.type-income { background: #064e3b !important; color: #10b981 !important; }
@@ -2027,12 +2071,12 @@
             <div id="tab-login">
                 <div class="login-form-group">
                     <label class="login-label">E-mail ou usuário</label>
-                    <input type="text" id="l-username" class="login-input" placeholder="Digite seu e-mail ou usuário" autocomplete="username">
+                    <input type="text" id="l-username" class="login-input" placeholder="Digite seu e-mail ou usuário" autocomplete="off" autocapitalize="off" spellcheck="false">
                 </div>
                 <div class="login-form-group">
                     <label class="login-label">Senha</label>
                     <div class="input-wrapper">
-                        <input type="password" id="l-password" class="login-input" placeholder="Digite sua senha" autocomplete="off" onkeydown="if(event.key==='Enter') Auth.login()">
+                        <input type="password" id="l-password" class="login-input" placeholder="Digite sua senha" autocomplete="new-password" onkeydown="if(event.key==='Enter') Auth.login()">
                         <button class="toggle-pw" type="button" onclick="Auth.togglePassword('l-password', this)"><i class="fas fa-eye"></i></button>
                     </div>
                 </div>
@@ -2079,7 +2123,7 @@
 
         <!-- Alternância rápida de usuários -->
         <div id="user-switcher-section" style="display:none;margin-top:20px;width:100%;max-width:380px;">
-            <div style="font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;text-align:center;">Acessar como</div>
+            <div style="font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;text-align:center;">Trocar de conta (exige senha)</div>
             <div id="user-switcher-list" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
     </div>
@@ -2905,10 +2949,14 @@
                 </div>
             </div>
 
-            <button type="submit" class="btn-block">Salvar Transação</button>
-            <button type="button" class="btn-block" style="background: var(--light); color: var(--secondary); margin-top: 8px;" onclick="UI.closeModals()">Cancelar</button>
-            <button type="button" id="toggle-status-btn" class="btn-block" style="background: var(--pending); color: var(--dark); margin-top: 8px; display: none;" onclick="FinanceApp.transaction.toggleStatus()">Marcar como Pendente</button>
-            <button type="button" id="delete-transaction-btn" class="btn-block" style="background: var(--expense); color: white; margin-top: 8px; display: none;" onclick="FinanceApp.transaction.deleteTransaction()">Excluir Transação</button>
+            <div class="modal-actions">
+                <button type="submit" class="btn-action btn-action--primary"><i class="fas fa-check"></i> Salvar Transação</button>
+                <div class="modal-actions-row">
+                    <button type="button" class="btn-action btn-action--ghost" onclick="UI.closeModals()"><i class="fas fa-xmark"></i> Cancelar</button>
+                    <button type="button" id="toggle-status-btn" class="btn-action btn-action--warn" style="display: none;" onclick="FinanceApp.transaction.toggleStatus()"><i class="fas fa-clock"></i> Marcar como Pendente</button>
+                </div>
+                <button type="button" id="delete-transaction-btn" class="btn-action btn-action--danger" style="display: none;" onclick="FinanceApp.transaction.deleteTransaction()"><i class="fas fa-trash-can"></i> Excluir Transação</button>
+            </div>
         </form>
     </div>
 
@@ -4808,6 +4856,10 @@
             showUserSwitcher: () => {
                 Auth.currentUser = null;
                 document.getElementById('login-screen').classList.remove('hidden');
+                const uField = document.getElementById('l-username');
+                const pField = document.getElementById('l-password');
+                if (uField) uField.value = '';
+                if (pField) pField.value = '';
                 Auth.hideMessages();
                 Auth.switchTab('login', document.querySelectorAll('.login-tab-btn')[0]);
                 Auth._renderUserSwitcher();
@@ -4851,7 +4903,7 @@
                                 <div style="font-weight:700;font-size:0.9rem;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${u.name || u.username}</div>
                                 <div style="font-size:0.75rem;color:#64748b;">@${u.username}</div>
                             </div>
-                            ${Auth.currentUser && Auth.currentUser.username===u.username ? '<span style="color:var(--primary);font-size:0.7rem;font-weight:700;">ATIVO</span>' : '<i class="fas fa-sign-in-alt" style="color:#94a3b8;font-size:0.9rem;"></i>'}
+                            ${Auth.currentUser && Auth.currentUser.username===u.username ? '<span style="color:var(--primary);font-size:0.7rem;font-weight:700;">ATIVO</span>' : '<i class="fas fa-key" style="color:#94a3b8;font-size:0.85rem;"></i>'}
                         </div>`).join('');
                 } catch(e) { container.innerHTML = ''; }
             },
@@ -4859,9 +4911,14 @@
             switchUser: async (username) => {
                 const user = await DB.getUser(username).catch(() => null);
                 if (!user) { Utils.toast('Usuário não encontrado.'); return; }
-                Auth.currentUser = user;
-                await Auth.enterApp(user);
-                Utils.toast(`👋 Olá, ${user.name || user.username}!`);
+                // Sem acesso automático: usuário e senha são sempre exigidos.
+                Auth.switchTab('login', document.querySelectorAll('.login-tab-btn')[0]);
+                const uField = document.getElementById('l-username');
+                const pField = document.getElementById('l-password');
+                if (uField) uField.value = user.username;
+                if (pField) { pField.value = ''; pField.focus(); }
+                Auth.hideMessages();
+                Utils.toast('🔒 Digite a senha para entrar como ' + (user.name || user.username));
             },
 
             // ── Atualiza botão facial na tela de login ─────────────────────
@@ -8753,11 +8810,13 @@
                 
                 const toggleBtn = document.getElementById('toggle-status-btn');
                 if (transaction.status === 'pending') {
-                    toggleBtn.textContent = 'Marcar como Efetivada';
+                    toggleBtn.innerHTML = '<i class="fas fa-check-double"></i> Marcar como Efetivada';
                     toggleBtn.style.background = 'var(--primary)';
+                    toggleBtn.style.color = '#ffffff';
                 } else {
-                    toggleBtn.textContent = 'Marcar como Pendente';
+                    toggleBtn.innerHTML = '<i class="fas fa-clock"></i> Marcar como Pendente';
                     toggleBtn.style.background = 'var(--pending)';
+                    toggleBtn.style.color = '#78350f';
                 }
                 
                 UI.openModal('transaction');
