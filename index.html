@@ -16341,8 +16341,9 @@ const _waitEmpresa = setInterval(() => {
 
         /* operações */
         async function doPull(force) {
-            if (!enabled || !TOKEN || !gistId || applying || busy) return;
+            if (!enabled || !TOKEN || !gistId || applying || busy) return false;
             busy = true; setStatus('Verificando nuvem…'); render();
+            let ok = false;
             try {
                 const txt = await ghRead(gistId);
                 if (txt) {
@@ -16353,8 +16354,10 @@ const _waitEmpresa = setInterval(() => {
                     lastPulledAt = snap.updatedAt; await PlusDB.kvSet('sync_lastPulledAt', snap.updatedAt);
                     conflict = false; setStatus('Sincronizado');
                 }
+                ok = true;
             } catch (e) { console.warn(e); setStatus('Erro: ' + e.message); toast('Sincronização: ' + e.message, 'error'); }
-            busy = false; render();
+            finally { busy = false; render(); }
+            return ok;
         }
         async function doPush(forceOverwrite) {
             if (!enabled || !TOKEN || !gistId || applying || busy) return;
@@ -16515,15 +16518,20 @@ const _waitEmpresa = setInterval(() => {
         /* inicialização + automações */
         async function initForUser() {
             await loadCfg();
-            if (enabled && TOKEN && gistId) { patchDataLayer(); await doPull(true); }
-            else setStatus(enabled ? 'Configuração incompleta' : (TOKEN ? 'Pausada' : 'Não configurado'));
+            if (enabled && TOKEN && gistId) { patchDataLayer(); return await doPull(true); }
+            setStatus(enabled ? 'Configuração incompleta' : (TOKEN ? 'Pausada' : 'Não configurado'));
+            return true; // nada configurado para sincronizar — não precisa repetir
         }
         setInterval(async () => {
             try {
                 const ready = (typeof DB !== 'undefined') && DB.currentUsername && $('login-screen') && $('login-screen').classList.contains('hidden') && PlusDB.db;
                 if (!ready) return;
-                if (DB.currentUsername !== lastUser) { lastUser = DB.currentUsername; enabled = false; conflict = false; dirty = false; }
-                if (pulledForUser !== lastUser && PlusDB.user === lastUser) { pulledForUser = lastUser; await initForUser(); }
+                if (DB.currentUsername !== lastUser) { lastUser = DB.currentUsername; enabled = false; conflict = false; dirty = false; pulledForUser = null; }
+                // Sincroniza automaticamente ao entrar; se falhar, tenta de novo no próximo ciclo
+                if (pulledForUser !== lastUser && PlusDB.user === lastUser && !busy) {
+                    const okPull = await initForUser();
+                    if (okPull) pulledForUser = lastUser;
+                }
             } catch (e) { /* silencioso */ }
         }, 1000);
 
