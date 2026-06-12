@@ -15152,14 +15152,8 @@ const _waitEmpresa = setInterval(() => {
                     PlusDB.user = username;
                     const dbName = 'FinancaProDB_' + username + '_plus';
 
-                    // Primeiro abre sem versão para descobrir a versão atual
-                    const probe = indexedDB.open(dbName);
-                    probe.onsuccess = () => {
-                        const currentVersion = probe.result.version;
-                        probe.result.close();
-                        // Abre na versão existente ou na mínima necessária
-                        const targetVersion = Math.max(currentVersion, 1);
-                        const req = indexedDB.open(dbName, targetVersion);
+                    function doOpen(version) {
+                        const req = indexedDB.open(dbName, version);
                         req.onupgradeneeded = (e) => {
                             const db = e.target.result;
                             STORES.forEach(s => { if (!db.objectStoreNames.contains(s)) {
@@ -15168,8 +15162,38 @@ const _waitEmpresa = setInterval(() => {
                                 if (s === 'snapshots') os.createIndex('ym', 'ym', { unique: false });
                             }});
                         };
-                        req.onsuccess = () => { PlusDB.db = req.result; resolve(); };
+                        req.onsuccess = () => {
+                            const db = req.result;
+                            // Verifica se todas as stores existem
+                            const missing = STORES.filter(s => !db.objectStoreNames.contains(s));
+                            if (missing.length > 0) {
+                                // Precisa de upgrade: fecha e reabre com versão maior
+                                const nextVersion = db.version + 1;
+                                db.close();
+                                doOpen(nextVersion);
+                            } else {
+                                PlusDB.db = db;
+                                resolve();
+                            }
+                        };
                         req.onerror = () => reject(req.error);
+                    }
+
+                    // Probe: descobre versão atual sem risco de downgrade
+                    const probe = indexedDB.open(dbName);
+                    probe.onsuccess = () => {
+                        const v = probe.result.version;
+                        probe.result.close();
+                        doOpen(v); // abre na versão atual; se faltar stores, doOpen sobe a versão
+                    };
+                    probe.onupgradeneeded = (e) => {
+                        // banco novo: cria stores direto
+                        const db = e.target.result;
+                        STORES.forEach(s => { if (!db.objectStoreNames.contains(s)) {
+                            const os = db.createObjectStore(s, { keyPath: 'id' });
+                            if (s === 'attachments') os.createIndex('txnId', 'txnId', { unique: false });
+                            if (s === 'snapshots') os.createIndex('ym', 'ym', { unique: false });
+                        }});
                     };
                     probe.onerror = () => reject(probe.error);
                 });
