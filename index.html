@@ -16328,6 +16328,7 @@ const _waitEmpresa = setInterval(() => {
 
         /* config persistida (em kv, chaves sync_*) */
         async function loadCfg() {
+            await ensurePlusDB();
             TOKEN = await PlusDB.kvGet('sync_token', null);
             gistId = await PlusDB.kvGet('sync_gistId', null);
             enabled = await PlusDB.kvGet('sync_enabled', false);
@@ -16396,11 +16397,20 @@ const _waitEmpresa = setInterval(() => {
             } catch (e) { console.warn('patch sync falhou', e); }
         }
 
+        /* garante que o PlusDB está aberto antes de qualquer operação de sync */
+        async function ensurePlusDB() {
+            if (PlusDB.db) return;
+            const username = (typeof DB !== 'undefined' && DB.currentUsername) ? DB.currentUsername : null;
+            if (!username) throw new Error('Usuário não identificado. Faça login novamente.');
+            await PlusDB.open(username);
+        }
+
         /* conectar / desconectar */
         async function connect(token) {
             if (!token) { toast('Cole o token', 'error'); return; }
             busy = true; setStatus('Conectando…'); render();
             try {
+                await ensurePlusDB();
                 TOKEN = token.trim(); await PlusDB.kvSet('sync_token', TOKEN);
                 let id = await PlusDB.kvGet('sync_gistId', null);
                 if (!id) id = await ghFind();
@@ -16415,11 +16425,13 @@ const _waitEmpresa = setInterval(() => {
             } catch (e) { busy = false; console.warn(e); setStatus('Erro: ' + e.message); toast('Falha: ' + e.message, 'error'); render(); }
         }
         async function disconnect() {
-            enabled = false; await PlusDB.kvSet('sync_enabled', false);
+            enabled = false;
+            try { await ensurePlusDB(); await PlusDB.kvSet('sync_enabled', false); } catch (e) {}
             setStatus('Desconectado'); toast('Sincronização desligada'); render();
         }
         async function forget() {
             enabled = false;
+            try { await ensurePlusDB(); } catch (e) {}
             for (const k of ['sync_token', 'sync_gistId', 'sync_enabled', 'sync_lastPulledAt', 'sync_lastPushedAt']) await PlusDB.del('kv', k).catch(() => {});
             TOKEN = null; gistId = null; lastPulledAt = null; lastPushedAt = null;
             setStatus('Não configurado'); toast('Credenciais removidas deste aparelho'); render();
