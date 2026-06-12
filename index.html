@@ -15150,44 +15150,8 @@ const _waitEmpresa = setInterval(() => {
                     if (PlusDB.db && PlusDB.user === username) return resolve();
                     if (PlusDB.db) { try { PlusDB.db.close(); } catch (e) {} PlusDB.db = null; }
                     PlusDB.user = username;
-                    const dbName = 'FinancaProDB_' + username + '_plus';
-
-                    function doOpen(version) {
-                        const req = indexedDB.open(dbName, version);
-                        req.onupgradeneeded = (e) => {
-                            const db = e.target.result;
-                            STORES.forEach(s => { if (!db.objectStoreNames.contains(s)) {
-                                const os = db.createObjectStore(s, { keyPath: 'id' });
-                                if (s === 'attachments') os.createIndex('txnId', 'txnId', { unique: false });
-                                if (s === 'snapshots') os.createIndex('ym', 'ym', { unique: false });
-                            }});
-                        };
-                        req.onsuccess = () => {
-                            const db = req.result;
-                            // Verifica se todas as stores existem
-                            const missing = STORES.filter(s => !db.objectStoreNames.contains(s));
-                            if (missing.length > 0) {
-                                // Precisa de upgrade: fecha e reabre com versão maior
-                                const nextVersion = db.version + 1;
-                                db.close();
-                                doOpen(nextVersion);
-                            } else {
-                                PlusDB.db = db;
-                                resolve();
-                            }
-                        };
-                        req.onerror = () => reject(req.error);
-                    }
-
-                    // Probe: descobre versão atual sem risco de downgrade
-                    const probe = indexedDB.open(dbName);
-                    probe.onsuccess = () => {
-                        const v = probe.result.version;
-                        probe.result.close();
-                        doOpen(v); // abre na versão atual; se faltar stores, doOpen sobe a versão
-                    };
-                    probe.onupgradeneeded = (e) => {
-                        // banco novo: cria stores direto
+                    const req = indexedDB.open('FinancaProDB_' + username + '_plus', 1);
+                    req.onupgradeneeded = (e) => {
                         const db = e.target.result;
                         STORES.forEach(s => { if (!db.objectStoreNames.contains(s)) {
                             const os = db.createObjectStore(s, { keyPath: 'id' });
@@ -15195,7 +15159,8 @@ const _waitEmpresa = setInterval(() => {
                             if (s === 'snapshots') os.createIndex('ym', 'ym', { unique: false });
                         }});
                     };
-                    probe.onerror = () => reject(probe.error);
+                    req.onsuccess = () => { PlusDB.db = req.result; resolve(); };
+                    req.onerror = () => reject(req.error);
                 });
             },
             _op(store, mode, fn) {
@@ -16282,6 +16247,8 @@ const _waitEmpresa = setInterval(() => {
         let lastPulledAt = null, lastPushedAt = null;
         let applying = false, dirty = false, conflict = false, busy = false, patched = false;
         let pushTimer = null, lastUser = null, pulledForUser = null, statusText = 'Não configurado';
+        let pendingPush = false;            // virou true se houve alteração durante um envio
+        const PUSH_DELAY = 600;             // ms — pequeno atraso só para agrupar mudanças em rajada
 
         /* GitHub API */
         function ghHeaders() { return { 'Authorization': 'Bearer ' + TOKEN, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Content-Type': 'application/json' }; }
@@ -16363,7 +16330,6 @@ const _waitEmpresa = setInterval(() => {
 
         /* config persistida (em kv, chaves sync_*) */
         async function loadCfg() {
-            await ensurePlusDB();
             TOKEN = await PlusDB.kvGet('sync_token', null);
             gistId = await PlusDB.kvGet('sync_gistId', null);
             enabled = await PlusDB.kvGet('sync_enabled', false);
@@ -16392,13 +16358,13 @@ const _waitEmpresa = setInterval(() => {
         }
         async function doPush(forceOverwrite) {
             if (!enabled || !TOKEN || !gistId || applying || busy) return;
-            busy = true; setStatus('Enviando…'); render();
+            busy = true; pendingPush = false; setStatus('Enviando…'); render();
             try {
                 if (!forceOverwrite) {
                     const remoteTxt = await ghRead(gistId);
                     if (remoteTxt) { const r = JSON.parse(remoteTxt);
                         if (r.updatedAt && lastPulledAt && r.updatedAt > lastPulledAt && r.device !== DEVICE) {
-                            conflict = true; setStatus('Conflito detectado'); busy = false; render();
+                            conflict = true; setStatus('Conflito detectado');
                             toast('A nuvem tem alterações de outro aparelho. Resolva o conflito.', 'error'); return;
                         }
                     }
@@ -16408,8 +16374,18 @@ const _waitEmpresa = setInterval(() => {
                 lastPushedAt = snap.updatedAt; lastPulledAt = snap.updatedAt;
                 await PlusDB.kvSet('sync_lastPushedAt', snap.updatedAt); await PlusDB.kvSet('sync_lastPulledAt', snap.updatedAt);
                 dirty = false; conflict = false; setStatus('Sincronizado');
-            } catch (e) { console.warn(e); setStatus('Erro: ' + e.message); toast('Falha ao enviar: ' + e.message, 'error'); }
-            busy = false; render();
+            } catch (e) {
+                console.warn(e); setStatus('Erro: ' + e.message); toast('Falha ao enviar: ' + e.message, 'error');
+                pendingPush = true;   // falhou: tenta de novo depois para não perder a alteração
+            } finally {
+                busy = false; render();
+                // Se algo mudou (ou falhou) durante o envio, reenvia para manter tudo instantâneo
+                if (pendingPush && enabled && !conflict) {
+                    pendingPush = false;
+                    clearTimeout(pushTimer);
+                    pushTimer = setTimeout(() => doPush(false), PUSH_DELAY);
+                }
+            }
         }
         async function syncNow() { await doPull(false); if (!conflict) await doPush(false); }
 
@@ -16417,7 +16393,8 @@ const _waitEmpresa = setInterval(() => {
         function markDirty() {
             if (!enabled || applying) return;
             dirty = true; setStatus('Alterações pendentes…'); updateCardSub();
-            clearTimeout(pushTimer); pushTimer = setTimeout(() => doPush(false), 5000);
+            if (busy) { pendingPush = true; return; }   // mudou durante um envio: reenvia ao terminar
+            clearTimeout(pushTimer); pushTimer = setTimeout(() => doPush(false), PUSH_DELAY);
         }
         function patchDataLayer() {
             if (patched) return; patched = true;
@@ -16432,20 +16409,11 @@ const _waitEmpresa = setInterval(() => {
             } catch (e) { console.warn('patch sync falhou', e); }
         }
 
-        /* garante que o PlusDB está aberto antes de qualquer operação de sync */
-        async function ensurePlusDB() {
-            if (PlusDB.db) return;
-            const username = (typeof DB !== 'undefined' && DB.currentUsername) ? DB.currentUsername : null;
-            if (!username) throw new Error('Usuário não identificado. Faça login novamente.');
-            await PlusDB.open(username);
-        }
-
         /* conectar / desconectar */
         async function connect(token) {
             if (!token) { toast('Cole o token', 'error'); return; }
             busy = true; setStatus('Conectando…'); render();
             try {
-                await ensurePlusDB();
                 TOKEN = token.trim(); await PlusDB.kvSet('sync_token', TOKEN);
                 let id = await PlusDB.kvGet('sync_gistId', null);
                 if (!id) id = await ghFind();
@@ -16460,13 +16428,11 @@ const _waitEmpresa = setInterval(() => {
             } catch (e) { busy = false; console.warn(e); setStatus('Erro: ' + e.message); toast('Falha: ' + e.message, 'error'); render(); }
         }
         async function disconnect() {
-            enabled = false;
-            try { await ensurePlusDB(); await PlusDB.kvSet('sync_enabled', false); } catch (e) {}
+            enabled = false; await PlusDB.kvSet('sync_enabled', false);
             setStatus('Desconectado'); toast('Sincronização desligada'); render();
         }
         async function forget() {
             enabled = false;
-            try { await ensurePlusDB(); } catch (e) {}
             for (const k of ['sync_token', 'sync_gistId', 'sync_enabled', 'sync_lastPulledAt', 'sync_lastPushedAt']) await PlusDB.del('kv', k).catch(() => {});
             TOKEN = null; gistId = null; lastPulledAt = null; lastPushedAt = null;
             setStatus('Não configurado'); toast('Credenciais removidas deste aparelho'); render();
@@ -16515,7 +16481,7 @@ const _waitEmpresa = setInterval(() => {
                     <div class="fp-row" style="margin-top:8px"><button class="fp-btn out" onclick="FPxSync.pull()"><i class="fas fa-cloud-arrow-down"></i> Baixar</button>
                     <button class="fp-btn out" onclick="FPxSync.push()"><i class="fas fa-cloud-arrow-up"></i> Enviar</button></div>
                 </div>
-                <div class="fp-box"><div class="fp-mini" style="line-height:1.6">Envio automático após alterações (poucos segundos) e baixa automática ao abrir o app ou voltar para ele. Resolução por “último a salvar vence” — evite editar dois aparelhos ao mesmo tempo sem sincronizar.</div>
+                <div class="fp-box"><div class="fp-mini" style="line-height:1.6">Envio automático e imediato a cada alteração, e baixa automática ao abrir o app ou voltar para ele. Resolução por “último a salvar vence” — evite editar dois aparelhos ao mesmo tempo sem sincronizar.</div>
                     <button class="fp-btn out" style="margin-top:10px" onclick="FPxSync.disconnect()"><i class="fas fa-pause"></i> Pausar neste aparelho</button>
                     <button class="fp-btn out" style="margin-top:8px;color:var(--expense)" onclick="FPxSync.forget()"><i class="fas fa-trash"></i> Remover token deste aparelho</button>
                 </div></div>`);
