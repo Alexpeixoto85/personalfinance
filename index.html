@@ -15150,17 +15150,28 @@ const _waitEmpresa = setInterval(() => {
                     if (PlusDB.db && PlusDB.user === username) return resolve();
                     if (PlusDB.db) { try { PlusDB.db.close(); } catch (e) {} PlusDB.db = null; }
                     PlusDB.user = username;
-                    const req = indexedDB.open('FinancaProDB_' + username + '_plus', 1);
-                    req.onupgradeneeded = (e) => {
-                        const db = e.target.result;
-                        STORES.forEach(s => { if (!db.objectStoreNames.contains(s)) {
-                            const os = db.createObjectStore(s, { keyPath: 'id' });
-                            if (s === 'attachments') os.createIndex('txnId', 'txnId', { unique: false });
-                            if (s === 'snapshots') os.createIndex('ym', 'ym', { unique: false });
-                        }});
+                    const dbName = 'FinancaProDB_' + username + '_plus';
+
+                    // Primeiro abre sem versão para descobrir a versão atual
+                    const probe = indexedDB.open(dbName);
+                    probe.onsuccess = () => {
+                        const currentVersion = probe.result.version;
+                        probe.result.close();
+                        // Abre na versão existente ou na mínima necessária
+                        const targetVersion = Math.max(currentVersion, 1);
+                        const req = indexedDB.open(dbName, targetVersion);
+                        req.onupgradeneeded = (e) => {
+                            const db = e.target.result;
+                            STORES.forEach(s => { if (!db.objectStoreNames.contains(s)) {
+                                const os = db.createObjectStore(s, { keyPath: 'id' });
+                                if (s === 'attachments') os.createIndex('txnId', 'txnId', { unique: false });
+                                if (s === 'snapshots') os.createIndex('ym', 'ym', { unique: false });
+                            }});
+                        };
+                        req.onsuccess = () => { PlusDB.db = req.result; resolve(); };
+                        req.onerror = () => reject(req.error);
                     };
-                    req.onsuccess = () => { PlusDB.db = req.result; resolve(); };
-                    req.onerror = () => reject(req.error);
+                    probe.onerror = () => reject(probe.error);
                 });
             },
             _op(store, mode, fn) {
