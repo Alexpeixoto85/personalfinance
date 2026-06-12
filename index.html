@@ -2213,6 +2213,9 @@
                         <div class="value pending-value balance-sensivel" id="month-pending">R$ 0,00</div>
                     </div>
                 </div>
+                <button onclick="UI.downloadExtratoPDF()" style="margin-top:14px;width:100%;padding:10px 16px;background:rgba(255,255,255,0.18);backdrop-filter:blur(6px);color:white;border:1.5px solid rgba(255,255,255,0.4);border-radius:10px;font-size:0.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:0.01em;transition:background 0.2s;" onmouseenter="this.style.background='rgba(255,255,255,0.28)'" onmouseleave="this.style.background='rgba(255,255,255,0.18)'">
+                    <i class="fas fa-file-pdf"></i> Baixar Extrato Completo em PDF
+                </button>
             </div>
             
             <!-- Contas -->
@@ -2762,6 +2765,70 @@
             <i class="fas fa-graduation-cap"></i> <span>Educar</span>
         </a>
     </nav>
+
+    <!-- Modal: Período do Extrato PDF -->
+    <div class="modal-overlay" id="overlay-extrato-periodo" onclick="UI.closeExtratoPeriodoModal()"></div>
+    <div class="modal-sheet" id="sheet-extrato-periodo">
+        <div class="sheet-handle"></div>
+        <h3 class="section-title" style="margin-bottom:4px;"><i class="fas fa-file-pdf" style="color:#10b981;margin-right:6px;"></i>Período do Extrato</h3>
+        <p style="font-size:0.82rem;color:var(--secondary);margin-bottom:16px;">Escolha o intervalo de datas das transações efetivadas.</p>
+
+        <!-- Atalhos rápidos -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+            <button class="extrato-periodo-btn active" id="epbtn-this_month"  onclick="UI._extratoSetPeriod('this_month',this)">Este mês</button>
+            <button class="extrato-periodo-btn"        id="epbtn-last_month"  onclick="UI._extratoSetPeriod('last_month',this)">Mês anterior</button>
+            <button class="extrato-periodo-btn"        id="epbtn-last_3"      onclick="UI._extratoSetPeriod('last_3',this)">Últimos 3 meses</button>
+            <button class="extrato-periodo-btn"        id="epbtn-last_6"      onclick="UI._extratoSetPeriod('last_6',this)">Últimos 6 meses</button>
+            <button class="extrato-periodo-btn"        id="epbtn-this_year"   onclick="UI._extratoSetPeriod('this_year',this)">Este ano</button>
+            <button class="extrato-periodo-btn"        id="epbtn-all"         onclick="UI._extratoSetPeriod('all',this)">Todo o período</button>
+            <button class="extrato-periodo-btn"        id="epbtn-custom"      onclick="UI._extratoSetPeriod('custom',this)">Personalizado</button>
+        </div>
+
+        <!-- Datas personalizadas -->
+        <div id="extrato-custom-dates" style="display:none;gap:12px;margin-bottom:16px;display:none;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">De</label>
+                    <input type="date" id="extrato-date-from" class="form-control" onchange="UI._extratoCustomChange()">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Até</label>
+                    <input type="date" id="extrato-date-to" class="form-control" onchange="UI._extratoCustomChange()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview de contagem -->
+        <div id="extrato-periodo-preview" style="background:#f0fdf4;border:1px solid #a7f3d0;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:0.85rem;color:#065f46;display:flex;align-items:center;gap:8px;">
+            <i class="fas fa-info-circle"></i>
+            <span id="extrato-periodo-info">Calculando...</span>
+        </div>
+
+        <button onclick="UI._extratoConfirmPDF()" class="btn-block" style="background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;font-weight:700;font-size:1rem;">
+            <i class="fas fa-file-pdf"></i> Gerar e Baixar PDF
+        </button>
+        <button onclick="UI.closeExtratoPeriodoModal()" class="btn-block" style="background:var(--light);color:var(--secondary);margin-top:8px;">Cancelar</button>
+    </div>
+
+    <style>
+        .extrato-periodo-btn {
+            padding: 8px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 20px;
+            background: var(--surface);
+            color: var(--secondary);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.18s;
+        }
+        .extrato-periodo-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+    </style>
 
     <!-- Modal de Transação -->
     <div class="modal-overlay" id="overlay-transaction"></div>
@@ -10425,6 +10492,275 @@
             a.download = `transacoes_${Utils.getToday()}.csv`;
             a.click();
             Utils.toast('Transações exportadas em CSV!');
+        };
+
+        // ===== EXTRATO COMPLETO PDF (botão do card verde) =====
+
+        UI._extratoState = { mode: 'this_month', from: '', to: '' };
+
+        UI._extratoMonthStart = (offset) => {
+            const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + (offset||0));
+            return d.toISOString().split('T')[0];
+        };
+        UI._extratoMonthEnd = (offset) => {
+            const d = new Date(); d.setMonth(d.getMonth() + (offset||0) + 1); d.setDate(0);
+            return d.toISOString().split('T')[0];
+        };
+
+        UI._extratoSetPeriod = (mode, btn) => {
+            document.querySelectorAll('.extrato-periodo-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            const customDiv = document.getElementById('extrato-custom-dates');
+            const today = new Date().toISOString().split('T')[0];
+            let from = '', to = today;
+            if      (mode === 'this_month') { from = UI._extratoMonthStart(0);  to = UI._extratoMonthEnd(0); }
+            else if (mode === 'last_month') { from = UI._extratoMonthStart(-1); to = UI._extratoMonthEnd(-1); }
+            else if (mode === 'last_3')     { from = UI._extratoMonthStart(-2); to = today; }
+            else if (mode === 'last_6')     { from = UI._extratoMonthStart(-5); to = today; }
+            else if (mode === 'this_year')  { from = `${new Date().getFullYear()}-01-01`; to = `${new Date().getFullYear()}-12-31`; }
+            else if (mode === 'all')        { from = ''; to = ''; }
+            else if (mode === 'custom')     {
+                customDiv.style.display = 'block';
+                from = document.getElementById('extrato-date-from').value || '';
+                to   = document.getElementById('extrato-date-to').value   || '';
+                UI._extratoState = { mode, from, to };
+                UI._extratoUpdatePreview();
+                return;
+            }
+            customDiv.style.display = 'none';
+            if (mode !== 'custom') {
+                document.getElementById('extrato-date-from').value = from;
+                document.getElementById('extrato-date-to').value   = to;
+            }
+            UI._extratoState = { mode, from, to };
+            UI._extratoUpdatePreview();
+        };
+
+        UI._extratoCustomChange = () => {
+            const from = document.getElementById('extrato-date-from').value || '';
+            const to   = document.getElementById('extrato-date-to').value   || '';
+            UI._extratoState.from = from;
+            UI._extratoState.to   = to;
+            UI._extratoUpdatePreview();
+        };
+
+        UI._extratoUpdatePreview = () => {
+            const { from, to } = UI._extratoState;
+            const cleared = FinanceApp.data.transactions.filter(t => {
+                if (t.status !== 'cleared') return false;
+                if (from && t.date < from) return false;
+                if (to   && t.date > to)   return false;
+                return true;
+            });
+            const totalIncome  = cleared.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+            const totalExpense = cleared.filter(t => t.type === 'expense' || t.type === 'investment').reduce((s,t) => s + t.amount, 0);
+            const saldo        = totalIncome - totalExpense;
+            const saldoColor   = saldo >= 0 ? '#10b981' : '#ef4444';
+            const fmt = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : null;
+            const periodoStr   = (from || to) ? `${fmt(from)||'início'} → ${fmt(to)||'hoje'}` : 'Todo o período';
+            const info = document.getElementById('extrato-periodo-info');
+            if (info) info.innerHTML = `<strong>${cleared.length}</strong> transação(ões) efetivada(s) &bull; ${periodoStr} &bull; Saldo: <strong style="color:${saldoColor}">${Utils.formatCurrency(saldo)}</strong>`;
+        };
+
+        UI.downloadExtratoPDF = () => {
+            // Inicializa o modal com "Este mês"
+            const from = UI._extratoMonthStart(0), to = UI._extratoMonthEnd(0);
+            document.getElementById('extrato-date-from').value = from;
+            document.getElementById('extrato-date-to').value   = to;
+            document.getElementById('extrato-custom-dates').style.display = 'none';
+            document.querySelectorAll('.extrato-periodo-btn').forEach((b,i) => b.classList.toggle('active', i === 0));
+            UI._extratoState = { mode: 'this_month', from, to };
+            UI._extratoUpdatePreview();
+            document.getElementById('overlay-extrato-periodo').classList.add('active');
+            document.getElementById('sheet-extrato-periodo').classList.add('active');
+        };
+
+        UI.closeExtratoPeriodoModal = () => {
+            document.getElementById('overlay-extrato-periodo').classList.remove('active');
+            document.getElementById('sheet-extrato-periodo').classList.remove('active');
+        };
+
+        UI._extratoConfirmPDF = () => {
+            UI.closeExtratoPeriodoModal();
+            const { from, to } = UI._extratoState;
+            const transactions = FinanceApp.data.transactions;
+            const categories   = FinanceApp.data.categories;
+            const accounts     = FinanceApp.data.accounts;
+            const settings     = FinanceApp.data.settings || {};
+            const userName     = settings.name || 'Usuário';
+
+            // Apenas transações efetivadas dentro do período
+            const cleared = transactions.filter(t => {
+                if (t.status !== 'cleared') return false;
+                if (from && t.date < from) return false;
+                if (to   && t.date > to)   return false;
+                return true;
+            }).sort((a, b) => b.date.localeCompare(a.date));
+
+            const typeLabels  = { income: 'Receita', expense: 'Despesa', investment: 'Investimento', transfer: 'Transferência', adjustment: 'Ajuste' };
+            const typeColors  = { income: '#10b981', expense: '#ef4444', investment: '#3b82f6', transfer: '#8b5cf6', adjustment: '#8b5cf6' };
+
+            // Totais gerais
+            const totalIncome   = cleared.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+            const totalExpense  = cleared.filter(t => t.type === 'expense' || t.type === 'investment').reduce((s, t) => s + t.amount, 0);
+            const balance       = totalIncome - totalExpense;
+
+            // Saldo por conta
+            const accRows = accounts.map(acc => {
+                const sign = acc.balance >= 0 ? '+' : '';
+                const color = acc.balance >= 0 ? '#10b981' : '#ef4444';
+                return `<tr>
+                    <td style="padding:8px 12px;font-size:0.82rem;font-weight:600;">${acc.name}</td>
+                    <td style="padding:8px 12px;font-size:0.78rem;color:#64748b;">${acc.type || '-'}</td>
+                    <td style="padding:8px 12px;font-size:0.85rem;font-weight:800;color:${color};text-align:right;white-space:nowrap;">${sign}${Utils.formatCurrency(acc.balance)}</td>
+                </tr>`;
+            }).join('');
+
+            // Linhas de transações agrupadas por data
+            const grouped = {};
+            cleared.forEach(t => { if (!grouped[t.date]) grouped[t.date] = []; grouped[t.date].push(t); });
+
+            let rowsHtml = '';
+            Object.keys(grouped).sort().reverse().forEach(date => {
+                const dateFormatted = Utils.formatDate(date);
+                const dayItems = grouped[date];
+                const dayTotal = dayItems.reduce((s, t) => {
+                    if (t.type === 'income') return s + t.amount;
+                    if (t.type === 'expense' || t.type === 'investment') return s - t.amount;
+                    return s;
+                }, 0);
+                rowsHtml += `<tr><td colspan="5" style="background:#f8fafc;padding:7px 12px;font-weight:700;font-size:0.8rem;color:#475569;border-top:2px solid #e2e8f0;letter-spacing:0.02em;">
+                    ${dateFormatted}<span style="float:right;color:${dayTotal>=0?'#10b981':'#ef4444'};font-weight:700;">${dayTotal>=0?'+':''}${Utils.formatCurrency(dayTotal)}</span>
+                </td></tr>`;
+                dayItems.forEach(t => {
+                    const cat   = categories.find(c => c.id === t.category);
+                    const acc   = accounts.find(a => a.id === t.account);
+                    const color = typeColors[t.type] || '#64748b';
+                    const sign  = t.type === 'income' ? '+' : (t.type === 'expense' || t.type === 'investment') ? '-' : '';
+                    rowsHtml += `<tr>
+                        <td style="padding:7px 12px;font-size:0.82rem;font-weight:600;color:#0f172a;max-width:180px;">${t.description}${t.notes?`<div style='color:#94a3b8;font-size:0.72rem;margin-top:2px;'>${t.notes}</div>`:''}}</td>
+                        <td style="padding:7px 12px;font-size:0.76rem;"><span style="background:${color}20;color:${color};padding:2px 8px;border-radius:999px;font-weight:600;white-space:nowrap;">${typeLabels[t.type]||t.type}</span></td>
+                        <td style="padding:7px 12px;font-size:0.76rem;color:#64748b;">${cat?cat.name:'-'}</td>
+                        <td style="padding:7px 12px;font-size:0.76rem;color:#64748b;">${acc?acc.name:'-'}</td>
+                        <td style="padding:7px 12px;font-size:0.84rem;font-weight:700;color:${color};text-align:right;white-space:nowrap;">${sign}${Utils.formatCurrency(t.amount)}</td>
+                    </tr>`;
+                });
+            });
+
+            if (!rowsHtml) rowsHtml = '<tr><td colspan="5" style="padding:24px;text-align:center;color:#94a3b8;font-size:0.9rem;">Nenhuma transação efetivada encontrada.</td></tr>';
+
+            const now = new Date();
+            const html = `<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Extrato Completo — FinançaPro</title>
+<style>
+  * { margin:0;padding:0;box-sizing:border-box; }
+  body { font-family:'Segoe UI',Arial,sans-serif;background:#f8fafc;color:#0f172a; }
+  .page { max-width:960px;margin:0 auto;padding:36px 28px;background:white; }
+  .header { display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding-bottom:20px;border-bottom:3px solid #10b981; }
+  .brand { font-size:1.6rem;font-weight:800;color:#0f172a; }
+  .brand span { color:#10b981; }
+  .header-meta { text-align:right;color:#64748b;font-size:0.82rem;line-height:1.7; }
+  .section-title { font-size:1rem;font-weight:700;color:#0f172a;margin:24px 0 12px;padding-left:10px;border-left:4px solid #10b981; }
+  .summary-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px; }
+  .summary-card { background:#f8fafc;border-radius:10px;padding:14px 18px;border:1px solid #e2e8f0; }
+  .summary-label { font-size:0.72rem;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px; }
+  .summary-value { font-size:1.25rem;font-weight:800; }
+  .income-val  { color:#10b981; }
+  .expense-val { color:#ef4444; }
+  .balance-val { color:#3b82f6; }
+  table { width:100%;border-collapse:collapse;margin-bottom:28px; }
+  thead tr { background:#0f172a; }
+  thead th { padding:10px 12px;text-align:left;font-size:0.72rem;font-weight:700;color:white;text-transform:uppercase;letter-spacing:0.06em; }
+  thead th:last-child { text-align:right; }
+  tbody tr td { border-bottom:1px solid #f1f5f9; }
+  tbody tr:hover td { background:#f8fafc; }
+  .footer { text-align:center;color:#94a3b8;font-size:0.73rem;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0; }
+  .no-print { display:flex;gap:12px;justify-content:center;margin-top:24px; }
+  @media print {
+    body { background:white; }
+    .page { padding:12px; }
+    .no-print { display:none; }
+    @page { margin:10mm; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand">Finanç<span>a</span>Pro</div>
+      <div style="font-size:0.82rem;color:#64748b;margin-top:4px;">Extrato Financeiro Completo</div>
+    </div>
+    <div class="header-meta">
+      <strong>${userName}</strong><br>
+      ${(from || to) ? `Período: ${from ? new Date(from+'T00:00:00').toLocaleDateString('pt-BR') : 'início'} → ${to ? new Date(to+'T00:00:00').toLocaleDateString('pt-BR') : 'hoje'}<br>` : 'Todo o período<br>'}
+      Gerado em ${now.toLocaleString('pt-BR')}<br>
+      ${cleared.length} transações efetivadas
+    </div>
+  </div>
+
+  <div class="section-title">📊 Resumo Geral</div>
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="summary-label">Total de Receitas</div>
+      <div class="summary-value income-val">${Utils.formatCurrency(totalIncome)}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Total de Despesas</div>
+      <div class="summary-value expense-val">${Utils.formatCurrency(totalExpense)}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Saldo Líquido</div>
+      <div class="summary-value balance-val">${Utils.formatCurrency(balance)}</div>
+    </div>
+  </div>
+
+  <div class="section-title">🏦 Saldo por Conta</div>
+  <table>
+    <thead><tr>
+      <th>Conta</th>
+      <th>Tipo</th>
+      <th style="text-align:right">Saldo Atual</th>
+    </tr></thead>
+    <tbody>${accRows || '<tr><td colspan="3" style="padding:16px;text-align:center;color:#94a3b8;">Nenhuma conta cadastrada.</td></tr>'}</tbody>
+  </table>
+
+  <div class="section-title">📋 Todas as Transações Efetivadas</div>
+  <table>
+    <thead><tr>
+      <th>Descrição</th>
+      <th>Tipo</th>
+      <th>Categoria</th>
+      <th>Conta</th>
+      <th style="text-align:right">Valor</th>
+    </tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+
+  <div class="footer">
+    FinançaPro &bull; Extrato completo &bull; ${cleared.length} transação(ões) efetivada(s) &bull; Exportado em ${now.toLocaleDateString('pt-BR')}
+  </div>
+
+  <div class="no-print">
+    <button onclick="window.print()" style="background:#10b981;color:white;border:none;padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;">
+      🖨️ Imprimir / Salvar PDF
+    </button>
+    <button onclick="window.close()" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;">
+      ✕ Fechar
+    </button>
+  </div>
+</div>
+</body>
+</html>`;
+
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+            const url  = URL.createObjectURL(blob);
+            const win  = window.open(url, '_blank');
+            if (!win) Utils.toast('Permita pop-ups para exportar o PDF!', 'error');
+            else Utils.toast('Extrato aberto! Use "Imprimir → Salvar como PDF".');
         };
 
         // ===== PDF SELECTION MODAL =====
