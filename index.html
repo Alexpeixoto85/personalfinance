@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -15147,21 +15146,36 @@ const _waitEmpresa = setInterval(() => {
         const PlusDB = {
             db: null, user: null,
             open(username) {
+                const dbName = 'FinancaProDB_' + username + '_plus';
+                const ensureStores = (db) => {
+                    STORES.forEach(s => { if (!db.objectStoreNames.contains(s)) {
+                        const os = db.createObjectStore(s, { keyPath: 'id' });
+                        if (s === 'attachments') os.createIndex('txnId', 'txnId', { unique: false });
+                        if (s === 'snapshots') os.createIndex('ym', 'ym', { unique: false });
+                    }});
+                };
+                const missing = (db) => STORES.some(s => !db.objectStoreNames.contains(s));
                 return new Promise((resolve, reject) => {
                     if (PlusDB.db && PlusDB.user === username) return resolve();
                     if (PlusDB.db) { try { PlusDB.db.close(); } catch (e) {} PlusDB.db = null; }
                     PlusDB.user = username;
-                    const req = indexedDB.open('FinancaProDB_' + username + '_plus', 1);
-                    req.onupgradeneeded = (e) => {
-                        const db = e.target.result;
-                        STORES.forEach(s => { if (!db.objectStoreNames.contains(s)) {
-                            const os = db.createObjectStore(s, { keyPath: 'id' });
-                            if (s === 'attachments') os.createIndex('txnId', 'txnId', { unique: false });
-                            if (s === 'snapshots') os.createIndex('ym', 'ym', { unique: false });
-                        }});
-                    };
-                    req.onsuccess = () => { PlusDB.db = req.result; resolve(); };
+                    // Abre SEM fixar versão: adota a versão já existente no aparelho (qualquer que seja)
+                    // ou cria o banco na v1 se for novo. Evita o erro "requested version < existing version".
+                    const req = indexedDB.open(dbName);
+                    req.onupgradeneeded = (ev) => ensureStores(ev.target.result); // só dispara se o banco for novo
+                    req.onblocked = () => reject(new Error('Feche outras abas do app e tente de novo'));
                     req.onerror = () => reject(req.error);
+                    req.onsuccess = () => {
+                        const db = req.result;
+                        if (!missing(db)) { PlusDB.db = db; return resolve(); }
+                        // Falta algum store: sobe a versão só para poder criá-lo.
+                        const nextV = db.version + 1; db.close();
+                        const up = indexedDB.open(dbName, nextV);
+                        up.onupgradeneeded = (ev) => ensureStores(ev.target.result);
+                        up.onblocked = () => reject(new Error('Feche outras abas do app e tente de novo'));
+                        up.onerror = () => reject(up.error);
+                        up.onsuccess = () => { PlusDB.db = up.result; resolve(); };
+                    };
                 });
             },
             _op(store, mode, fn) {
@@ -16238,18 +16252,70 @@ const _waitEmpresa = setInterval(() => {
         const H = core._h, PlusDB = core.PlusDB;
         const { fmt, today, uid, toast, esc, $, txns, accounts, categories, D, panelHead, setPanel } = H;
 
-        const FILE = 'financapro-sync.json';
-        const DESC = 'FinançaPro — sincronização (não editar manualmente)';
+        const FILE = 'financapro-sync.json';                 // manifesto (metadados, sempre pequeno)
+        const DESC = 'FinançaPro — sincronização criptografada (não editar manualmente)';
         const SYNC_STORES = ['debts', 'investments', 'subscriptions', 'snapshots', 'rules', 'txnmeta', 'kv'];
         // 'attachments' (Blobs) ficam só no aparelho — não entram no snapshot.
 
+        /* ---- segurança / capacidade ---- */
+        const KDF_ITER  = 210000;          // PBKDF2-SHA256 (derivação da chave a partir da frase-senha)
+        const CHUNK     = 900000;          // tamanho de cada arquivo-pedaço (abaixo do truncamento de 1MB do Gist)
+        const chunkName = (i) => 'financapro-sync.p' + String(i).padStart(3, '0') + '.txt';
+
+        const te = new TextEncoder(), tdc = new TextDecoder();
+        const b64 = {
+            enc: (buf) => { const b = new Uint8Array(buf); let s = ''; const CH = 0x8000;
+                for (let i = 0; i < b.length; i += CH) s += String.fromCharCode.apply(null, b.subarray(i, i + CH)); return btoa(s); },
+            dec: (str) => Uint8Array.from(atob(str), c => c.charCodeAt(0))
+        };
+        async function deriveKey(pass, salt, iter) {
+            const base = await crypto.subtle.importKey('raw', te.encode(pass), 'PBKDF2', false, ['deriveKey']);
+            return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' },
+                base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+        }
+        async function gzipBytes(u8) {
+            if (typeof CompressionStream === 'undefined') return { comp: 'none', data: u8 };
+            const st = new Blob([u8]).stream().pipeThrough(new CompressionStream('gzip'));
+            return { comp: 'gzip', data: new Uint8Array(await new Response(st).arrayBuffer()) };
+        }
+        async function gunzipBytes(u8, comp) {
+            if (comp !== 'gzip') return u8;
+            const st = new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'));
+            return new Uint8Array(await new Response(st).arrayBuffer());
+        }
+        // snapshot -> { manifest (texto puro com metadados), chunks[] (base64 do texto cifrado) }
+        async function seal(snapObj, pass) {
+            const z = await gzipBytes(te.encode(JSON.stringify(snapObj)));
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv   = crypto.getRandomValues(new Uint8Array(12));   // IV novo a cada envio (nunca reutilizar)
+            const key  = await deriveKey(pass, salt, KDF_ITER);
+            const ct   = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, z.data);
+            const body = b64.enc(ct);
+            const chunks = [];
+            for (let i = 0; i < body.length; i += CHUNK) chunks.push(body.slice(i, i + CHUNK));
+            return {
+                manifest: { v: 2, app: 'financapro', enc: 'AES-GCM', kdf: 'PBKDF2', kdfIter: KDF_ITER,
+                    comp: z.comp, salt: b64.enc(salt), iv: b64.enc(iv),
+                    updatedAt: snapObj.updatedAt, device: snapObj.device, chunks: chunks.length, bytes: body.length },
+                chunks
+            };
+        }
+        // manifesto + base64 do texto cifrado -> snapshot (objeto)
+        async function openVault(manifest, body, pass) {
+            const key = await deriveKey(pass, b64.dec(manifest.salt), manifest.kdfIter || KDF_ITER);
+            let pt;
+            try { pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64.dec(manifest.iv) }, key, b64.dec(body)); }
+            catch (e) { throw new Error('Senha de sincronização incorreta'); }
+            return JSON.parse(tdc.decode(await gunzipBytes(new Uint8Array(pt), manifest.comp)));
+        }
+
         /* estado */
-        let TOKEN = null, gistId = null, enabled = false, DEVICE = null;
-        let lastPulledAt = null, lastPushedAt = null;
+        let TOKEN = null, PASS = null, gistId = null, enabled = false, DEVICE = null;
+        let lastPulledAt = null, lastPushedAt = null, lastChunks = 0;
         let applying = false, dirty = false, conflict = false, busy = false, patched = false;
         let pushTimer = null, lastUser = null, pulledForUser = null, statusText = 'Não configurado';
 
-        /* GitHub API */
+        /* GitHub API (manifesto + pedaços) */
         function ghHeaders() { return { 'Authorization': 'Bearer ' + TOKEN, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Content-Type': 'application/json' }; }
         async function ghFind() {
             const r = await fetch('https://api.github.com/gists?per_page=100', { headers: ghHeaders() });
@@ -16258,22 +16324,55 @@ const _waitEmpresa = setInterval(() => {
             const g = arr.find(x => x.files && x.files[FILE]);
             return g ? g.id : null;
         }
-        async function ghCreate(content) {
+        async function ghGet(id) {
+            const r = await fetch('https://api.github.com/gists/' + id, { headers: ghHeaders() });
+            if (!r.ok) throw new Error('GitHub ' + r.status);
+            return r.json();
+        }
+        // conteúdo de um arquivo do gist, lidando com truncamento (>1MB) via raw_url
+        async function fileText(f) {
+            if (!f) return null;
+            if (f.truncated && f.raw_url) { const rr = await fetch(f.raw_url); if (!rr.ok) throw new Error('GitHub raw ' + rr.status); return rr.text(); }
+            return f.content;
+        }
+        // Lê só o manifesto (rápido, p/ checagem de conflito). Aceita formato antigo (v1, texto puro).
+        async function readManifest(id) {
+            const g = await ghGet(id);
+            const txt = await fileText(g.files && g.files[FILE]);
+            if (!txt) return null;
+            let obj; try { obj = JSON.parse(txt); } catch (e) { throw new Error('Manifesto inválido'); }
+            if (obj && obj.v === 2 && obj.enc) return { kind: 'v2', manifest: obj, gist: g };
+            if (obj && (obj.core || obj.plus)) return { kind: 'legacy', snapshot: obj, gist: g }; // backup antigo em texto puro
+            throw new Error('Formato de sincronização desconhecido');
+        }
+        // Junta os pedaços de texto cifrado de um gist já obtido (objeto g).
+        async function readBody(g, manifest) {
+            let body = '';
+            for (let i = 0; i < manifest.chunks; i++) {
+                const f = g.files && g.files[chunkName(i)];
+                const t = await fileText(f);
+                if (t == null) throw new Error('Pedaço ' + i + ' ausente na nuvem');
+                body += t;
+            }
+            if (manifest.bytes && body.length !== manifest.bytes) throw new Error('Dados corrompidos na nuvem (tamanho)');
+            return body;
+        }
+        // Monta o objeto "files" do PATCH/POST: manifesto + pedaços novos + null nos pedaços antigos sobrando.
+        function buildFiles(manifest, chunks, oldChunks) {
+            const files = { [FILE]: { content: JSON.stringify(manifest) } };
+            for (let i = 0; i < chunks.length; i++) files[chunkName(i)] = { content: chunks[i] };
+            for (let i = chunks.length; i < (oldChunks || 0); i++) files[chunkName(i)] = null; // remove pedaços que sobraram
+            return files;
+        }
+        async function ghCreateVault(manifest, chunks) {
             const r = await fetch('https://api.github.com/gists', { method: 'POST', headers: ghHeaders(),
-                body: JSON.stringify({ description: DESC, public: false, files: { [FILE]: { content } } }) });
+                body: JSON.stringify({ description: DESC, public: false, files: buildFiles(manifest, chunks, 0) }) });
             if (!r.ok) throw new Error('GitHub ' + r.status);
             return (await r.json()).id;
         }
-        async function ghRead(id) {
-            const r = await fetch('https://api.github.com/gists/' + id, { headers: ghHeaders() });
-            if (!r.ok) throw new Error('GitHub ' + r.status);
-            const g = await r.json(); const f = g.files && g.files[FILE]; if (!f) return null;
-            if (f.truncated && f.raw_url) { const rr = await fetch(f.raw_url); return await rr.text(); }
-            return f.content;
-        }
-        async function ghWrite(id, content) {
+        async function ghWriteVault(id, manifest, chunks, oldChunks) {
             const r = await fetch('https://api.github.com/gists/' + id, { method: 'PATCH', headers: ghHeaders(),
-                body: JSON.stringify({ files: { [FILE]: { content } } }) });
+                body: JSON.stringify({ files: buildFiles(manifest, chunks, oldChunks) }) });
             if (!r.ok) throw new Error('GitHub ' + r.status);
             return true;
         }
@@ -16330,48 +16429,81 @@ const _waitEmpresa = setInterval(() => {
         /* config persistida (em kv, chaves sync_*) */
         async function loadCfg() {
             TOKEN = await PlusDB.kvGet('sync_token', null);
+            PASS = await PlusDB.kvGet('sync_pass', null);            // frase-senha do cofre (só neste aparelho)
             gistId = await PlusDB.kvGet('sync_gistId', null);
             enabled = await PlusDB.kvGet('sync_enabled', false);
             lastPulledAt = await PlusDB.kvGet('sync_lastPulledAt', null);
             lastPushedAt = await PlusDB.kvGet('sync_lastPushedAt', null);
+            lastChunks = await PlusDB.kvGet('sync_lastChunks', 0);
             DEVICE = await PlusDB.kvGet('sync_device', null);
             if (!DEVICE) { DEVICE = uid(); await PlusDB.kvSet('sync_device', DEVICE); }
         }
 
+        /* garante que o banco local (PlusDB) esteja aberto — reabre se a conexão tiver fechado */
+        async function ensureDB() {
+            if (PlusDB.db) return;
+            const u = (typeof DB !== 'undefined' && DB.currentUsername) ? DB.currentUsername : PlusDB.user;
+            if (!u) throw new Error('Entre na sua conta antes de sincronizar');
+            try { await PlusDB.open(u); } catch (e) { throw new Error('Não foi possível abrir o banco local: ' + (e && e.message || e)); }
+            if (!PlusDB.db) throw new Error('Banco local indisponível');
+        }
+
+        /* grava o snapshot cifrado (cria o gist se ainda não existir) */
+        async function sealAndWrite(snap) {
+            if (!PASS) throw new Error('Frase-senha ausente');
+            const { manifest, chunks } = await seal(snap, PASS);
+            if (!gistId) { gistId = await ghCreateVault(manifest, chunks); await PlusDB.kvSet('sync_gistId', gistId); }
+            else await ghWriteVault(gistId, manifest, chunks, lastChunks);
+            lastChunks = chunks.length; await PlusDB.kvSet('sync_lastChunks', lastChunks);
+            lastPushedAt = snap.updatedAt; lastPulledAt = snap.updatedAt;
+            await PlusDB.kvSet('sync_lastPushedAt', snap.updatedAt); await PlusDB.kvSet('sync_lastPulledAt', snap.updatedAt);
+        }
+
         /* operações */
         async function doPull(force) {
-            if (!enabled || !TOKEN || !gistId || applying || busy) return;
+            if (!enabled || !TOKEN || !PASS || !gistId || applying || busy) return;
             busy = true; setStatus('Verificando nuvem…'); render();
             try {
-                const txt = await ghRead(gistId);
-                if (txt) {
-                    const snap = JSON.parse(txt);
-                    const isNewer = force || !lastPulledAt || (snap.updatedAt && snap.updatedAt > lastPulledAt);
-                    const isOurs = snap.device === DEVICE && snap.updatedAt === lastPushedAt;
-                    if (isNewer && !isOurs) { await applySnapshot(snap); toast('Dados atualizados da nuvem'); }
-                    lastPulledAt = snap.updatedAt; await PlusDB.kvSet('sync_lastPulledAt', snap.updatedAt);
+                await ensureDB();
+                const res = await readManifest(gistId);
+                if (res) {
+                    if (res.kind === 'legacy') {
+                        // nuvem ainda em texto puro (versão antiga): importa e re-grava já criptografado
+                        await applySnapshot(res.snapshot);
+                        await sealAndWrite(await buildSnapshot());
+                        toast('Sincronização migrada para criptografada');
+                    } else {
+                        const m = res.manifest;
+                        const isNewer = force || !lastPulledAt || (m.updatedAt && m.updatedAt > lastPulledAt);
+                        const isOurs = m.device === DEVICE && m.updatedAt === lastPushedAt;
+                        if (isNewer && !isOurs) {
+                            const body = await readBody(res.gist, m);
+                            const snap = await openVault(m, body, PASS);
+                            await applySnapshot(snap); toast('Dados atualizados da nuvem');
+                        }
+                        lastPulledAt = m.updatedAt; await PlusDB.kvSet('sync_lastPulledAt', m.updatedAt);
+                    }
                     conflict = false; setStatus('Sincronizado');
                 }
             } catch (e) { console.warn(e); setStatus('Erro: ' + e.message); toast('Sincronização: ' + e.message, 'error'); }
             busy = false; render();
         }
         async function doPush(forceOverwrite) {
-            if (!enabled || !TOKEN || !gistId || applying || busy) return;
+            if (!enabled || !TOKEN || !PASS || !gistId || applying || busy) return;
             busy = true; setStatus('Enviando…'); render();
             try {
+                await ensureDB();
                 if (!forceOverwrite) {
-                    const remoteTxt = await ghRead(gistId);
-                    if (remoteTxt) { const r = JSON.parse(remoteTxt);
-                        if (r.updatedAt && lastPulledAt && r.updatedAt > lastPulledAt && r.device !== DEVICE) {
+                    const res = await readManifest(gistId).catch(() => null);
+                    if (res && res.kind === 'v2') {
+                        const m = res.manifest;
+                        if (m.updatedAt && lastPulledAt && m.updatedAt > lastPulledAt && m.device !== DEVICE) {
                             conflict = true; setStatus('Conflito detectado'); busy = false; render();
                             toast('A nuvem tem alterações de outro aparelho. Resolva o conflito.', 'error'); return;
                         }
                     }
                 }
-                const snap = await buildSnapshot();
-                await ghWrite(gistId, JSON.stringify(snap));
-                lastPushedAt = snap.updatedAt; lastPulledAt = snap.updatedAt;
-                await PlusDB.kvSet('sync_lastPushedAt', snap.updatedAt); await PlusDB.kvSet('sync_lastPulledAt', snap.updatedAt);
+                await sealAndWrite(await buildSnapshot());
                 dirty = false; conflict = false; setStatus('Sincronizado');
             } catch (e) { console.warn(e); setStatus('Erro: ' + e.message); toast('Falha ao enviar: ' + e.message, 'error'); }
             busy = false; render();
@@ -16398,21 +16530,30 @@ const _waitEmpresa = setInterval(() => {
         }
 
         /* conectar / desconectar */
-        async function connect(token) {
+        async function connect(token, pass) {
+            token = (token || '').trim(); pass = (pass || '').trim();
             if (!token) { toast('Cole o token', 'error'); return; }
+            if (pass.length < 8) { toast('Crie uma frase-senha com 8+ caracteres', 'error'); return; }
             busy = true; setStatus('Conectando…'); render();
             try {
-                TOKEN = token.trim(); await PlusDB.kvSet('sync_token', TOKEN);
-                let id = await PlusDB.kvGet('sync_gistId', null);
+                await ensureDB();
+                await loadCfg();                 // garante DEVICE/gistId carregados (caso a auto-init não tenha rodado)
+                TOKEN = token; PASS = pass;
+                await PlusDB.kvSet('sync_token', TOKEN); await PlusDB.kvSet('sync_pass', PASS);
+                let id = gistId || await PlusDB.kvGet('sync_gistId', null);
                 if (!id) id = await ghFind();
-                let created = false;
-                if (!id) { const snap = await buildSnapshot(); id = await ghCreate(JSON.stringify(snap)); lastPushedAt = snap.updatedAt; lastPulledAt = snap.updatedAt; await PlusDB.kvSet('sync_lastPushedAt', snap.updatedAt); await PlusDB.kvSet('sync_lastPulledAt', snap.updatedAt); created = true; }
-                gistId = id; await PlusDB.kvSet('sync_gistId', id);
+                gistId = id || null;
                 enabled = true; await PlusDB.kvSet('sync_enabled', true);
                 patchDataLayer();
-                busy = false;
-                if (!created) await doPull(true); // entrou numa sincronização existente: nuvem manda
-                setStatus('Sincronizado'); toast('Sincronização ativada'); render();
+                if (gistId) {
+                    await PlusDB.kvSet('sync_gistId', gistId);
+                    busy = false;
+                    await doPull(true);                         // cofre já existe: a nuvem manda (decifra com a frase-senha)
+                } else {
+                    await sealAndWrite(await buildSnapshot());   // primeiro aparelho: cria o cofre cifrado
+                    busy = false;
+                }
+                setStatus('Sincronizado'); toast('Sincronização criptografada ativada'); render();
             } catch (e) { busy = false; console.warn(e); setStatus('Erro: ' + e.message); toast('Falha: ' + e.message, 'error'); render(); }
         }
         async function disconnect() {
@@ -16421,8 +16562,9 @@ const _waitEmpresa = setInterval(() => {
         }
         async function forget() {
             enabled = false;
-            for (const k of ['sync_token', 'sync_gistId', 'sync_enabled', 'sync_lastPulledAt', 'sync_lastPushedAt']) await PlusDB.del('kv', k).catch(() => {});
-            TOKEN = null; gistId = null; lastPulledAt = null; lastPushedAt = null;
+            for (const k of ['sync_token', 'sync_pass', 'sync_gistId', 'sync_enabled', 'sync_lastPulledAt', 'sync_lastPushedAt', 'sync_lastChunks'])
+                await PlusDB.del('kv', k).catch(() => {});
+            TOKEN = null; PASS = null; gistId = null; lastPulledAt = null; lastPushedAt = null; lastChunks = 0;
             setStatus('Não configurado'); toast('Credenciais removidas deste aparelho'); render();
         }
 
@@ -16438,25 +16580,29 @@ const _waitEmpresa = setInterval(() => {
 
         function renderPanel() {
             if (!enabled) {
-                setPanel(panelHead('Sincronização na nuvem', 'Seus dados em todos os aparelhos — sem servidor próprio') + `
+                setPanel(panelHead('Sincronização na nuvem', 'Seus dados em todos os aparelhos — criptografados, sem servidor próprio') + `
                     <div id="sync-root">
-                    <div class="fp-box"><h4><i class="fas fa-cloud"></i> Como funciona</h4>
-                        <div class="fp-mini" style="line-height:1.6">Usa um <strong>Gist privado do GitHub</strong> como cofre dos seus dados (grátis e durável). O app envia e baixa um backup automaticamente, mantendo todos os aparelhos iguais. Funciona no celular também.</div></div>
+                    <div class="fp-box"><h4><i class="fas fa-shield-halved"></i> Como funciona</h4>
+                        <div class="fp-mini" style="line-height:1.6">Usa um <strong>Gist privado do GitHub</strong> como cofre (grátis e durável). Antes de sair do aparelho, seus dados são <strong>comprimidos</strong> e <strong>criptografados de ponta a ponta</strong> (AES-256) com uma <strong>frase-senha</strong> que só você conhece. A nuvem guarda apenas texto embaralhado — nem o GitHub consegue ler. Funciona no celular também.</div></div>
                     <div class="fp-box"><h4><i class="fas fa-list-ol"></i> Configurar (uma vez)</h4>
                         <div class="fp-mini" style="line-height:1.7">
                         1. Tenha uma conta no <strong>github.com</strong> (grátis).<br>
                         2. Abra <a href="https://github.com/settings/tokens/new?scopes=gist&description=FinancaPro" target="_blank" style="color:var(--primary);font-weight:700">este link</a> para gerar um <strong>token</strong> (o escopo <em>gist</em> já vem marcado). Defina validade e clique em <em>Generate token</em>.<br>
                         3. Copie o token (começa com <code>ghp_</code>) e cole abaixo.<br>
-                        4. Nos <strong>outros aparelhos</strong>, cole o <strong>mesmo token</strong> — eles acham o cofre sozinhos.</div>
+                        4. Crie uma <strong>frase-senha</strong> forte — é ela que criptografa tudo.<br>
+                        5. Nos <strong>outros aparelhos</strong>, use o <strong>mesmo token</strong> e a <strong>mesma frase-senha</strong>.</div>
                         <label class="fp-label">Token do GitHub</label>
-                        <input id="sync-token" class="fp-input" type="password" placeholder="ghp_...">
-                        <button class="fp-btn" style="margin-top:12px" onclick="FPxSync.connect(document.getElementById('sync-token').value)"><i class="fas fa-plug"></i> Conectar e sincronizar</button>
-                        <div class="fp-mini" style="margin-top:10px;color:var(--expense)"><i class="fas fa-triangle-exclamation"></i> Ao conectar este aparelho a uma sincronização que já existe, os dados da nuvem <strong>substituem</strong> os locais. Conecte primeiro o aparelho que tem os dados certos.</div>
-                        <div class="fp-mini"><i class="fas fa-shield-halved"></i> O token fica salvo só neste aparelho. Use o escopo apenas <em>gist</em> para limitar o acesso. Para revogar, exclua o token no GitHub.</div>
+                        <input id="sync-token" class="fp-input" type="password" placeholder="ghp_..." autocomplete="off">
+                        <label class="fp-label" style="margin-top:10px">Frase-senha (criptografia)</label>
+                        <input id="sync-pass" class="fp-input" type="password" placeholder="mínimo 8 caracteres" autocomplete="new-password">
+                        <button class="fp-btn" style="margin-top:12px" onclick="FPxSync.connect(document.getElementById('sync-token').value, document.getElementById('sync-pass').value)"><i class="fas fa-lock"></i> Conectar e sincronizar</button>
+                        <div class="fp-mini" style="margin-top:10px;color:var(--expense)"><i class="fas fa-triangle-exclamation"></i> <strong>Guarde a frase-senha.</strong> Sem ela é impossível recuperar os dados do cofre — não há como redefinir.</div>
+                        <div class="fp-mini" style="color:var(--expense)"><i class="fas fa-triangle-exclamation"></i> Ao conectar a uma sincronização que já existe, os dados da nuvem <strong>substituem</strong> os locais. Conecte primeiro o aparelho com os dados certos.</div>
+                        <div class="fp-mini"><i class="fas fa-shield-halved"></i> Token e frase-senha ficam salvos só neste aparelho. Use o escopo apenas <em>gist</em>. Para revogar o acesso, exclua o token no GitHub.</div>
                     </div></div>`);
                 return;
             }
-            setPanel(panelHead('Sincronização na nuvem', 'Ativa via GitHub Gist') + `
+            setPanel(panelHead('Sincronização na nuvem', 'Ativa · criptografada de ponta a ponta (AES-256)') + `
                 <div id="sync-root">
                 ${conflict ? `<div class="fp-box" style="border-color:var(--expense)"><h4 style="color:var(--expense)"><i class="fas fa-triangle-exclamation"></i> Conflito</h4>
                     <div class="fp-mini">A nuvem foi alterada por outro aparelho depois da sua última sincronização. Escolha qual versão vale:</div>
@@ -16503,7 +16649,7 @@ const _waitEmpresa = setInterval(() => {
         /* inicialização + automações */
         async function initForUser() {
             await loadCfg();
-            if (enabled && TOKEN && gistId) { patchDataLayer(); await doPull(true); }
+            if (enabled && TOKEN && PASS && gistId) { patchDataLayer(); await doPull(true); }
             else setStatus(enabled ? 'Configuração incompleta' : (TOKEN ? 'Pausada' : 'Não configurado'));
         }
         setInterval(async () => {
