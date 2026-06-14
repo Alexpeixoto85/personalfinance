@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -17,37 +18,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-    <!-- ===== Firebase SDK v12.14.0 (Login Google + Firestore em nuvem) ===== -->
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-      import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
-        from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-      import { getFirestore, doc, setDoc, getDoc, onSnapshot }
-        from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
-
-      const firebaseConfig = {
-        apiKey:            "AIzaSyBjSfGyxXn-_xA_Lz49DFrvEZnbht93Gu0",
-        authDomain:        "personalfinancepro-3e880.firebaseapp.com",
-        projectId:         "personalfinancepro-3e880",
-        storageBucket:     "personalfinancepro-3e880.firebasestorage.app",
-        messagingSenderId: "128370945698",
-        appId:             "1:128370945698:web:6c6cfd29e054715666f1fb",
-        measurementId:     "G-TLZS19KDFJ"
-      };
-
-      try {
-        const firebaseApp = initializeApp(firebaseConfig);
-        const auth = getAuth(firebaseApp);
-        const db   = getFirestore(firebaseApp);
-        const provider = new GoogleAuthProvider();
-        window._firebase = { auth, db, provider, signInWithPopup, signOut,
-                             onAuthStateChanged, doc, setDoc, getDoc, onSnapshot };
-        document.dispatchEvent(new Event('firebase-ready'));
-      } catch (e) {
-        console.error('Falha ao iniciar Firebase:', e);
-      }
-    </script>
 
     <style>
         :root {
@@ -2158,16 +2128,6 @@
                 </div>
                 <button class="login-btn" onclick="Auth.register()" id="btn-register">Criar conta</button>
             </div>
-
-            <!-- Login com Google (vale para as duas abas) -->
-            <div style="margin-top:18px;">
-                <div class="biometric-divider">ou</div>
-                <button type="button" id="btn-google-login" onclick="FB.loginGoogle()"
-                    style="width:100%;display:flex;align-items:center;justify-content:center;gap:11px;background:#fff;color:#3c4043;border:1.5px solid #dadce0;padding:13px 16px;border-radius:12px;font-size:0.95rem;font-weight:600;cursor:pointer;transition:box-shadow .15s;">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width:20px;height:20px;">
-                    Entrar com Google
-                </button>
-            </div>
         </div>
         <p class="login-footer">Seus dados ficam salvos localmente no dispositivo.</p>
 
@@ -2190,7 +2150,6 @@
                 <span id="notif-badge" class="notif-badge" style="display:none;"></span>
             </div>
             <button class="dark-toggle" id="dark-toggle-btn" onclick="UI.toggleDarkMode()" title="Alternar tema"><i class="fas fa-moon"></i></button>
-            <button type="button" id="fb-pill" onclick="FB.syncNow()" title="Sincronização em nuvem" style="display:none;align-items:center;gap:6px;font-size:0.72rem;font-weight:600;background:rgba(46,139,87,.15);color:#2e8b57;border:none;padding:6px 10px;border-radius:20px;cursor:pointer;"><i class="fas fa-cloud"></i><span id="fb-pill-label">Nuvem</span></button>
             <button class="icon-btn" onclick="FinanceApp.backup.exportData()"><i class="fas fa-cloud-download-alt"></i></button>
             <button class="icon-btn" onclick="Recibo.abrir()" title="Gerar recibo"><i class="fas fa-receipt"></i></button>
             <button class="icon-btn" onclick="UI.openSettings()"><i class="fas fa-cog"></i></button>
@@ -5081,253 +5040,6 @@
                 }
             }
         };
-
-        // ═══════════════════════════════════════════════════════════════
-        //  FB — Firebase (Login Google + Firestore em tempo real)
-        //  Documento por usuário: coleção "usuarios", id = uid.
-        //  Sincroniza o snapshot completo (DB.exportAllData) como string.
-        // ═══════════════════════════════════════════════════════════════
-        const FB = {
-            user: null,
-            _localUser: null,
-            _unsub: null,
-            _timer: null,
-            _lastPush: null,
-            _applying: false,
-            _hooksInstalled: false,
-
-            init() {
-                const begin = () => {
-                    this._installHooks();
-                    if (!window._firebase) { this._disableBtn(); return; }
-                    const { auth, onAuthStateChanged } = window._firebase;
-                    onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                            if (!window._fbUser || window._fbUser.uid !== user.uid) {
-                                try { await this.onLogin(user); } catch (e) { console.error(e); }
-                            }
-                        }
-                    });
-                };
-                if (window._firebase) begin();
-                else {
-                    document.addEventListener('firebase-ready', begin, { once: true });
-                    setTimeout(() => { if (!window._firebase) this._disableBtn(); }, 6000);
-                }
-            },
-
-            _disableBtn() {
-                const b = document.getElementById('btn-google-login');
-                if (b) { b.disabled = true; b.style.opacity = .55; b.title = 'Firebase indisponível (verifique a conexão)'; }
-            },
-
-            _usernameFor(user) {
-                return ('google_' + (user.email || user.uid)).toLowerCase().replace(/[^a-z0-9_@.\-]/g, '_');
-            },
-
-            async loginGoogle() {
-                if (!window._firebase) { alert('Firebase ainda está carregando. Tente novamente em instantes.'); return; }
-                try {
-                    const { auth, provider, signInWithPopup } = window._firebase;
-                    await signInWithPopup(auth, provider);
-                } catch (e) {
-                    console.error(e);
-                    if (Auth.showError) Auth.showError('Erro ao entrar com Google: ' + (e.code || e.message));
-                    else alert('Erro ao entrar com Google: ' + e.message);
-                }
-            },
-
-            async logout() {
-                if (!confirm('Sair da conta Google? Seus dados continuam salvos na nuvem.')) return;
-                try { clearTimeout(this._timer); await this._pushNow(); } catch (e) {}
-                try { if (this._unsub) { this._unsub(); this._unsub = null; } } catch (e) {}
-                try { const { auth, signOut } = window._firebase; await signOut(auth); } catch (e) {}
-                window._fbUser = null;
-                location.reload();
-            },
-
-            async onLogin(user) {
-                this.user = user;
-                window._fbUser = user;
-                this._showPill(true);
-                this.setStatus('syncing', 'Conectando…');
-
-                // Garante uma conta local vinculada à identidade Google
-                const username = this._usernameFor(user);
-                let local = await DB.getUser(username).catch(() => null);
-                if (!local) {
-                    local = { username, name: user.displayName || user.email || 'Conta Google', passwordHash: '', google: true, createdAt: new Date().toISOString() };
-                    try { await DB.saveUser(local); } catch (e) {}
-                }
-                this._localUser = local;
-                Auth.currentUser = local;
-
-                // Entra no app sob o banco local desse usuário
-                await Auth.enterApp(local);
-
-                // Sincroniza com a nuvem (baixa o que existir / envia se for a 1ª vez)
-                await this._firstSync();
-                this._subscribe();
-            },
-
-            async _firstSync() {
-                const { db, doc, getDoc } = window._firebase;
-                try {
-                    const snap = await getDoc(doc(db, 'usuarios', this.user.uid));
-                    if (snap.exists()) {
-                        const remote = snap.data();
-                        const localStamp = localStorage.getItem('fp_fb_stamp') || '';
-                        if (!localStamp || (remote.updatedAt && remote.updatedAt > localStamp)) {
-                            await this._applyRemote(remote);     // nuvem mais nova → baixa
-                        } else {
-                            await this._pushNow();               // local mais novo → envia
-                        }
-                    } else {
-                        await this._pushNow();                   // primeira vez → migra local p/ nuvem
-                    }
-                    this.setStatus('on', 'Sincronizado');
-                } catch (e) {
-                    console.error(e);
-                    this.setStatus('err', 'Erro de conexão');
-                }
-            },
-
-            _subscribe() {
-                const { db, doc, onSnapshot } = window._firebase;
-                if (this._unsub) { try { this._unsub(); } catch (e) {} }
-                this._unsub = onSnapshot(doc(db, 'usuarios', this.user.uid), async (snap) => {
-                    if (!snap.exists()) return;
-                    const remote = snap.data();
-                    if (remote.updatedAt && remote.updatedAt === this._lastPush) return; // eco da própria gravação
-                    const localStamp = localStorage.getItem('fp_fb_stamp') || '';
-                    if (remote.updatedAt && remote.updatedAt > localStamp) {
-                        await this._applyRemote(remote);
-                        this.setStatus('on', 'Atualizado');
-                        if (window.Utils && Utils.toast) Utils.toast('☁️ Dados atualizados de outro dispositivo');
-                    }
-                }, (err) => { console.error(err); this.setStatus('err', 'Erro de conexão'); });
-            },
-
-            async _applyRemote(remote) {
-                if (!remote || !remote.payload) return;
-                this._applying = true;
-                try {
-                    const dump = JSON.parse(remote.payload);
-                    await DB.importAllData(dump);
-                    localStorage.setItem('fp_fb_stamp', remote.updatedAt || new Date().toISOString());
-                    await this._refreshApp();
-                } catch (e) {
-                    console.error('Falha ao aplicar dados da nuvem:', e);
-                }
-                this._applying = false;
-            },
-
-            async _refreshApp() {
-                try {
-                    if (this._localUser) { try { await DB.initForUser(this._localUser.username); } catch (e) {} }
-                    if (UI && UI.loadInitialData) await UI.loadInitialData();
-                    if (UI && UI.updateMonthDisplay) UI.updateMonthDisplay();
-                    if (UI && UI.updateTransactionMonthDisplay) UI.updateTransactionMonthDisplay();
-                    if (UI && UI.renderDashboard) UI.renderDashboard();
-                } catch (e) { console.error(e); }
-            },
-
-            scheduleSync() {
-                if (!window._fbUser || this._applying) return;
-                clearTimeout(this._timer);
-                this.setStatus('syncing', 'Salvando…');
-                this._timer = setTimeout(() => { this._pushNow(); }, 1200);
-            },
-
-            syncNow() {
-                if (!window._fbUser) return;
-                clearTimeout(this._timer);
-                this._pushNow();
-            },
-
-            async _pushNow() {
-                if (!window._fbUser || !window._firebase) return;
-                const { db, doc, setDoc } = window._firebase;
-                this.setStatus('syncing', 'Salvando…');
-                try {
-                    const dump = await DB.exportAllData();
-                    const payload = JSON.stringify(dump);
-                    if (payload.length > 1000000) {
-                        this.setStatus('err', 'Dados > 1 MB');
-                        if (window.Utils && Utils.toast) Utils.toast('⚠️ Seus dados excederam o limite de 1 MB do Firestore; a nuvem não foi atualizada.');
-                        return;
-                    }
-                    const stamp = new Date().toISOString();
-                    this._lastPush = stamp;
-                    await setDoc(doc(db, 'usuarios', this.user.uid), { updatedAt: stamp, size: payload.length, app: 'FinancaPro', payload });
-                    localStorage.setItem('fp_fb_stamp', stamp);
-                    this.setStatus('on', 'Salvo ✓');
-                } catch (e) {
-                    console.error(e);
-                    this.setStatus('err', 'Erro ao salvar');
-                }
-            },
-
-            _showPill(show) {
-                const p = document.getElementById('fb-pill');
-                if (p) p.style.display = show ? 'inline-flex' : 'none';
-            },
-
-            setStatus(state, label) {
-                const p = document.getElementById('fb-pill');
-                const lbl = document.getElementById('fb-pill-label');
-                const ic = p ? p.querySelector('i') : null;
-                if (lbl) lbl.textContent = label || 'Nuvem';
-                if (p) {
-                    const colors = { on: ['#2e8b57', 'rgba(46,139,87,.15)'], syncing: ['#3a6ea5', 'rgba(58,110,165,.15)'], err: ['#c0392b', 'rgba(192,57,43,.15)'] };
-                    const c = colors[state] || colors.on;
-                    p.style.color = c[0]; p.style.background = c[1];
-                }
-                if (ic) ic.className = state === 'err' ? 'fas fa-cloud-exclamation' : state === 'syncing' ? 'fas fa-cloud-arrow-up fa-spin' : 'fas fa-cloud';
-            },
-
-            // Intercepta gravações para disparar a sincronização automática
-            _installHooks() {
-                if (this._hooksInstalled) return;
-                this._hooksInstalled = true;
-
-                const self = this;
-                const dbMethods = ['saveTransaction', 'deleteTransaction', 'deleteTransactionsFrom',
-                    'saveAccount', 'deleteAccount', 'saveCategory', 'deleteCategory',
-                    'saveGoal', 'deleteGoal', 'saveSettings', 'clearAllData', 'saveUser'];
-                dbMethods.forEach(m => {
-                    const orig = DB[m];
-                    if (typeof orig !== 'function') return;
-                    DB[m] = async function (...args) {
-                        const r = await orig.apply(DB, args);
-                        if (window._fbUser && !self._applying) self.scheduleSync();
-                        return r;
-                    };
-                });
-
-                // Cartões e preferências usam localStorage (chaves fp_*)
-                try {
-                    const _set = localStorage.setItem.bind(localStorage);
-                    localStorage.setItem = function (k, v) {
-                        _set(k, v);
-                        try {
-                            if (window._fbUser && !self._applying && typeof k === 'string'
-                                && k.indexOf('fp_') === 0 && k !== 'fp_fb_stamp') {
-                                self.scheduleSync();
-                            }
-                        } catch (e) {}
-                    };
-                } catch (e) { /* alguns navegadores podem bloquear; segue sem o hook de localStorage */ }
-
-                // Logout: se for conta Google, encerra a sessão do Firebase
-                const _origLogout = Auth.logout;
-                Auth.logout = function () {
-                    if (window._fbUser) { FB.logout(); return; }
-                    return _origLogout.apply(Auth, arguments);
-                };
-            },
-        };
-        window.FB = FB;
 
         // ═══════════════════════════════════════════════════════════════
         //  FACE AUTH — Reconhecimento facial com face-api.js
@@ -9452,7 +9164,6 @@
                         Auth._refreshBiometricUI();
                     }
                 } catch(e) {}
-                try { FB.init(); } catch(e) { console.error(e); }
             },
             
             changeMonth: (direction) => {
