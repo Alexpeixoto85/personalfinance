@@ -18,6 +18,41 @@
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+    <!-- ===== Firebase (sincronização em nuvem em tempo real) ===== -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script>
+    (function () {
+        // Configuração do projeto Firebase (Firestore em nuvem)
+        var firebaseConfig = {
+            apiKey: "AIzaSyBjSfGyxXn-_xA_Lz49DFrvEZnbht93Gu0",
+            authDomain: "personalfinancepro-3e880.firebaseapp.com",
+            projectId: "personalfinancepro-3e880",
+            storageBucket: "personalfinancepro-3e880.firebasestorage.app",
+            messagingSenderId: "128370945698",
+            appId: "1:128370945698:web:6c6cfd29e054715666f1fb",
+            measurementId: "G-TLZS19KDFJ"
+        };
+        try {
+            if (window.firebase && typeof firebase.initializeApp === 'function') {
+                if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+                window.__FB = {
+                    app: true,
+                    db: (firebase.firestore ? firebase.firestore() : null),
+                    auth: (firebase.auth ? firebase.auth() : null)
+                };
+            } else {
+                window.__FB = { app: false, db: null, auth: null };
+                console.error('SDK do Firebase não carregou.');
+            }
+        } catch (e) {
+            window.__FB = { app: false, db: null, auth: null };
+            console.error('Falha ao iniciar Firebase:', e);
+        }
+    })();
+    </script>
+
     <style>
         :root {
             /* Cores Financeiras */
@@ -16245,22 +16280,21 @@ const _waitEmpresa = setInterval(() => {
 
 
     <script>
-    /* ===== FinançaPro+ — Sincronização na nuvem (GitHub Gist) ===== */
+    /* ===== FinançaPro+ — Sincronização na nuvem em TEMPO REAL (Firebase / Firestore) ===== */
     (function () {
         'use strict';
         const core = window.FinPlus; if (!core) { console.error('FinPlus core ausente (sync)'); return; }
         const H = core._h, PlusDB = core.PlusDB;
         const { fmt, today, uid, toast, esc, $, txns, accounts, categories, D, panelHead, setPanel } = H;
 
-        const FILE = 'financapro-sync.json';                 // manifesto (metadados, sempre pequeno)
-        const DESC = 'FinançaPro — sincronização criptografada (não editar manualmente)';
+        const COL = 'financapro_vaults';                    // coleção raiz no Firestore
         const SYNC_STORES = ['debts', 'investments', 'subscriptions', 'snapshots', 'rules', 'txnmeta', 'kv'];
         // 'attachments' (Blobs) ficam só no aparelho — não entram no snapshot.
 
         /* ---- segurança / capacidade ---- */
         const KDF_ITER  = 210000;          // PBKDF2-SHA256 (derivação da chave a partir da frase-senha)
-        const CHUNK     = 900000;          // tamanho de cada arquivo-pedaço (abaixo do truncamento de 1MB do Gist)
-        const chunkName = (i) => 'financapro-sync.p' + String(i).padStart(3, '0') + '.txt';
+        const CHUNK     = 700000;          // tamanho de cada pedaço (abaixo do limite de 1MB por documento do Firestore)
+        const partName  = (i) => 'p' + String(i).padStart(3, '0');
 
         const te = new TextEncoder(), tdc = new TextDecoder();
         const b64 = {
@@ -16283,7 +16317,7 @@ const _waitEmpresa = setInterval(() => {
             const st = new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'));
             return new Uint8Array(await new Response(st).arrayBuffer());
         }
-        // snapshot -> { manifest (texto puro com metadados), chunks[] (base64 do texto cifrado) }
+        // snapshot -> { manifest (metadados em texto puro), chunks[] (base64 do texto cifrado) }
         async function seal(snapObj, pass) {
             const z = await gzipBytes(te.encode(JSON.stringify(snapObj)));
             const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -16305,76 +16339,72 @@ const _waitEmpresa = setInterval(() => {
             const key = await deriveKey(pass, b64.dec(manifest.salt), manifest.kdfIter || KDF_ITER);
             let pt;
             try { pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64.dec(manifest.iv) }, key, b64.dec(body)); }
-            catch (e) { throw new Error('Senha de sincronização incorreta'); }
+            catch (e) { throw new Error('Frase-senha de sincronização incorreta'); }
             return JSON.parse(tdc.decode(await gunzipBytes(new Uint8Array(pt), manifest.comp)));
         }
 
         /* estado */
-        let TOKEN = null, PASS = null, gistId = null, enabled = false, DEVICE = null;
-        let lastPulledAt = null, lastPushedAt = null, lastChunks = 0;
+        let PASS = null, syncCode = null, enabled = false, DEVICE = null;
+        let lastRev = 0, lastChunks = 0, myStamp = null;
         let applying = false, dirty = false, conflict = false, busy = false, patched = false;
         let pushTimer = null, lastUser = null, pulledForUser = null, statusText = 'Não configurado';
+        let unsub = null, authTried = false;
 
-        /* GitHub API (manifesto + pedaços) */
-        function ghHeaders() { return { 'Authorization': 'Bearer ' + TOKEN, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Content-Type': 'application/json' }; }
-        async function ghFind() {
-            const r = await fetch('https://api.github.com/gists?per_page=100', { headers: ghHeaders() });
-            if (!r.ok) throw new Error('GitHub ' + r.status + (r.status === 401 ? ' (token inválido)' : ''));
-            const arr = await r.json();
-            const g = arr.find(x => x.files && x.files[FILE]);
-            return g ? g.id : null;
-        }
-        async function ghGet(id) {
-            const r = await fetch('https://api.github.com/gists/' + id, { headers: ghHeaders() });
-            if (!r.ok) throw new Error('GitHub ' + r.status);
-            return r.json();
-        }
-        // conteúdo de um arquivo do gist, lidando com truncamento (>1MB) via raw_url
-        async function fileText(f) {
-            if (!f) return null;
-            if (f.truncated && f.raw_url) { const rr = await fetch(f.raw_url); if (!rr.ok) throw new Error('GitHub raw ' + rr.status); return rr.text(); }
-            return f.content;
-        }
-        // Lê só o manifesto (rápido, p/ checagem de conflito). Aceita formato antigo (v1, texto puro).
-        async function readManifest(id) {
-            const g = await ghGet(id);
-            const txt = await fileText(g.files && g.files[FILE]);
-            if (!txt) return null;
-            let obj; try { obj = JSON.parse(txt); } catch (e) { throw new Error('Manifesto inválido'); }
-            if (obj && obj.v === 2 && obj.enc) return { kind: 'v2', manifest: obj, gist: g };
-            if (obj && (obj.core || obj.plus)) return { kind: 'legacy', snapshot: obj, gist: g }; // backup antigo em texto puro
-            throw new Error('Formato de sincronização desconhecido');
-        }
-        // Junta os pedaços de texto cifrado de um gist já obtido (objeto g).
-        async function readBody(g, manifest) {
-            let body = '';
-            for (let i = 0; i < manifest.chunks; i++) {
-                const f = g.files && g.files[chunkName(i)];
-                const t = await fileText(f);
-                if (t == null) throw new Error('Pedaço ' + i + ' ausente na nuvem');
-                body += t;
+        /* ---- Firebase / Firestore ---- */
+        function FB() { return window.__FB || { db: null, auth: null }; }
+        function fdb() { const d = FB().db; if (!d) throw new Error('Firebase indisponível (recarregue a página)'); return d; }
+        async function ensureAuth() {
+            const a = FB().auth; if (!a) return;          // sem auth: depende das regras do Firestore
+            try {
+                if (a.currentUser) return;
+                await a.signInAnonymously();
+                authTried = true;
+            } catch (e) {
+                authTried = true;
+                console.warn('Login anônimo indisponível (seguindo sem auth):', e && e.message);
             }
-            if (manifest.bytes && body.length !== manifest.bytes) throw new Error('Dados corrompidos na nuvem (tamanho)');
+        }
+        function vaultRef() { return fdb().collection(COL).doc(syncCode); }
+        function partRef(i) { return vaultRef().collection('parts').doc(partName(i)); }
+
+        // Normaliza o código de sincronização para um ID válido de documento.
+        function normCode(s) {
+            s = (s || '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
+            return s;
+        }
+
+        // grava manifesto + pedaços de forma atômica (writeBatch)
+        async function fbWriteVault(manifest, chunks) {
+            await ensureAuth();
+            const ref = vaultRef();
+            const batch = fdb().batch();
+            const rev = (lastRev || 0) + 1;
+            const stamp = uid();
+            for (let i = 0; i < chunks.length; i++) batch.set(partRef(i), { data: chunks[i] });
+            for (let i = chunks.length; i < (lastChunks || 0); i++) batch.delete(partRef(i));   // remove pedaços que sobraram
+            batch.set(ref, { manifest, rev, device: DEVICE, stamp,
+                updatedAt: manifest.updatedAt, chunks: chunks.length, bytes: manifest.bytes });
+            await batch.commit();
+            lastRev = rev; myStamp = stamp; lastChunks = chunks.length;
+            await PlusDB.kvSet('sync_lastRev', lastRev);
+            await PlusDB.kvSet('sync_lastChunks', lastChunks);
+            await PlusDB.kvSet('sync_myStamp', myStamp);
+        }
+        // lê o documento do cofre (sem os pedaços)
+        async function fbReadVault() {
+            await ensureAuth();
+            const s = await vaultRef().get();
+            return s.exists ? s.data() : null;
+        }
+        // junta os pedaços de texto cifrado
+        async function fbReadParts(n) {
+            let body = '';
+            for (let i = 0; i < n; i++) {
+                const ps = await partRef(i).get();
+                if (!ps.exists) throw new Error('Pedaço ' + i + ' ausente na nuvem');
+                body += ps.data().data;
+            }
             return body;
-        }
-        // Monta o objeto "files" do PATCH/POST: manifesto + pedaços novos + null nos pedaços antigos sobrando.
-        function buildFiles(manifest, chunks, oldChunks) {
-            const files = { [FILE]: { content: JSON.stringify(manifest) } };
-            for (let i = 0; i < chunks.length; i++) files[chunkName(i)] = { content: chunks[i] };
-            for (let i = chunks.length; i < (oldChunks || 0); i++) files[chunkName(i)] = null; // remove pedaços que sobraram
-            return files;
-        }
-        async function ghCreateVault(manifest, chunks) {
-            const r = await fetch('https://api.github.com/gists', { method: 'POST', headers: ghHeaders(),
-                body: JSON.stringify({ description: DESC, public: false, files: buildFiles(manifest, chunks, 0) }) });
-            if (!r.ok) throw new Error('GitHub ' + r.status);
-            return (await r.json()).id;
-        }
-        async function ghWriteVault(id, manifest, chunks, oldChunks) {
-            const r = await fetch('https://api.github.com/gists/' + id, { method: 'PATCH', headers: ghHeaders(),
-                body: JSON.stringify({ files: buildFiles(manifest, chunks, oldChunks) }) });
-            if (!r.ok) throw new Error('GitHub ' + r.status);
-            return true;
         }
 
         /* snapshot */
@@ -16428,13 +16458,12 @@ const _waitEmpresa = setInterval(() => {
 
         /* config persistida (em kv, chaves sync_*) */
         async function loadCfg() {
-            TOKEN = await PlusDB.kvGet('sync_token', null);
             PASS = await PlusDB.kvGet('sync_pass', null);            // frase-senha do cofre (só neste aparelho)
-            gistId = await PlusDB.kvGet('sync_gistId', null);
+            syncCode = await PlusDB.kvGet('sync_code', null);
             enabled = await PlusDB.kvGet('sync_enabled', false);
-            lastPulledAt = await PlusDB.kvGet('sync_lastPulledAt', null);
-            lastPushedAt = await PlusDB.kvGet('sync_lastPushedAt', null);
+            lastRev = await PlusDB.kvGet('sync_lastRev', 0);
             lastChunks = await PlusDB.kvGet('sync_lastChunks', 0);
+            myStamp = await PlusDB.kvGet('sync_myStamp', null);
             DEVICE = await PlusDB.kvGet('sync_device', null);
             if (!DEVICE) { DEVICE = uid(); await PlusDB.kvSet('sync_device', DEVICE); }
         }
@@ -16448,73 +16477,85 @@ const _waitEmpresa = setInterval(() => {
             if (!PlusDB.db) throw new Error('Banco local indisponível');
         }
 
-        /* grava o snapshot cifrado (cria o gist se ainda não existir) */
+        /* grava o snapshot cifrado na nuvem */
         async function sealAndWrite(snap) {
             if (!PASS) throw new Error('Frase-senha ausente');
             const { manifest, chunks } = await seal(snap, PASS);
-            if (!gistId) { gistId = await ghCreateVault(manifest, chunks); await PlusDB.kvSet('sync_gistId', gistId); }
-            else await ghWriteVault(gistId, manifest, chunks, lastChunks);
-            lastChunks = chunks.length; await PlusDB.kvSet('sync_lastChunks', lastChunks);
-            lastPushedAt = snap.updatedAt; lastPulledAt = snap.updatedAt;
-            await PlusDB.kvSet('sync_lastPushedAt', snap.updatedAt); await PlusDB.kvSet('sync_lastPulledAt', snap.updatedAt);
+            await fbWriteVault(manifest, chunks);
         }
 
-        /* operações */
+        /* aplica um documento de cofre vindo da nuvem */
+        async function applyVaultDoc(v) {
+            const m = v.manifest;
+            if (!m || !m.enc) throw new Error('Formato de sincronização desconhecido');
+            const body = await fbReadParts(v.chunks);
+            if (m.bytes && body.length !== m.bytes) throw new Error('Dados corrompidos na nuvem (tamanho)');
+            const snap = await openVault(m, body, PASS);
+            await applySnapshot(snap);
+        }
+
+        /* operações manuais */
         async function doPull(force) {
-            if (!enabled || !TOKEN || !PASS || !gistId || applying || busy) return;
+            if (!enabled || !PASS || !syncCode || applying || busy) return;
             busy = true; setStatus('Verificando nuvem…'); render();
             try {
                 await ensureDB();
-                const res = await readManifest(gistId);
-                if (res) {
-                    if (res.kind === 'legacy') {
-                        // nuvem ainda em texto puro (versão antiga): importa e re-grava já criptografado
-                        await applySnapshot(res.snapshot);
-                        await sealAndWrite(await buildSnapshot());
-                        toast('Sincronização migrada para criptografada');
-                    } else {
-                        const m = res.manifest;
-                        const isNewer = force || !lastPulledAt || (m.updatedAt && m.updatedAt > lastPulledAt);
-                        const isOurs = m.device === DEVICE && m.updatedAt === lastPushedAt;
-                        if (isNewer && !isOurs) {
-                            const body = await readBody(res.gist, m);
-                            const snap = await openVault(m, body, PASS);
-                            await applySnapshot(snap); toast('Dados atualizados da nuvem');
-                        }
-                        lastPulledAt = m.updatedAt; await PlusDB.kvSet('sync_lastPulledAt', m.updatedAt);
+                const v = await fbReadVault();
+                if (v && typeof v.rev === 'number') {
+                    const isMine = (v.stamp && v.stamp === myStamp);
+                    if (force || (!isMine && v.rev >= lastRev)) {
+                        if (!isMine) { await applyVaultDoc(v); toast('Dados atualizados da nuvem'); }
                     }
-                    conflict = false; setStatus('Sincronizado');
+                    lastRev = Math.max(lastRev, v.rev); await PlusDB.kvSet('sync_lastRev', lastRev);
                 }
+                conflict = false; setStatus('Sincronizado');
             } catch (e) { console.warn(e); setStatus('Erro: ' + e.message); toast('Sincronização: ' + e.message, 'error'); }
             busy = false; render();
         }
-        async function doPush(forceOverwrite) {
-            if (!enabled || !TOKEN || !PASS || !gistId || applying || busy) return;
+        async function doPush() {
+            if (!enabled || !PASS || !syncCode || applying || busy) return;
             busy = true; setStatus('Enviando…'); render();
             try {
                 await ensureDB();
-                if (!forceOverwrite) {
-                    const res = await readManifest(gistId).catch(() => null);
-                    if (res && res.kind === 'v2') {
-                        const m = res.manifest;
-                        if (m.updatedAt && lastPulledAt && m.updatedAt > lastPulledAt && m.device !== DEVICE) {
-                            conflict = true; setStatus('Conflito detectado'); busy = false; render();
-                            toast('A nuvem tem alterações de outro aparelho. Resolva o conflito.', 'error'); return;
-                        }
-                    }
-                }
                 await sealAndWrite(await buildSnapshot());
                 dirty = false; conflict = false; setStatus('Sincronizado');
             } catch (e) { console.warn(e); setStatus('Erro: ' + e.message); toast('Falha ao enviar: ' + e.message, 'error'); }
             busy = false; render();
         }
-        async function syncNow() { await doPull(false); if (!conflict) await doPush(false); }
+        async function syncNow() { await doPull(false); if (!conflict) await doPush(); }
+
+        /* listener em tempo real (Firestore onSnapshot) */
+        function startListener() {
+            stopListener();
+            if (!enabled || !syncCode) return;
+            try {
+                ensureAuth();
+                unsub = vaultRef().onSnapshot(async (snap) => {
+                    try {
+                        if (!snap.exists) return;
+                        const v = snap.data();
+                        if (!v || typeof v.rev !== 'number') return;
+                        const isMine = (v.stamp && v.stamp === myStamp);     // eco do nosso próprio envio
+                        if (isMine) { lastRev = Math.max(lastRev, v.rev); await PlusDB.kvSet('sync_lastRev', lastRev); return; }
+                        if (v.rev < lastRev) return;                         // mais antigo do que já temos
+                        if (busy || applying) return;                        // evita reentrância
+                        busy = true; setStatus('Recebendo atualização…'); render();
+                        await ensureDB();
+                        await applyVaultDoc(v);
+                        lastRev = v.rev; await PlusDB.kvSet('sync_lastRev', lastRev);
+                        setStatus('Sincronizado'); toast('Atualizado em tempo real');
+                        busy = false; render();
+                    } catch (e) { busy = false; console.warn(e); setStatus('Erro: ' + e.message); render(); }
+                }, (err) => { console.warn('listener', err); setStatus('Erro de conexão: ' + (err && err.message || err)); render(); });
+            } catch (e) { console.warn('Falha ao iniciar listener', e); }
+        }
+        function stopListener() { if (unsub) { try { unsub(); } catch (e) {} unsub = null; } }
 
         /* dirty + auto-push */
         function markDirty() {
             if (!enabled || applying) return;
             dirty = true; setStatus('Alterações pendentes…'); updateCardSub();
-            clearTimeout(pushTimer); pushTimer = setTimeout(() => doPush(false), 5000);
+            clearTimeout(pushTimer); pushTimer = setTimeout(() => doPush(), 1500);
         }
         function patchDataLayer() {
             if (patched) return; patched = true;
@@ -16530,94 +16571,97 @@ const _waitEmpresa = setInterval(() => {
         }
 
         /* conectar / desconectar */
-        async function connect(token, pass) {
-            token = (token || '').trim(); pass = (pass || '').trim();
-            if (!token) { toast('Cole o token', 'error'); return; }
+        async function connect(code, pass) {
+            code = normCode(code); pass = (pass || '').trim();
+            if (!code) { toast('Crie um código de sincronização (letras/números)', 'error'); return; }
             if (pass.length < 8) { toast('Crie uma frase-senha com 8+ caracteres', 'error'); return; }
+            if (!FB().db) { toast('Firebase não carregou. Verifique a conexão e recarregue.', 'error'); return; }
             busy = true; setStatus('Conectando…'); render();
             try {
                 await ensureDB();
-                await loadCfg();                 // garante DEVICE/gistId carregados (caso a auto-init não tenha rodado)
-                TOKEN = token; PASS = pass;
-                await PlusDB.kvSet('sync_token', TOKEN); await PlusDB.kvSet('sync_pass', PASS);
-                let id = gistId || await PlusDB.kvGet('sync_gistId', null);
-                if (!id) id = await ghFind();
-                gistId = id || null;
+                await loadCfg();                 // garante DEVICE carregado
+                await ensureAuth();
+                PASS = pass; syncCode = code;
+                await PlusDB.kvSet('sync_pass', PASS); await PlusDB.kvSet('sync_code', syncCode);
                 enabled = true; await PlusDB.kvSet('sync_enabled', true);
                 patchDataLayer();
-                if (gistId) {
-                    await PlusDB.kvSet('sync_gistId', gistId);
-                    busy = false;
-                    await doPull(true);                         // cofre já existe: a nuvem manda (decifra com a frase-senha)
+
+                const v = await fbReadVault();
+                if (v && typeof v.rev === 'number' && v.manifest) {
+                    // cofre já existe na nuvem: a nuvem manda (decifra com a frase-senha)
+                    lastRev = 0;
+                    await applyVaultDoc(v);
+                    lastRev = v.rev; myStamp = v.stamp || null;
+                    await PlusDB.kvSet('sync_lastRev', lastRev);
+                    await PlusDB.kvSet('sync_lastChunks', v.chunks || 0);
+                    lastChunks = v.chunks || 0;
+                    toast('Conectado — dados carregados da nuvem');
                 } else {
-                    await sealAndWrite(await buildSnapshot());   // primeiro aparelho: cria o cofre cifrado
-                    busy = false;
+                    // primeiro aparelho: cria o cofre cifrado
+                    lastRev = 0; lastChunks = 0;
+                    await sealAndWrite(await buildSnapshot());
+                    toast('Sincronização em tempo real ativada');
                 }
-                setStatus('Sincronizado'); toast('Sincronização criptografada ativada'); render();
+                startListener();
+                busy = false; setStatus('Sincronizado'); render();
             } catch (e) { busy = false; console.warn(e); setStatus('Erro: ' + e.message); toast('Falha: ' + e.message, 'error'); render(); }
         }
         async function disconnect() {
             enabled = false; await PlusDB.kvSet('sync_enabled', false);
-            setStatus('Desconectado'); toast('Sincronização desligada'); render();
+            stopListener();
+            setStatus('Desconectado'); toast('Sincronização pausada neste aparelho'); render();
         }
         async function forget() {
-            enabled = false;
-            for (const k of ['sync_token', 'sync_pass', 'sync_gistId', 'sync_enabled', 'sync_lastPulledAt', 'sync_lastPushedAt', 'sync_lastChunks'])
+            enabled = false; stopListener();
+            for (const k of ['sync_pass', 'sync_code', 'sync_enabled', 'sync_lastRev', 'sync_lastChunks', 'sync_myStamp'])
                 await PlusDB.del('kv', k).catch(() => {});
-            TOKEN = null; PASS = null; gistId = null; lastPulledAt = null; lastPushedAt = null; lastChunks = 0;
+            PASS = null; syncCode = null; lastRev = 0; lastChunks = 0; myStamp = null;
             setStatus('Não configurado'); toast('Credenciais removidas deste aparelho'); render();
         }
 
         /* UI */
         function setStatus(s) { statusText = s; const e = $('sync-status'); if (e) e.textContent = s; updateCardSub(); }
-        function fmtWhen(iso) { if (!iso) return '—'; try { return new Date(iso).toLocaleString('pt-BR'); } catch (e) { return iso; } }
         function isOpen() { return !!$('sync-root'); }
         function render() { if (isOpen()) renderPanel(); }
         function updateCardSub() {
-            const sub = $('sync-card-sub'); if (sub) sub.textContent = !enabled ? 'Multi-dispositivo (desligada)' : conflict ? '⚠️ conflito' : dirty ? 'enviando…' : 'ativa · ' + (lastPushedAt ? fmtWhen(lastPushedAt).split(' ')[0] : 'ok');
-            const dot = $('sync-dot'); if (dot) dot.innerHTML = enabled ? (conflict ? '⚠️' : '🟢') : '';
+            const sub = $('sync-card-sub'); if (sub) sub.textContent = !enabled ? 'Tempo real (desligada)' : busy ? 'sincronizando…' : dirty ? 'enviando…' : 'ativa · tempo real';
+            const dot = $('sync-dot'); if (dot) dot.innerHTML = enabled ? '🟢' : '';
         }
 
         function renderPanel() {
             if (!enabled) {
-                setPanel(panelHead('Sincronização na nuvem', 'Seus dados em todos os aparelhos — criptografados, sem servidor próprio') + `
+                setPanel(panelHead('Sincronização na nuvem', 'Seus dados em todos os aparelhos — em tempo real e criptografados') + `
                     <div id="sync-root">
-                    <div class="fp-box"><h4><i class="fas fa-shield-halved"></i> Como funciona</h4>
-                        <div class="fp-mini" style="line-height:1.6">Usa um <strong>Gist privado do GitHub</strong> como cofre (grátis e durável). Antes de sair do aparelho, seus dados são <strong>comprimidos</strong> e <strong>criptografados de ponta a ponta</strong> (AES-256) com uma <strong>frase-senha</strong> que só você conhece. A nuvem guarda apenas texto embaralhado — nem o GitHub consegue ler. Funciona no celular também.</div></div>
+                    <div class="fp-box"><h4><i class="fas fa-bolt"></i> Como funciona</h4>
+                        <div class="fp-mini" style="line-height:1.6">Usa o <strong>Firebase (Firestore)</strong> como banco de dados em nuvem. As alterações aparecem <strong>na hora</strong> nos outros aparelhos (tempo real). Antes de sair do aparelho, seus dados são <strong>comprimidos</strong> e <strong>criptografados de ponta a ponta</strong> (AES-256) com uma <strong>frase-senha</strong> que só você conhece — a nuvem guarda apenas texto embaralhado.</div></div>
                     <div class="fp-box"><h4><i class="fas fa-list-ol"></i> Configurar (uma vez)</h4>
                         <div class="fp-mini" style="line-height:1.7">
-                        1. Tenha uma conta no <strong>github.com</strong> (grátis).<br>
-                        2. Abra <a href="https://github.com/settings/tokens/new?scopes=gist&description=FinancaPro" target="_blank" style="color:var(--primary);font-weight:700">este link</a> para gerar um <strong>token</strong> (o escopo <em>gist</em> já vem marcado). Defina validade e clique em <em>Generate token</em>.<br>
-                        3. Copie o token (começa com <code>ghp_</code>) e cole abaixo.<br>
-                        4. Crie uma <strong>frase-senha</strong> forte — é ela que criptografa tudo.<br>
-                        5. Nos <strong>outros aparelhos</strong>, use o <strong>mesmo token</strong> e a <strong>mesma frase-senha</strong>.</div>
-                        <label class="fp-label">Token do GitHub</label>
-                        <input id="sync-token" class="fp-input" type="password" placeholder="ghp_..." autocomplete="off">
+                        1. Crie um <strong>código de sincronização</strong> (qualquer apelido só seu — ex.: <em>casa-joao-2024</em>). Ele identifica o seu cofre na nuvem.<br>
+                        2. Crie uma <strong>frase-senha</strong> forte — é ela que criptografa tudo.<br>
+                        3. Nos <strong>outros aparelhos</strong>, use o <strong>mesmo código</strong> e a <strong>mesma frase-senha</strong>.</div>
+                        <label class="fp-label">Código de sincronização</label>
+                        <input id="sync-code" class="fp-input" type="text" placeholder="ex.: casa-joao-2024" autocomplete="off" autocapitalize="off" spellcheck="false">
                         <label class="fp-label" style="margin-top:10px">Frase-senha (criptografia)</label>
                         <input id="sync-pass" class="fp-input" type="password" placeholder="mínimo 8 caracteres" autocomplete="new-password">
-                        <button class="fp-btn" style="margin-top:12px" onclick="FPxSync.connect(document.getElementById('sync-token').value, document.getElementById('sync-pass').value)"><i class="fas fa-lock"></i> Conectar e sincronizar</button>
+                        <button class="fp-btn" style="margin-top:12px" onclick="FPxSync.connect(document.getElementById('sync-code').value, document.getElementById('sync-pass').value)"><i class="fas fa-bolt"></i> Conectar e sincronizar</button>
                         <div class="fp-mini" style="margin-top:10px;color:var(--expense)"><i class="fas fa-triangle-exclamation"></i> <strong>Guarde a frase-senha.</strong> Sem ela é impossível recuperar os dados do cofre — não há como redefinir.</div>
-                        <div class="fp-mini" style="color:var(--expense)"><i class="fas fa-triangle-exclamation"></i> Ao conectar a uma sincronização que já existe, os dados da nuvem <strong>substituem</strong> os locais. Conecte primeiro o aparelho com os dados certos.</div>
-                        <div class="fp-mini"><i class="fas fa-shield-halved"></i> Token e frase-senha ficam salvos só neste aparelho. Use o escopo apenas <em>gist</em>. Para revogar o acesso, exclua o token no GitHub.</div>
+                        <div class="fp-mini" style="color:var(--expense)"><i class="fas fa-triangle-exclamation"></i> Ao conectar a um código que já existe, os dados da nuvem <strong>substituem</strong> os locais. Conecte primeiro o aparelho com os dados certos.</div>
+                        <div class="fp-mini"><i class="fas fa-shield-halved"></i> Código e frase-senha ficam salvos só neste aparelho.</div>
                     </div></div>`);
                 return;
             }
-            setPanel(panelHead('Sincronização na nuvem', 'Ativa · criptografada de ponta a ponta (AES-256)') + `
+            setPanel(panelHead('Sincronização na nuvem', 'Ativa · tempo real · criptografada (AES-256)') + `
                 <div id="sync-root">
-                ${conflict ? `<div class="fp-box" style="border-color:var(--expense)"><h4 style="color:var(--expense)"><i class="fas fa-triangle-exclamation"></i> Conflito</h4>
-                    <div class="fp-mini">A nuvem foi alterada por outro aparelho depois da sua última sincronização. Escolha qual versão vale:</div>
-                    <button class="fp-btn" style="margin-top:10px" onclick="FPxSync.resolvePull()"><i class="fas fa-cloud-arrow-down"></i> Usar a da nuvem (descarta as deste aparelho)</button>
-                    <button class="fp-btn danger" style="margin-top:8px" onclick="FPxSync.resolvePush()"><i class="fas fa-cloud-arrow-up"></i> Usar a deste aparelho (sobrescreve a nuvem)</button></div>` : ''}
                 <div class="fp-box"><div class="fp-kpi">
                     <div><div class="k">Status</div><div class="v" id="sync-status" style="font-size:.95rem">${esc(statusText)}</div></div>
-                    <div><div class="k">Último envio</div><div class="v" style="font-size:.9rem">${fmtWhen(lastPushedAt)}</div></div></div>
+                    <div><div class="k">Código</div><div class="v" style="font-size:.9rem">${esc(syncCode || '—')}</div></div></div>
                     <button class="fp-btn" style="margin-top:12px" ${busy ? 'disabled' : ''} onclick="FPxSync.syncNow()"><i class="fas fa-arrows-rotate"></i> Sincronizar agora</button>
                     <div class="fp-row" style="margin-top:8px"><button class="fp-btn out" onclick="FPxSync.pull()"><i class="fas fa-cloud-arrow-down"></i> Baixar</button>
                     <button class="fp-btn out" onclick="FPxSync.push()"><i class="fas fa-cloud-arrow-up"></i> Enviar</button></div>
                 </div>
-                <div class="fp-box"><div class="fp-mini" style="line-height:1.6">Envio automático após alterações (poucos segundos) e baixa automática ao abrir o app ou voltar para ele. Resolução por “último a salvar vence” — evite editar dois aparelhos ao mesmo tempo sem sincronizar.</div>
+                <div class="fp-box"><div class="fp-mini" style="line-height:1.6">As alterações são enviadas automaticamente e chegam <strong>em tempo real</strong> nos outros aparelhos conectados ao mesmo código. Resolução por “último a salvar vence” — evite editar dois aparelhos exatamente ao mesmo tempo.</div>
                     <button class="fp-btn out" style="margin-top:10px" onclick="FPxSync.disconnect()"><i class="fas fa-pause"></i> Pausar neste aparelho</button>
-                    <button class="fp-btn out" style="margin-top:8px;color:var(--expense)" onclick="FPxSync.forget()"><i class="fas fa-trash"></i> Remover token deste aparelho</button>
+                    <button class="fp-btn out" style="margin-top:8px;color:var(--expense)" onclick="FPxSync.forget()"><i class="fas fa-trash"></i> Remover credenciais deste aparelho</button>
                 </div></div>`);
         }
 
@@ -16629,9 +16673,9 @@ const _waitEmpresa = setInterval(() => {
             const wrap = document.createElement('div');
             wrap.innerHTML = '<div class="fp-section-title">Nuvem</div><div class="fp-hub-grid">'
                 + '<button class="fp-card" id="sync-card" onclick="FinPlus.open(\'sync\')" aria-label="Sincronização na nuvem">'
-                + '<div class="fp-ic" style="background:#0ea5e9"><i class="fas fa-cloud"></i></div>'
+                + '<div class="fp-ic" style="background:#0ea5e9"><i class="fas fa-cloud-bolt"></i></div>'
                 + '<div class="fp-t">Sincronização <span id="sync-dot"></span></div>'
-                + '<div class="fp-d" id="sync-card-sub">Multi-dispositivo</div></button></div>';
+                + '<div class="fp-d" id="sync-card-sub">Tempo real</div></button></div>';
             const intro = v.firstElementChild;
             if (intro && intro.nextSibling) v.insertBefore(wrap, intro.nextSibling); else v.appendChild(wrap);
             updateCardSub();
@@ -16640,33 +16684,32 @@ const _waitEmpresa = setInterval(() => {
         /* handlers expostos */
         window.FPxSync = {
             connect, disconnect, forget, syncNow,
-            pull: () => doPull(false), push: () => doPush(false),
+            pull: () => doPull(false), push: () => doPush(),
             resolvePull: async () => { conflict = false; await doPull(true); },
-            resolvePush: async () => { conflict = false; await doPush(true); }
+            resolvePush: async () => { conflict = false; await doPush(); }
         };
         core._reg('sync', renderPanel);
 
         /* inicialização + automações */
         async function initForUser() {
             await loadCfg();
-            if (enabled && TOKEN && PASS && gistId) { patchDataLayer(); await doPull(true); }
-            else setStatus(enabled ? 'Configuração incompleta' : (TOKEN ? 'Pausada' : 'Não configurado'));
+            if (enabled && PASS && syncCode) { patchDataLayer(); await doPull(true); startListener(); }
+            else setStatus(enabled ? 'Configuração incompleta' : (syncCode ? 'Pausada' : 'Não configurado'));
         }
         setInterval(async () => {
             try {
                 const ready = (typeof DB !== 'undefined') && DB.currentUsername && $('login-screen') && $('login-screen').classList.contains('hidden') && PlusDB.db;
                 if (!ready) return;
-                if (DB.currentUsername !== lastUser) { lastUser = DB.currentUsername; enabled = false; conflict = false; dirty = false; }
+                if (DB.currentUsername !== lastUser) { lastUser = DB.currentUsername; enabled = false; conflict = false; dirty = false; stopListener(); }
                 if (pulledForUser !== lastUser && PlusDB.user === lastUser) { pulledForUser = lastUser; await initForUser(); }
             } catch (e) { /* silencioso */ }
         }, 1000);
 
         document.addEventListener('visibilitychange', () => {
             if (!enabled) return;
-            if (document.hidden) { if (dirty && !busy) doPush(false); }   // flush ao sair (melhor esforço)
-            else if (!busy) doPull(false);                                 // baixa ao voltar
+            if (document.hidden) { if (dirty && !busy) doPush(); }   // flush ao sair (melhor esforço)
+            else { if (!unsub) startListener(); if (!busy) doPull(false); }  // reativa o listener ao voltar
         });
-        setInterval(() => { if (enabled && !document.hidden && !busy && !dirty) doPull(false); }, 180000);
     })();
     </script>
 
@@ -16772,6 +16815,121 @@ const _waitEmpresa = setInterval(() => {
   window.updateHomeScreenIcon = updateHomeScreenIcon;
 })();
 </script>
+
+<!-- ============================================================
+     PROTEÇÃO DO CÓDIGO-FONTE / CONTEÚDO
+     Dissuasores no lado do cliente: bloqueio de toque longo,
+     menu de contexto, seleção, arraste, cópia e atalhos de
+     ferramentas do desenvolvedor. Campos de formulário continuam
+     totalmente utilizáveis (digitar, colar e selecionar dentro deles).
+     Observação: nenhuma proteção 100% é possível no navegador, pois
+     o HTML/JS é entregue ao cliente. Isto reduz a cópia casual.
+============================================================ -->
+<style id="fp-protect-style">
+    html, body {
+        -webkit-touch-callout: none;            /* iOS: sem menu ao toque longo */
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    /* Reabilita seleção/colar onde o usuário realmente precisa */
+    input, textarea, select, [contenteditable="true"],
+    .selectable, .allow-select {
+        -webkit-touch-callout: default !important;
+        -webkit-user-select: text !important;
+        -moz-user-select: text !important;
+        -ms-user-select: text !important;
+        user-select: text !important;
+    }
+    /* Evita arrastar imagens para fora (logo, comprovantes, etc.) */
+    img, canvas, svg {
+        -webkit-user-drag: none;
+        user-drag: none;
+    }
+    /* Remove o realce azul de toque no mobile */
+    * { -webkit-tap-highlight-color: rgba(0,0,0,0); }
+</style>
+<script>
+(function () {
+    'use strict';
+    var ENABLED = true;   // FPProtect.disable() desliga em runtime, se precisar
+
+    // Elementos onde a interação normal deve continuar permitida
+    function inField(el) {
+        if (!el || !el.closest) {
+            var t = (el && el.tagName) || '';
+            return /^(INPUT|TEXTAREA|SELECT)$/.test(t);
+        }
+        return !!el.closest('input, textarea, select, [contenteditable="true"], .selectable, .allow-select');
+    }
+
+    // 1) Menu de contexto (clique direito + toque longo no Android)
+    document.addEventListener('contextmenu', function (e) {
+        if (!ENABLED) return;
+        if (inField(e.target)) return;     // permite menu de colar nos campos
+        e.preventDefault();
+    }, { capture: true });
+
+    // 2) Arraste (impede salvar/arrastar imagens)
+    document.addEventListener('dragstart', function (e) {
+        if (!ENABLED) return;
+        if (inField(e.target)) return;
+        e.preventDefault();
+    }, { capture: true });
+
+    // 3) Início de seleção fora dos campos
+    document.addEventListener('selectstart', function (e) {
+        if (!ENABLED) return;
+        if (inField(e.target)) return;
+        e.preventDefault();
+    }, { capture: true });
+
+    // 4) Copiar / recortar fora dos campos
+    ['copy', 'cut'].forEach(function (evt) {
+        document.addEventListener(evt, function (e) {
+            if (!ENABLED) return;
+            if (inField(e.target)) return;  // copiar/colar dentro dos campos é liberado
+            e.preventDefault();
+        }, { capture: true });
+    });
+
+    // 5) Atalhos de ferramentas do desenvolvedor / ver código-fonte / salvar
+    document.addEventListener('keydown', function (e) {
+        if (!ENABLED) return;
+        var k = (e.key || '').toLowerCase();
+        var ctrl = e.ctrlKey || e.metaKey;
+
+        // F12 — DevTools
+        if (e.key === 'F12') { e.preventDefault(); return false; }
+
+        // Ctrl/Cmd + Shift + I / J / C — Inspecionar / Console / Selecionar elemento
+        if (ctrl && e.shiftKey && (k === 'i' || k === 'j' || k === 'c')) {
+            e.preventDefault(); return false;
+        }
+        // Ctrl/Cmd + U — Ver código-fonte
+        if (ctrl && k === 'u') { e.preventDefault(); return false; }
+        // Ctrl/Cmd + S — Salvar página
+        if (ctrl && k === 's') { e.preventDefault(); return false; }
+    }, { capture: true });
+
+    // 6) Toque longo no iOS (gesto que abre o "callout") — cancela fora dos campos
+    var lpTimer = null;
+    document.addEventListener('touchstart', function (e) {
+        if (!ENABLED) return;
+        if (inField(e.target)) return;
+        // nada a fazer aqui além do CSS; mantido por compatibilidade
+    }, { passive: true, capture: true });
+
+    // API opcional para ligar/desligar
+    window.FPProtect = {
+        enable:  function () { ENABLED = true; },
+        disable: function () { ENABLED = false; },
+        get enabled() { return ENABLED; }
+    };
+})();
+</script>
+
 
 </body>
 </html>
